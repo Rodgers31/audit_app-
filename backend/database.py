@@ -1,4 +1,5 @@
 import os
+from urllib.parse import quote_plus
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
@@ -7,12 +8,44 @@ from sqlalchemy.orm import sessionmaker
 
 load_dotenv()
 
-# Database configuration
-DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql://postgres:password@localhost:5432/audit_app"
-)
 
-engine = create_engine(DATABASE_URL)
+def _build_db_url_from_env() -> str:
+    """Build a SQLAlchemy Postgres URL from discrete env vars when DATABASE_URL is not set.
+
+    Supported variables:
+      - DB_USER
+      - DB_PASSWORD
+      - DB_HOST
+      - DB_PORT (default 6543 for Supabase Transaction Pooler)
+      - DB_NAME (default postgres)
+      - DB_SSLMODE (default require)
+    Falls back to localhost dev URL if nothing is provided.
+    """
+    # If DATABASE_URL explicitly provided, use it as-is
+    direct_url = os.getenv("DATABASE_URL")
+    if direct_url:
+        return direct_url
+
+    user = os.getenv("DB_USER")
+    password = os.getenv("DB_PASSWORD", "")
+    host = os.getenv("DB_HOST")
+    port = os.getenv("DB_PORT", "6543")
+    name = os.getenv("DB_NAME", "postgres")
+    sslmode = os.getenv("DB_SSLMODE", "require")
+
+    if user and host:
+        pwd = quote_plus(password) if password else ""
+        auth = f"{user}:{pwd}@" if user else ""
+        return f"postgresql://{auth}{host}:{port}/{name}?sslmode={sslmode}"
+
+    # Fallback dev URL
+    return "postgresql://postgres:password@localhost:5432/audit_app"
+
+
+# Database configuration
+DATABASE_URL = _build_db_url_from_env()
+
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

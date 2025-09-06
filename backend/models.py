@@ -50,7 +50,7 @@ class Country(Base):
     currency = Column(String(3), nullable=False)
     timezone = Column(String(50), nullable=False)
     default_locale = Column(String(10), nullable=False)
-    metadata = Column(JSONB, default={})
+    meta = Column("metadata", JSONB, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -67,8 +67,8 @@ class Entity(Base):
     type = Column(Enum(EntityType), nullable=False)
     canonical_name = Column(String(200), nullable=False)
     slug = Column(String(200), unique=True, index=True, nullable=False)
-    alt_names = Column(JSONB, default=[])
-    metadata = Column(JSONB, default={})
+    alt_names = Column(JSONB, default=list)
+    meta = Column("metadata", JSONB, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -106,7 +106,7 @@ class SourceDocument(Base):
     fetch_date = Column(DateTime, nullable=False)
     md5 = Column(String(32), nullable=True)
     doc_type = Column(Enum(DocumentType), nullable=False)
-    metadata = Column(JSONB, default={})
+    meta = Column("metadata", JSONB, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -151,7 +151,7 @@ class BudgetLine(Base):
     )
     page_ref = Column(String(50), nullable=True)
     notes = Column(Text, nullable=True)
-    provenance = Column(JSONB, default=[])  # List of source references
+    provenance = Column(JSONB, default=list)  # List of source references
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -175,7 +175,7 @@ class Loan(Base):
     source_document_id = Column(
         Integer, ForeignKey("source_documents.id"), nullable=False
     )
-    provenance = Column(JSONB, default=[])
+    provenance = Column(JSONB, default=list)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -195,7 +195,7 @@ class Audit(Base):
     source_document_id = Column(
         Integer, ForeignKey("source_documents.id"), nullable=False
     )
-    provenance = Column(JSONB, default=[])
+    provenance = Column(JSONB, default=list)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -210,7 +210,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
-    roles = Column(JSONB, default=[])
+    roles = Column(JSONB, default=list)
     disabled = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -267,7 +267,7 @@ class QuickQuestion(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     source_url = Column(String(500), nullable=True)
-    tags = Column(JSONB, default=[])
+    tags = Column(JSONB, default=list)
 
     # Relationships
     user_answers = relationship("UserQuestionAnswer", back_populates="question")

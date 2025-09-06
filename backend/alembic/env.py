@@ -1,12 +1,25 @@
 import os
 import sys
 from logging.config import fileConfig
+from pathlib import Path
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+try:
+    from dotenv import load_dotenv
+except Exception:
+    load_dotenv = None
+
 # Add the backend directory to the path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+# Load .env so DATABASE_URL is available when running alembic CLI
+if load_dotenv is not None:
+    here = Path(__file__).resolve().parent
+    for env_path in [here.parent / ".env", here.parent.parent / ".env"]:
+        if env_path.exists():
+            load_dotenv(env_path.as_posix(), override=False)
 
 from models import Base
 
@@ -41,7 +54,25 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    # Prefer environment variable and escape % for ConfigParser
+    url = os.getenv("DATABASE_URL")
+    if not url:
+        user = os.getenv("DB_USER")
+        password = os.getenv("DB_PASSWORD", "")
+        host = os.getenv("DB_HOST")
+        port = os.getenv("DB_PORT", "6543")
+        name = os.getenv("DB_NAME", "postgres")
+        sslmode = os.getenv("DB_SSLMODE", "require")
+        if user and host:
+            from urllib.parse import quote_plus
+
+            pwd = quote_plus(password) if password else ""
+            auth = f"{user}:{pwd}@"
+            url = f"postgresql://{auth}{host}:{port}/{name}?sslmode={sslmode}"
+        else:
+            url = config.get_main_option("sqlalchemy.url")
+    if "%" in url:
+        url = url.replace("%", "%%")
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -62,7 +93,25 @@ def run_migrations_online() -> None:
     """
 
     # Override with environment variable if present
-    database_url = os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        user = os.getenv("DB_USER")
+        password = os.getenv("DB_PASSWORD", "")
+        host = os.getenv("DB_HOST")
+        port = os.getenv("DB_PORT", "6543")
+        name = os.getenv("DB_NAME", "postgres")
+        sslmode = os.getenv("DB_SSLMODE", "require")
+        if user and host:
+            from urllib.parse import quote_plus
+
+            pwd = quote_plus(password) if password else ""
+            auth = f"{user}:{pwd}@"
+            database_url = f"postgresql://{auth}{host}:{port}/{name}?sslmode={sslmode}"
+        else:
+            database_url = config.get_main_option("sqlalchemy.url")
+    # Escape % to avoid ConfigParser interpolation errors
+    if "%" in database_url:
+        database_url = database_url.replace("%", "%%")
     config.set_main_option("sqlalchemy.url", database_url)
 
     connectable = engine_from_config(

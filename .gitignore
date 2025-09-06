@@ -34,6 +34,15 @@ env/
 *.swp
 *.swo
 
+# Documents (never commit raw files)
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.ppt
+*.pptx
+
 # Databases
 *.sqlite
 *.sqlite3
@@ -51,6 +60,8 @@ cob_selenium_reports/
 ultra_patient_reports/
 cob_data/
 reports/
+downloads/
+etl/downloads/
 !reports/README.md
 etl/downloads/
 !reports/README.md
