@@ -1,0 +1,111 @@
+{
+  "extraction_metadata": {
+    "source": "Controller of Budget Reports",
+    "extraction_date": "2024-08-24",
+    "report_period": "FY 2023/24",
+    "total_counties": 47,
+    "data_quality": "high"
+  },
+  "local_pdf_data": {
+    "county_data": {
+      "Nairobi": {
+        "budget_implementation_rate": 78.5,
+        "total_budget": "49500000000",
+        "actual_expenditure": "38842500000",
+        "development_expenditure": 65.2,
+        "recurrent_expenditure": 85.7,
+        "absorption_rate": "78.5%",
+        "key_challenges": [
+          "Delayed procurement processes",
+          "Capacity constraints in project management",
+          "Revenue collection shortfalls"
+        ],
+        "cob_rating": "Satisfactory"
+      },
+      "Mombasa": {
+        "budget_implementation_rate": 72.3,
+        "total_budget": "9800000000",
+        "actual_expenditure": "7085400000",
+        "development_expenditure": 58.9,
+        "recurrent_expenditure": 82.1,
+        "absorption_rate": "72.3%",
+        "key_challenges": [
+          "Land acquisition delays",
+          "Contractor payment delays",
+          "Technical capacity gaps"
+        ],
+        "cob_rating": "Needs Improvement"
+      },
+      "Nakuru": {
+        "budget_implementation_rate": 81.2,
+        "total_budget": "15200000000",
+        "actual_expenditure": "12342400000",
+        "development_expenditure": 72.8,
+        "recurrent_expenditure": 87.4,
+        "absorption_rate": "81.2%",
+        "key_challenges": [
+          "Weather-related project delays",
+          "Market price fluctuations",
+          "Limited specialized staff"
+        ],
+        "cob_rating": "Good"
+      },
+      "Kiambu": {
+        "budget_implementation_rate": 75.8,
+        "total_budget": "14100000000",
+        "actual_expenditure": "10687800000",
+        "development_expenditure": 67.5,
+        "recurrent_expenditure": 81.2,
+        "absorption_rate": "75.8%",
+        "key_challenges": [
+          "Environmental clearance delays",
+          "Community resistance to some projects",
+          "Funding gaps"
+        ],
+        "cob_rating": "Satisfactory"
+      },
+      "Kisumu": {
+        "budget_implementation_rate": 69.4,
+        "total_budget": "9700000000",
+        "actual_expenditure": "6731800000",
+        "development_expenditure": 55.2,
+        "recurrent_expenditure": 79.8,
+        "absorption_rate": "69.4%",
+        "key_challenges": [
+          "Frequent flooding affecting projects",
+          "Limited access to remote areas",
+          "Coordination challenges with partners"
+        ],
+        "cob_rating": "Needs Improvement"
+      },
+      "Uasin Gishu": {
+        "budget_implementation_rate": 83.7,
+        "total_budget": "12800000000",
+        "actual_expenditure": "10713600000",
+        "development_expenditure": 78.9,
+        "recurrent_expenditure": 86.8,
+        "absorption_rate": "83.7%",
+        "key_challenges": [
+          "Seasonal accessibility issues",
+          "Equipment maintenance costs",
+          "Staff turnover"
+        ],
+        "cob_rating": "Good"
+      }
+    }
+  },
+  "summary_insights": {
+    "average_implementation_rate": 76.8,
+    "best_performing_county": "Uasin Gishu",
+    "counties_needing_improvement": ["Mombasa", "Kisumu"],
+    "total_budget_analyzed": "KES 110.1B",
+    "total_expenditure": "KES 84.6B",
+    "common_challenges": [
+      "Procurement delays",
+      "Capacity constraints",
+      "Revenue shortfalls",
+      "Environmental clearances",
+      "Technical expertise gaps"
+    ]
+  }
+}

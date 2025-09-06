@@ -1,0 +1,36 @@
+# Backend-specific ignores
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.cache/
+
+# Virtual env
+.venv/
+venv/
+env/
+
+# Local env and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+main_backend.log
+
+# Data caches
+data/
+!data/
+!data/README.md

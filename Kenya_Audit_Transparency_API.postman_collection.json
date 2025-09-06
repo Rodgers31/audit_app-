@@ -1,0 +1,809 @@
+{
+  "info": {
+    "_postman_id": "kenya-audit-transparency-api",
+    "name": "Kenya Audit Transparency API",
+    "description": "Complete API collection for Kenya Government Financial Transparency Application",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Enhanced County Analytics API (Port 8003)",
+      "item": [
+        {
+          "name": "API Information",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": [""]
+            }
+          }
+        },
+        {
+          "name": "Get All Counties",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/counties/all",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["counties", "all"]
+            }
+          }
+        },
+        {
+          "name": "Get Specific County - Nairobi",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/counties/Nairobi",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["counties", "Nairobi"]
+            }
+          }
+        },
+        {
+          "name": "Get Specific County - Mombasa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/counties/Mombasa",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["counties", "Mombasa"]
+            }
+          }
+        },
+        {
+          "name": "Get All Audit Queries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/audit/queries",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["audit", "queries"]
+            }
+          }
+        },
+        {
+          "name": "Get Audit Queries by County",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/audit/queries?county=Nairobi",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["audit", "queries"],
+              "query": [
+                {
+                  "key": "county",
+                  "value": "Nairobi"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get County Audit Data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/audit/county/Nairobi",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["audit", "county", "Nairobi"]
+            }
+          }
+        },
+        {
+          "name": "Get Missing Funds Cases",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/audit/missing-funds",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["audit", "missing-funds"]
+            }
+          }
+        },
+        {
+          "name": "Get County Rankings - Budget",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/rankings/budget",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["rankings", "budget"]
+            }
+          }
+        },
+        {
+          "name": "Get County Rankings - Debt",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/rankings/debt",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["rankings", "debt"]
+            }
+          }
+        },
+        {
+          "name": "Get Analytics Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/analytics/summary",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["analytics", "summary"]
+            }
+          }
+        },
+        {
+          "name": "Get COB Implementation - County",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/counties/Nairobi/cob-implementation",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["counties", "Nairobi", "cob-implementation"]
+            }
+          }
+        },
+        {
+          "name": "Get COB Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/cob-summary",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["cob-summary"]
+            }
+          }
+        },
+        {
+          "name": "Get National Overview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/national/overview",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["national", "overview"]
+            }
+          }
+        },
+        {
+          "name": "Get All Ministries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/national/ministries",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["national", "ministries"]
+            }
+          }
+        },
+        {
+          "name": "Get Specific Ministry",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/national/ministries/Health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["national", "ministries", "Health"]
+            }
+          }
+        },
+        {
+          "name": "Get National Debt",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/national/debt",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["national", "debt"]
+            }
+          }
+        },
+        {
+          "name": "Get National Revenue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/national/revenue",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["national", "revenue"]
+            }
+          }
+        },
+        {
+          "name": "Get National Issues",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/national/issues",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["national", "issues"]
+            }
+          }
+        },
+        {
+          "name": "Get Comprehensive Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8003/analytics/comprehensive",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8003",
+              "path": ["analytics", "comprehensive"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Modernized Data-Driven API (Port 8004)",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8004/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8004",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Get Data Sources Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8004/data-sources",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8004",
+              "path": ["data-sources"]
+            }
+          }
+        },
+        {
+          "name": "Refresh All Data",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "http://localhost:8004/refresh-data",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8004",
+              "path": ["refresh-data"]
+            }
+          }
+        },
+        {
+          "name": "Get National Overview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8004/national/overview",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8004",
+              "path": ["national", "overview"]
+            }
+          }
+        },
+        {
+          "name": "Get National Debt Analysis",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8004/national/debt",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8004",
+              "path": ["national", "debt"]
+            }
+          }
+        },
+        {
+          "name": "Get All Ministries Data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8004/national/ministries",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8004",
+              "path": ["national", "ministries"]
+            }
+          }
+        },
+        {
+          "name": "Get Specific Ministry Data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8004/national/ministries/Education",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8004",
+              "path": ["national", "ministries", "Education"]
+            }
+          }
+        },
+        {
+          "name": "Get Revenue Data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8004/national/revenue",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8004",
+              "path": ["national", "revenue"]
+            }
+          }
+        },
+        {
+          "name": "Get County Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8004/counties/statistics",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8004",
+              "path": ["counties", "statistics"]
+            }
+          }
+        },
+        {
+          "name": "Get Specific County Data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8004/counties/Nakuru",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8004",
+              "path": ["counties", "Nakuru"]
+            }
+          }
+        },
+        {
+          "name": "Get Audit Overview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8004/audit/overview",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8004",
+              "path": ["audit", "overview"]
+            }
+          }
+        },
+        {
+          "name": "Get Filtered Audit Queries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8004/audit/queries?county=Kiambu&severity=high",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8004",
+              "path": ["audit", "queries"],
+              "query": [
+                {
+                  "key": "county",
+                  "value": "Kiambu"
+                },
+                {
+                  "key": "severity",
+                  "value": "high"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Comprehensive Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8004/analytics/comprehensive",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8004",
+              "path": ["analytics", "comprehensive"]
+            }
+          }
+        },
+        {
+          "name": "Get Transparency Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8004/analytics/transparency",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8004",
+              "path": ["analytics", "transparency"]
+            }
+          }
+        },
+        {
+          "name": "Get Reports Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8004/reports/summary",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8004",
+              "path": ["reports", "summary"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Main Backend API (Port 8000)",
+      "item": [
+        {
+          "name": "API Root Information",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": [""]
+            }
+          }
+        },
+        {
+          "name": "Get All Countries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/v1/countries",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "v1", "countries"]
+            }
+          }
+        },
+        {
+          "name": "Get Country Summary - Kenya",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/v1/countries/1/summary",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "v1", "countries", "1", "summary"]
+            }
+          }
+        },
+        {
+          "name": "Get All Entities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/v1/entities",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "v1", "entities"]
+            }
+          }
+        },
+        {
+          "name": "Get Entities by Type",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/v1/entities?type=county",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "v1", "entities"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "county"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Specific Entity",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/v1/entities/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "v1", "entities", "1"]
+            }
+          }
+        },
+        {
+          "name": "Get Budget Lines",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/v1/entities/1/periods/1/budget_lines",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "v1", "entities", "1", "periods", "1", "budget_lines"]
+            }
+          }
+        },
+        {
+          "name": "Get Specific Document",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/v1/documents/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "v1", "documents", "1"]
+            }
+          }
+        },
+        {
+          "name": "Search Documents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/v1/search?q=budget",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "v1", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "budget"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Annotation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"document_id\": 1,\n    \"text\": \"Important budget allocation note\",\n    \"type\": \"note\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/v1/annotations",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "v1", "annotations"]
+            }
+          }
+        },
+        {
+          "name": "Upload Document",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "title",
+                  "value": "Sample Document",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/v1/documents/upload",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "v1", "documents", "upload"]
+            }
+          }
+        },
+        {
+          "name": "Get Top Spenders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/v1/analytics/top_spenders",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "v1", "analytics", "top_spenders"]
+            }
+          }
+        },
+        {
+          "name": "Start Kenya ETL Pipeline",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/v1/etl/kenya/start",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "v1", "etl", "kenya", "start"]
+            }
+          }
+        },
+        {
+          "name": "Get ETL Job Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/v1/etl/status/job123",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "v1", "etl", "status", "job123"]
+            }
+          }
+        },
+        {
+          "name": "Get Kenya ETL Sources",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/v1/etl/kenya/sources",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "v1", "etl", "kenya", "sources"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl8003",
+      "value": "http://localhost:8003"
+    },
+    {
+      "key": "baseUrl8004",
+      "value": "http://localhost:8004"
+    },
+    {
+      "key": "baseUrl8000",
+      "value": "http://localhost:8000"
+    }
+  ]
+}

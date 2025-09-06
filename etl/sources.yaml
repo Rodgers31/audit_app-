@@ -1,0 +1,64 @@
+# Kenya data sources configuration
+KEN:
+  country_name: 'Kenya'
+  currency: 'KES'
+  fiscal_year_start: '07-01' # July 1st
+  sources:
+    - source_id: 'ken_treasury_budget'
+      publisher: 'National Treasury'
+      name: 'National Budget'
+      url: 'https://treasury.go.ke/budget/'
+      doc_type: 'budget'
+      fetch_rules:
+        type: 'html_scraper'
+        selector: "a[href*='budget'][href$='.pdf']"
+        schedule: 'monthly'
+      adapter: 'pdf_adapter'
+
+    - source_id: 'ken_oag_reports'
+      publisher: 'Office of the Auditor General'
+      name: 'Audit Reports'
+      url: 'https://oagkenya.go.ke/reports/'
+      doc_type: 'audit'
+      fetch_rules:
+        type: 'html_scraper'
+        selector: "a[href$='.pdf']"
+        schedule: 'weekly'
+      adapter: 'pdf_adapter'
+
+    - source_id: 'ken_ocob_reports'
+      publisher: 'Office of the Controller of Budget'
+      name: 'Budget Implementation Reports'
+      url: 'https://cob.go.ke/reports/'
+      doc_type: 'report'
+      fetch_rules:
+        type: 'html_scraper'
+        selector: "a[href*='implementation'][href$='.pdf']"
+        schedule: 'monthly'
+      adapter: 'pdf_adapter'
+
+    # Sample county sources
+    - source_id: 'nairobi_budget'
+      publisher: 'Nairobi County Government'
+      name: 'Nairobi County Budget'
+      url: 'https://nairobi.go.ke/budget/'
+      doc_type: 'budget'
+      fetch_rules:
+        type: 'html_scraper'
+        schedule: 'monthly'
+      adapter: 'pdf_adapter'
+
+    - source_id: 'mombasa_budget'
+      publisher: 'Mombasa County Government'
+      name: 'Mombasa County Budget'
+      url: 'https://mombasa.go.ke/budget/'
+      doc_type: 'budget'
+      fetch_rules:
+        type: 'html_scraper'
+        schedule: 'monthly'
+      adapter: 'pdf_adapter'
+# Additional countries can be added here
+# UGA:
+#   country_name: "Uganda"
+#   currency: "UGX"
+#   sources: []

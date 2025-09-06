@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: audit_app
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - '5432:5432'
+    networks:
+      - audit_network
+
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    networks:
+      - audit_network
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/audit_app
+      REDIS_URL: redis://redis:6379
+    ports:
+      - '8000:8000'
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+      - ./etl:/app/etl
+    networks:
+      - audit_network
+    restart: unless-stopped
+
+  # Next.js Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - audit_network
+    restart: unless-stopped
+
+  # ETL Service (separate for scheduled jobs)
+  etl:
+    build:
+      context: ./etl
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/audit_app
+    depends_on:
+      - postgres
+    volumes:
+      - ./etl:/app
+      - etl_downloads:/app/downloads
+    networks:
+      - audit_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  etl_downloads:
+
+networks:
+  audit_network:
+    driver: bridge

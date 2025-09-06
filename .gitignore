@@ -1,0 +1,93 @@
+# Top-level ignores for Python, Node/Next.js, env files, logs, and large artifacts
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+*.code-workspace
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.pytype/
+.cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Logs and temp
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Databases
+*.sqlite
+*.sqlite3
+*.db
+kenya_reports.db
+*.pdf
+
+# Generated data / large artifacts
+extracted_docs/
+!extracted_docs/README.md
+report_cache/
+cob_reports/
+cob_reports_detailed/
+cob_selenium_reports/
+ultra_patient_reports/
+cob_data/
+reports/
+!reports/README.md
+etl/downloads/
+!reports/README.md
+
+# Project-level data directory (ignored by default)
+data/
+!data/README.md
+
+# Node / JavaScript
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Frontend build output
+.next/
+out/
+dist/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+!frontend/.env.local.example
+
+# Postman environments (may contain secrets)
+*.postman_environment.json
+
+# Docker overrides
+docker-compose.override.yml

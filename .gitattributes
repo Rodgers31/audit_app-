@@ -1,0 +1,30 @@
+# Normalize EOLs: text files use LF in repo, convert on checkout based on OS
+* text=auto
+
+# Treat these as text explicitly
+*.py text
+*.ts text
+*.tsx text
+*.js text
+*.jsx text
+*.json text
+*.md text
+*.yml text
+*.yaml text
+*.css text
+*.scss text
+*.html text
+*.sh text eol=lf
+*.bat text eol=crlf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.ico binary
+*.zip binary
+*.gz binary
+*.tgz binary
+*.7z binary

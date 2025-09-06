@@ -1,0 +1,180 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Install Backend Dependencies",
+			"type": "shell",
+			"command": "pip",
+			"args": [
+				"install",
+				"-r",
+				"requirements.txt"
+			],
+			"group": "build",
+			"options": {
+				"cwd": "${workspaceFolder}/backend"
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Install Frontend Dependencies",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"install"
+			],
+			"group": "build",
+			"options": {
+				"cwd": "${workspaceFolder}/frontend"
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Start Backend (Dev)",
+			"type": "shell",
+			"command": "uvicorn",
+			"args": [
+				"main:app",
+				"--reload",
+				"--host",
+				"0.0.0.0",
+				"--port",
+				"8000"
+			],
+			"group": "test",
+			"options": {
+				"cwd": "${workspaceFolder}/backend"
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated"
+			},
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Start Frontend (Dev)",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"dev"
+			],
+			"group": "test",
+			"options": {
+				"cwd": "${workspaceFolder}/frontend"
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated"
+			},
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Start Docker Services",
+			"type": "shell",
+			"command": "docker-compose",
+			"args": [
+				"up",
+				"-d"
+			],
+			"group": "build",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Build All",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"Install Backend Dependencies",
+				"Install Frontend Dependencies"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Install Frontend Dependencies",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"install"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Start Backend (Dev via pip uvicorn)",
+			"type": "shell",
+			"command": "pip",
+			"args": [
+				"install",
+				"-r",
+				"requirements.txt",
+				"&&",
+				"python",
+				"-m",
+				"uvicorn",
+				"main:app",
+				"--reload",
+				"--host",
+				"0.0.0.0",
+				"--port",
+				"8000"
+			],
+			"isBackground": true,
+			"problemMatcher": [
+				"$pytest"
+			],
+			"group": "test"
+		},
+		{
+			"label": "Start Backend (Dev via python -m uvicorn)",
+			"type": "shell",
+			"command": "C:/Users/rodge/projects/audit_app/venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"uvicorn",
+				"main:app",
+				"--reload",
+				"--host",
+				"0.0.0.0",
+				"--port",
+				"8000"
+			],
+			"isBackground": true,
+			"group": "test"
+		}
+	]
+}
