@@ -1,0 +1,161 @@
+// Kenya Counties GeoJSON data
+// This is a simplified version - in production, you'd load this from a proper source
+// like the Kenya National Bureau of Statistics or OpenStreetMap
+
+export const KENYA_COUNTIES_GEOJSON = {
+  type: 'FeatureCollection',
+  features: [
+    {
+      type: 'Feature',
+      properties: {
+        NAME: 'Nairobi',
+        COUNTY_ID: 'nairobi',
+      },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [36.6, -1.45],
+            [37.1, -1.45],
+            [37.1, -1.15],
+            [36.6, -1.15],
+            [36.6, -1.45],
+          ],
+        ],
+      },
+    },
+    {
+      type: 'Feature',
+      properties: {
+        NAME: 'Mombasa',
+        COUNTY_ID: 'mombasa',
+      },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [39.5, -4.2],
+            [39.8, -4.2],
+            [39.8, -3.9],
+            [39.5, -3.9],
+            [39.5, -4.2],
+          ],
+        ],
+      },
+    },
+    {
+      type: 'Feature',
+      properties: {
+        NAME: 'Kisumu',
+        COUNTY_ID: 'kisumu',
+      },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [34.5, -0.2],
+            [35.0, -0.2],
+            [35.0, 0.2],
+            [34.5, 0.2],
+            [34.5, -0.2],
+          ],
+        ],
+      },
+    },
+    {
+      type: 'Feature',
+      properties: {
+        NAME: 'Nakuru',
+        COUNTY_ID: 'nakuru',
+      },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [35.8, -1.0],
+            [36.3, -1.0],
+            [36.3, -0.5],
+            [35.8, -0.5],
+            [35.8, -1.0],
+          ],
+        ],
+      },
+    },
+    {
+      type: 'Feature',
+      properties: {
+        NAME: 'Eldoret',
+        COUNTY_ID: 'eldoret',
+      },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [35.0, 0.3],
+            [35.5, 0.3],
+            [35.5, 0.8],
+            [35.0, 0.8],
+            [35.0, 0.3],
+          ],
+        ],
+      },
+    },
+    {
+      type: 'Feature',
+      properties: {
+        NAME: 'Meru',
+        COUNTY_ID: 'meru',
+      },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [37.5, -0.3],
+            [38.0, -0.3],
+            [38.0, 0.2],
+            [37.5, 0.2],
+            [37.5, -0.3],
+          ],
+        ],
+      },
+    },
+    {
+      type: 'Feature',
+      properties: {
+        NAME: 'Thika',
+        COUNTY_ID: 'thika',
+      },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [36.8, -1.2],
+            [37.3, -1.2],
+            [37.3, -0.7],
+            [36.8, -0.7],
+            [36.8, -1.2],
+          ],
+        ],
+      },
+    },
+    {
+      type: 'Feature',
+      properties: {
+        NAME: 'Malindi',
+        COUNTY_ID: 'malindi',
+      },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [39.8, -3.5],
+            [40.3, -3.5],
+            [40.3, -3.0],
+            [39.8, -3.0],
+            [39.8, -3.5],
+          ],
+        ],
+      },
+    },
+  ],
+};

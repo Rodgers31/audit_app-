@@ -69,6 +69,7 @@ etl/downloads/
 # Project-level data directory (ignored by default)
 data/
 !data/README.md
+!frontend/data/
 
 # Node / JavaScript
 node_modules/
