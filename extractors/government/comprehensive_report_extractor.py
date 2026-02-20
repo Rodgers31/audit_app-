@@ -158,7 +158,7 @@ class KenyaReportExtractor:
             "https://cob.go.ke",
             "https://cob.go.ke/reports/",
             "https://cob.go.ke/county-budget-implementation-review-reports/",
-            "https://cob.go.ke/budget-implementation-review-reports/",
+            "https://cob.go.ke/publications/",
         ]
 
         all_documents = []

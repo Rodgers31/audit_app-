@@ -48,7 +48,7 @@ class EnhancedCOBExtractor:
             "https://cob.go.ke/reports/",
             "https://cob.go.ke/reports/consolidated-county-budget-implementation-review-reports/",
             "https://cob.go.ke/county-budget-implementation-review-reports/",
-            "https://cob.go.ke/budget-implementation-review-reports/",
+            "https://cob.go.ke/publications/",
             "https://cob.go.ke/publications/",
             "https://www.cob.go.ke",  # Alternative domain
             "http://cob.go.ke",  # HTTP fallback

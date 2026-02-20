@@ -18,10 +18,11 @@ interface AuditCardProps {
 }
 
 export default function AuditCard({ county }: AuditCardProps) {
-  const statusText = getAuditStatusText(county.auditStatus);
-  const statusDescription = getAuditDescription(county.auditStatus);
-  const backgroundClass = getAuditStatusBackground(county.auditStatus);
-  const iconColorClass = getAuditStatusIconColor(county.auditStatus);
+  const status = county.auditStatus || 'pending';
+  const statusText = getAuditStatusText(status);
+  const statusDescription = getAuditDescription(status);
+  const backgroundClass = getAuditStatusBackground(status);
+  const iconColorClass = getAuditStatusIconColor(status);
 
   const getTextColorClass = (status: string) => {
     switch (status) {
@@ -78,10 +79,7 @@ export default function AuditCard({ county }: AuditCardProps) {
         <div className='flex-1'>
           <div className='flex items-center gap-2 mb-1'>
             <span className='text-base'>📋</span>
-            <span
-              className={`font-semibold text-xs tracking-wide ${getTextColorClass(
-                county.auditStatus
-              )}`}>
+            <span className={`font-semibold text-xs tracking-wide ${getTextColorClass(status)}`}>
               AUDIT
             </span>
           </div>
@@ -89,19 +87,15 @@ export default function AuditCard({ county }: AuditCardProps) {
       </div>
 
       {/* Audit Status */}
-      <div className={`text-2xl font-bold mb-1 ${getTitleColorClass(county.auditStatus)}`}>
-        {statusText}
-      </div>
+      <div className={`text-2xl font-bold mb-1 ${getTitleColorClass(status)}`}>{statusText}</div>
 
       {/* Description */}
-      <div className={`font-medium mb-1 ${getDescriptionColorClass(county.auditStatus)}`}>
+      <div className={`font-medium mb-1 ${getDescriptionColorClass(status)}`}>
         {statusDescription}
       </div>
 
       {/* Year */}
-      <div className={`text-sm font-medium ${getTextColorClass(county.auditStatus)}`}>
-        Year: 2024
-      </div>
+      <div className={`text-sm font-medium ${getTextColorClass(status)}`}>Year: 2024</div>
     </div>
   );
 }

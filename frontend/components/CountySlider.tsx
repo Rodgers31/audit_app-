@@ -62,13 +62,14 @@ export default function CountySlider({
     const isActive = position === 'current';
 
     return (
-      <motion.div
+      <motion.button
+        type='button'
         key={`${position}-${county.id}`}
         animate={{
           opacity: isActive ? 1 : 0.6,
         }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className='cursor-pointer transition-all duration-300 hover:opacity-90 flex-1'
+        className='cursor-pointer transition-all duration-300 hover:opacity-90 flex-1 text-left'
         onClick={() => handleCountyClick(county, index)}>
         <div
           className={`
@@ -86,16 +87,16 @@ export default function CountySlider({
               className={`
               px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0
               ${
-                county.auditStatus === 'clean'
+                (county.auditStatus || 'pending') === 'clean'
                   ? 'bg-green-100 text-green-700'
-                  : county.auditStatus === 'qualified'
+                  : (county.auditStatus || 'pending') === 'qualified'
                   ? 'bg-yellow-100 text-yellow-700'
-                  : county.auditStatus === 'adverse'
+                  : (county.auditStatus || 'pending') === 'adverse'
                   ? 'bg-red-100 text-red-700'
                   : 'bg-orange-100 text-orange-700'
               }
             `}>
-              {county.auditStatus}
+              {county.auditStatus || 'pending'}
             </span>
           </div>
 
@@ -110,17 +111,21 @@ export default function CountySlider({
             {/* Budget */}
             <div className='text-xs'>
               <span className='text-gray-500'>Budget: </span>
-              <span className='font-medium text-green-600'>{formatKES(county.budget)}</span>
+              <span className='font-medium text-green-600'>
+                {formatKES(county.budget ?? county.totalBudget ?? 0)}
+              </span>
             </div>
 
             {/* Debt */}
             <div className='text-xs'>
               <span className='text-gray-500'>Debt: </span>
-              <span className='font-medium text-red-600'>{formatKES(county.debt)}</span>
+              <span className='font-medium text-red-600'>
+                {formatKES(county.debt ?? county.totalDebt ?? 0)}
+              </span>
             </div>
           </div>
         </div>
-      </motion.div>
+      </motion.button>
     );
   };
 

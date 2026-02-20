@@ -4,10 +4,10 @@
 import { getStatusBadges } from './auditUtils';
 
 interface StatusBadgeProps {
-  auditStatus: string;
+  auditStatus?: string;
 }
 
-export default function StatusBadge({ auditStatus }: StatusBadgeProps) {
+export default function StatusBadge({ auditStatus = 'pending' }: StatusBadgeProps) {
   const badges = getStatusBadges();
   const badge = badges[auditStatus as keyof typeof badges] || badges.pending;
 

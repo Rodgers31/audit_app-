@@ -1,0 +1,12 @@
+countries:
+  KE:
+    sources:
+      cob:
+        interval_hours: 12
+        jitter_minutes: 20
+      treasury:
+        interval_hours: 24
+        jitter_minutes: 30
+      oag:
+        interval_hours: 24
+        jitter_minutes: 30

@@ -8,7 +8,8 @@ interface CountyDebtChartProps {
 }
 
 export default function CountyDebtChart({ county }: CountyDebtChartProps) {
-  const totalDebt = county.debt;
+  const totalDebt = county.debt ?? county.totalDebt ?? 0;
+  const budget = county.budget ?? county.totalBudget ?? 0;
 
   // Estimate debt composition (in real scenario, this would come from detailed data)
   const debtComposition = [
@@ -43,6 +44,7 @@ export default function CountyDebtChart({ county }: CountyDebtChartProps) {
   };
 
   const formatPercentage = (amount: number) => {
+    if (!totalDebt || totalDebt === 0) return '0%';
     return `${((amount / totalDebt) * 100).toFixed(1)}%`;
   };
 
@@ -155,13 +157,17 @@ export default function CountyDebtChart({ county }: CountyDebtChartProps) {
         <div className='bg-red-50 rounded-xl p-4 border border-red-200'>
           <h5 className='font-semibold text-red-900 mb-1'>Debt-to-Budget Ratio</h5>
           <div className='text-2xl font-bold text-red-700'>
-            {((totalDebt / county.budget) * 100).toFixed(1)}%
+            {budget > 0 ? ((totalDebt / budget) * 100).toFixed(1) : '0.0'}%
           </div>
         </div>
         <div className='bg-blue-50 rounded-xl p-4 border border-blue-200'>
           <h5 className='font-semibold text-blue-900 mb-1'>Per Capita Debt</h5>
           <div className='text-2xl font-bold text-blue-700'>
-            KES {Math.round(totalDebt / county.population).toLocaleString()}
+            KES{' '}
+            {(county.population > 0
+              ? Math.round(totalDebt / county.population)
+              : 0
+            ).toLocaleString()}
           </div>
         </div>
       </div>
@@ -171,11 +177,15 @@ export default function CountyDebtChart({ county }: CountyDebtChartProps) {
         <h5 className='font-semibold text-yellow-900 mb-2'>Debt Analysis</h5>
         <ul className='text-sm text-yellow-800 space-y-1'>
           <li>
-            • Debt represents {((totalDebt / county.budget) * 100).toFixed(1)}% of annual budget
+            • Debt represents {budget > 0 ? ((totalDebt / budget) * 100).toFixed(1) : '0.0'}% of
+            annual budget
           </li>
           <li>
             • Each resident owes approximately KES{' '}
-            {Math.round(totalDebt / county.population).toLocaleString()}
+            {(county.population > 0
+              ? Math.round(totalDebt / county.population)
+              : 0
+            ).toLocaleString()}
           </li>
           <li>• Largest debt source: {debtComposition[0].type}</li>
         </ul>

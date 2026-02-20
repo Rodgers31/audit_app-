@@ -1,0 +1,217 @@
+"""Prometheus alert rules for the application.
+
+To use with Prometheus, mount this file and include it in prometheus.yml:
+  rule_files:
+    - "alert_rules.yml"
+"""
+
+groups:
+  - name: api_alerts
+    interval: 30s
+    rules:
+      # High error rate
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "High API error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      # Slow response times
+      - alert: SlowAPIResponses
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 2.0
+        for: 10m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "API response times are slow"
+          description: "95th percentile response time is {{ $value }}s (threshold: 2s)"
+
+      # High request rate (potential DDoS)
+      - alert: HighRequestRate
+        expr: sum(rate(http_requests_total[1m])) > 1000
+        for: 2m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Unusually high request rate"
+          description: "Request rate is {{ $value }} req/s (threshold: 1000/s)"
+
+      # API service down
+      - alert: APIDown
+        expr: up{job="audit_app_api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "API service is down"
+          description: "The API service has been down for more than 1 minute"
+
+  - name: database_alerts
+    interval: 30s
+    rules:
+      # Database connection pool exhausted
+      - alert: DatabaseConnectionPoolExhausted
+        expr: |
+          (
+            sum(db_pool_connections_in_use)
+            /
+            sum(db_pool_connections_max)
+          ) > 0.9
+        for: 5m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Connection pool usage is {{ $value | humanizePercentage }}"
+
+      # Slow database queries
+      - alert: SlowDatabaseQueries
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(db_query_duration_seconds_bucket[5m])) by (le)
+          ) > 5.0
+        for: 10m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Database queries are slow"
+          description: "95th percentile query time is {{ $value }}s (threshold: 5s)"
+
+      # Database unavailable
+      - alert: DatabaseDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database is down"
+          description: "PostgreSQL database has been unreachable for more than 1 minute"
+
+  - name: etl_alerts
+    interval: 60s
+    rules:
+      # ETL job failures
+      - alert: ETLJobFailed
+        expr: increase(etl_job_failures_total[1h]) > 3
+        for: 5m
+        labels:
+          severity: error
+          component: etl
+        annotations:
+          summary: "ETL jobs are failing"
+          description: "{{ $value }} ETL job failures in the last hour"
+
+      # ETL job not running
+      - alert: ETLJobNotRunning
+        expr: |
+          (time() - etl_last_success_timestamp) > 172800
+        labels:
+          severity: warning
+          component: etl
+        annotations:
+          summary: "ETL job hasn't succeeded recently"
+          description: "Last successful ETL job was {{ $value | humanizeDuration }} ago"
+
+      # ETL data quality issues
+      - alert: ETLDataQualityIssue
+        expr: increase(etl_data_validation_errors_total[1h]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: etl
+        annotations:
+          summary: "ETL data quality issues detected"
+          description: "{{ $value }} data validation errors in the last hour"
+
+  - name: redis_alerts
+    interval: 30s
+    rules:
+      # Redis memory usage high
+      - alert: RedisHighMemoryUsage
+        expr: |
+          (
+            redis_memory_used_bytes
+            /
+            redis_memory_max_bytes
+          ) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary: "Redis memory usage is high"
+          description: "Redis memory usage is {{ $value | humanizePercentage }}"
+
+      # Redis unavailable
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: error
+          component: redis
+        annotations:
+          summary: "Redis is down"
+          description: "Redis has been unreachable for more than 1 minute"
+
+  - name: system_alerts
+    interval: 30s
+    rules:
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: |
+          (
+            node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes
+          ) / node_memory_MemTotal_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+      # Disk space low
+      - alert: DiskSpaceLow
+        expr: |
+          (
+            node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs"}
+            /
+            node_filesystem_size_bytes
+          ) < 0.1
+        for: 5m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Disk space is low"
+          description: "Only {{ $value | humanizePercentage }} disk space remaining on {{ $labels.instance }}"

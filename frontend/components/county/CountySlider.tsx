@@ -64,13 +64,15 @@ export default function CountySlider({
     const isActive = position === 'current';
 
     return (
-      <motion.div
+      <motion.button
+        type='button'
+        aria-label={`Select ${county.name}`}
         key={`${position}-${county.id}`}
         animate={{
           opacity: isActive ? 1 : 0.6,
         }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className='cursor-pointer transition-all duration-300 hover:opacity-90 flex-1'
+        className='cursor-pointer transition-all duration-300 hover:opacity-90 flex-1 text-left'
         onClick={() => handleCountyClick(county, index)}>
         <div
           className={`
@@ -124,7 +126,7 @@ export default function CountySlider({
             </div>
           </div>
         </div>
-      </motion.div>
+      </motion.button>
     );
   };
 

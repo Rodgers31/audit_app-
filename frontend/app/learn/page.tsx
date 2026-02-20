@@ -20,7 +20,7 @@ export default function LearningHubPage() {
       title: 'Interactive Glossary',
       description: 'Learn key terms with animations and examples',
       icon: BookOpen,
-      color: 'blue',
+      color: 'green',
     },
     {
       id: 'videos' as const,
@@ -51,7 +51,7 @@ export default function LearningHubPage() {
     if (isActive) {
       switch (color) {
         case 'blue':
-          return `${baseClasses} bg-blue-100 border-blue-300 text-blue-800 shadow-lg scale-105`;
+          return `${baseClasses} bg-green-100 border-green-300 text-green-800 shadow-lg scale-105`;
         case 'purple':
           return `${baseClasses} bg-purple-100 border-purple-300 text-purple-800 shadow-lg scale-105`;
         case 'green':
@@ -64,7 +64,7 @@ export default function LearningHubPage() {
     } else {
       switch (color) {
         case 'blue':
-          return `${baseClasses} bg-white border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300`;
+          return `${baseClasses} bg-white border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300`;
         case 'purple':
           return `${baseClasses} bg-white border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-300`;
         case 'green':
@@ -78,20 +78,17 @@ export default function LearningHubPage() {
   };
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100'>
-      {/* Decorative background pattern */}
-      <div className='absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] pointer-events-none'></div>
-
+    <div className='page-wrapper'>
       {/* Main Content */}
-      <main className='relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12'>
+      <main className='page-content'>
         {/* Page Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className='text-center mb-12'>
-          <h1 className='text-5xl font-bold text-gray-900 mb-6'>Learning Hub</h1>
-          <p className='text-xl text-gray-600 max-w-3xl mx-auto'>
+          className='page-header text-center mb-12'>
+          <h1 className='text-4xl font-bold text-brand-900 mb-4'>Learning Hub</h1>
+          <p className='text-lg text-gray-500 max-w-3xl mx-auto'>
             Master government finance concepts with interactive lessons, videos, and real-world
             examples
           </p>
@@ -106,7 +103,7 @@ export default function LearningHubPage() {
           <div className='bg-white rounded-3xl p-6 shadow-xl border border-gray-200'>
             <div className='grid grid-cols-1 md:grid-cols-4 gap-6 text-center'>
               <div>
-                <div className='text-3xl font-bold text-blue-600 mb-2'>50+</div>
+                <div className='text-3xl font-bold text-brand-700 mb-2'>50+</div>
                 <div className='text-sm text-gray-600'>Terms Explained</div>
               </div>
               <div>
@@ -142,7 +139,7 @@ export default function LearningHubPage() {
                 placeholder='Search for terms like "budget", "debt", "audit"...'
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className='w-full pl-12 pr-4 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-lg'
+                className='w-full pl-12 pr-4 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors text-lg'
               />
             </div>
           </div>
@@ -223,7 +220,7 @@ export default function LearningHubPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8, duration: 0.6 }}
           className='mb-12'>
-          <div className='bg-gradient-to-r from-indigo-600 to-purple-600 rounded-3xl p-8 text-white'>
+          <div className='bg-gradient-to-r from-brand-700 to-brand-900 rounded-2xl p-8 text-white'>
             <div className='text-center'>
               <Star size={48} className='mx-auto mb-4 text-yellow-300' />
               <h2 className='text-3xl font-bold mb-4'>Did You Know?</h2>
@@ -261,8 +258,8 @@ export default function LearningHubPage() {
 
             <div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
               <div className='text-center'>
-                <div className='w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4'>
-                  <span className='text-2xl font-bold text-blue-600'>1</span>
+                <div className='w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4'>
+                  <span className='text-2xl font-bold text-brand-700'>1</span>
                 </div>
                 <h3 className='font-semibold text-gray-900 mb-2'>Start with Basics</h3>
                 <p className='text-sm text-gray-600'>Learn key terms in the Interactive Glossary</p>

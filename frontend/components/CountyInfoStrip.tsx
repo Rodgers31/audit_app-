@@ -128,7 +128,7 @@ export default function CountyInfoStrip({ county, className = '' }: CountyInfoSt
           </div>
 
           <div className='text-3xl font-bold text-green-800 mb-2'>
-            {formatCurrency(county.budget).replace('KES ', 'KES ')}
+            {formatCurrency(county.budget ?? county.totalBudget ?? 0).replace('KES ', 'KES ')}
           </div>
           <div className='text-sm text-green-700 mb-3'>Annual allocation</div>
 
@@ -160,7 +160,7 @@ export default function CountyInfoStrip({ county, className = '' }: CountyInfoSt
           </div>
 
           <div className='text-3xl font-bold text-orange-800 mb-2'>
-            {formatCurrency(county.debt).replace('KES ', 'KES ')}
+            {formatCurrency(county.debt ?? county.totalDebt ?? 0).replace('KES ', 'KES ')}
           </div>
           <div className='text-sm text-orange-700 mb-1'>Outstanding obligations</div>
           <div className='text-sm text-orange-600'>{debtRatio.toFixed(0)}% of annual revenue</div>

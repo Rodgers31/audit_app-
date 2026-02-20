@@ -8,6 +8,11 @@ services:
       POSTGRES_DB: audit_app
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d audit_app || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -35,8 +40,10 @@ services:
     ports:
       - '8000:8000'
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
     volumes:
       - ./backend:/app
       - ./etl:/app/etl
@@ -65,18 +72,36 @@ services:
   # ETL Service (separate for scheduled jobs)
   etl:
     build:
-      context: ./etl
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: etl/Dockerfile
     environment:
       DATABASE_URL: postgresql://postgres:password@postgres:5432/audit_app
+      ETL_SCHEDULE_CONFIG: /app/config/etl_schedule.yaml
+      ETL_RUN_ON_START: 'true'
+      PLAYWRIGHT_ENABLED: '1'
+      TZ: Africa/Nairobi
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     volumes:
-      - ./etl:/app
+      - ./etl:/app/etl
+      - ./config:/app/config
       - etl_downloads:/app/downloads
     networks:
       - audit_network
     restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', "python -c 'import socket; print(1)' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+# Optional one-off smoke test
+x-etl-smoke: &etl-smoke
+  command: ['python', '-m', 'etl.cob_headless']
+  environment:
+    PLAYWRIGHT_ENABLED: '1'
+    HEADLESS_DEBUG: '1'
 
 volumes:
   postgres_data:

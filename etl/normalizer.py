@@ -31,29 +31,79 @@ class DataNormalizer:
         """Load canonical entity mappings for Kenya"""
         return {
             "counties": {
-                "nairobi": {
-                    "canonical_name": "Nairobi County",
-                    "code": "047",
-                    "type": "county",
-                },
                 "mombasa": {
                     "canonical_name": "Mombasa County",
                     "code": "001",
                     "type": "county",
                 },
-                "kisumu": {
-                    "canonical_name": "Kisumu County",
-                    "code": "042",
+                "kwale": {
+                    "canonical_name": "Kwale County",
+                    "code": "002",
                     "type": "county",
                 },
-                "nakuru": {
-                    "canonical_name": "Nakuru County",
-                    "code": "032",
+                "kilifi": {
+                    "canonical_name": "Kilifi County",
+                    "code": "003",
                     "type": "county",
                 },
-                "uasin gishu": {
-                    "canonical_name": "Uasin Gishu County",
-                    "code": "027",
+                "tana river": {
+                    "canonical_name": "Tana River County",
+                    "code": "004",
+                    "type": "county",
+                },
+                "lamu": {
+                    "canonical_name": "Lamu County",
+                    "code": "005",
+                    "type": "county",
+                },
+                "taita taveta": {
+                    "canonical_name": "Taita Taveta County",
+                    "code": "006",
+                    "type": "county",
+                },
+                "garissa": {
+                    "canonical_name": "Garissa County",
+                    "code": "007",
+                    "type": "county",
+                },
+                "wajir": {
+                    "canonical_name": "Wajir County",
+                    "code": "008",
+                    "type": "county",
+                },
+                "mandera": {
+                    "canonical_name": "Mandera County",
+                    "code": "009",
+                    "type": "county",
+                },
+                "marsabit": {
+                    "canonical_name": "Marsabit County",
+                    "code": "010",
+                    "type": "county",
+                },
+                "isiolo": {
+                    "canonical_name": "Isiolo County",
+                    "code": "011",
+                    "type": "county",
+                },
+                "meru": {
+                    "canonical_name": "Meru County",
+                    "code": "012",
+                    "type": "county",
+                },
+                "tharaka nithi": {
+                    "canonical_name": "Tharaka Nithi County",
+                    "code": "013",
+                    "type": "county",
+                },
+                "embu": {
+                    "canonical_name": "Embu County",
+                    "code": "014",
+                    "type": "county",
+                },
+                "kitui": {
+                    "canonical_name": "Kitui County",
+                    "code": "015",
                     "type": "county",
                 },
                 "machakos": {
@@ -61,12 +111,161 @@ class DataNormalizer:
                     "code": "016",
                     "type": "county",
                 },
+                "makueni": {
+                    "canonical_name": "Makueni County",
+                    "code": "017",
+                    "type": "county",
+                },
+                "nyandarua": {
+                    "canonical_name": "Nyandarua County",
+                    "code": "018",
+                    "type": "county",
+                },
+                "nyeri": {
+                    "canonical_name": "Nyeri County",
+                    "code": "019",
+                    "type": "county",
+                },
+                "kirinyaga": {
+                    "canonical_name": "Kirinyaga County",
+                    "code": "020",
+                    "type": "county",
+                },
+                "muranga": {
+                    "canonical_name": "Muranga County",
+                    "code": "021",
+                    "type": "county",
+                },
                 "kiambu": {
                     "canonical_name": "Kiambu County",
                     "code": "022",
                     "type": "county",
                 },
-                # Add all 47 counties...
+                "turkana": {
+                    "canonical_name": "Turkana County",
+                    "code": "023",
+                    "type": "county",
+                },
+                "west pokot": {
+                    "canonical_name": "West Pokot County",
+                    "code": "024",
+                    "type": "county",
+                },
+                "samburu": {
+                    "canonical_name": "Samburu County",
+                    "code": "025",
+                    "type": "county",
+                },
+                "trans nzoia": {
+                    "canonical_name": "Trans Nzoia County",
+                    "code": "026",
+                    "type": "county",
+                },
+                "uasin gishu": {
+                    "canonical_name": "Uasin Gishu County",
+                    "code": "027",
+                    "type": "county",
+                },
+                "elgeyo marakwet": {
+                    "canonical_name": "Elgeyo Marakwet County",
+                    "code": "028",
+                    "type": "county",
+                },
+                "nandi": {
+                    "canonical_name": "Nandi County",
+                    "code": "029",
+                    "type": "county",
+                },
+                "baringo": {
+                    "canonical_name": "Baringo County",
+                    "code": "030",
+                    "type": "county",
+                },
+                "laikipia": {
+                    "canonical_name": "Laikipia County",
+                    "code": "031",
+                    "type": "county",
+                },
+                "nakuru": {
+                    "canonical_name": "Nakuru County",
+                    "code": "032",
+                    "type": "county",
+                },
+                "narok": {
+                    "canonical_name": "Narok County",
+                    "code": "033",
+                    "type": "county",
+                },
+                "kajiado": {
+                    "canonical_name": "Kajiado County",
+                    "code": "034",
+                    "type": "county",
+                },
+                "kericho": {
+                    "canonical_name": "Kericho County",
+                    "code": "035",
+                    "type": "county",
+                },
+                "bomet": {
+                    "canonical_name": "Bomet County",
+                    "code": "036",
+                    "type": "county",
+                },
+                "kakamega": {
+                    "canonical_name": "Kakamega County",
+                    "code": "037",
+                    "type": "county",
+                },
+                "vihiga": {
+                    "canonical_name": "Vihiga County",
+                    "code": "038",
+                    "type": "county",
+                },
+                "bungoma": {
+                    "canonical_name": "Bungoma County",
+                    "code": "039",
+                    "type": "county",
+                },
+                "busia": {
+                    "canonical_name": "Busia County",
+                    "code": "040",
+                    "type": "county",
+                },
+                "siaya": {
+                    "canonical_name": "Siaya County",
+                    "code": "041",
+                    "type": "county",
+                },
+                "kisumu": {
+                    "canonical_name": "Kisumu County",
+                    "code": "042",
+                    "type": "county",
+                },
+                "homa bay": {
+                    "canonical_name": "Homa Bay County",
+                    "code": "043",
+                    "type": "county",
+                },
+                "migori": {
+                    "canonical_name": "Migori County",
+                    "code": "044",
+                    "type": "county",
+                },
+                "kisii": {
+                    "canonical_name": "Kisii County",
+                    "code": "045",
+                    "type": "county",
+                },
+                "nyamira": {
+                    "canonical_name": "Nyamira County",
+                    "code": "046",
+                    "type": "county",
+                },
+                "nairobi": {
+                    "canonical_name": "Nairobi County",
+                    "code": "047",
+                    "type": "county",
+                },
             },
             "ministries": {
                 "health": {"canonical_name": "Ministry of Health", "type": "ministry"},
@@ -147,7 +346,7 @@ class DataNormalizer:
                     r"US\$\s*([\d,\.]+)",
                 ],
                 "base_currency": "KES",
-                "rate": 145.0,  # Approximate rate - should be dynamic
+                "rate": 129.0,  # CBK mid-rate as of June 2025; refresh via CBK API for live rate
             },
         }
 

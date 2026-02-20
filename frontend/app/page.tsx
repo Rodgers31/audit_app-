@@ -1,181 +1,211 @@
 'use client';
 
-import CountySlider from '@/components/county/CountySlider';
-import CountyDetails from '@/components/CountyDetails';
+import {
+  AuditReportsSection,
+  AuditTransparencyCard,
+  CountyDetailsPanel,
+  CountyFinancesCard,
+  FeatureNavCards,
+  HeroSection,
+  KenyanGovCard,
+  LearningHubCTA,
+  NationalDebtPanel,
+  SummaryStrip,
+} from '@/components/dashboard';
 import InteractiveKenyaMap from '@/components/InteractiveKenyaMap';
-import NationalDebtPanel from '@/components/NationalDebtPanel';
-import { useCounties } from '@/lib/react-query';
+import { ScenicBackgroundLayout } from '@/components/layout';
 import { County } from '@/types';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 
+/* ── Mock county data for the LOCKED map ── */
+const MOCK_COUNTIES: County[] = [
+  {
+    id: '1',
+    name: 'Nairobi',
+    population: 4397073,
+    budget_2025: 37800000000,
+    financial_health_score: 72,
+    audit_rating: 'B+',
+    auditStatus: 'clean',
+    budget: 37800000000,
+    debt: 8200000000,
+  },
+  {
+    id: '2',
+    name: 'Mombasa',
+    population: 1208333,
+    budget_2025: 15200000000,
+    financial_health_score: 65,
+    audit_rating: 'B',
+    auditStatus: 'qualified',
+    budget: 15200000000,
+    debt: 3400000000,
+  },
+  {
+    id: '3',
+    name: 'Kisumu',
+    population: 1155574,
+    budget_2025: 21220000000,
+    financial_health_score: 58,
+    audit_rating: 'B-',
+    auditStatus: 'qualified',
+    budget: 21220000000,
+    debt: 5370000000,
+  },
+  {
+    id: '4',
+    name: 'Nakuru',
+    population: 2162202,
+    budget_2025: 18900000000,
+    financial_health_score: 70,
+    audit_rating: 'B+',
+    auditStatus: 'clean',
+    budget: 18900000000,
+    debt: 4100000000,
+  },
+  {
+    id: '5',
+    name: 'Kajiado',
+    population: 1117840,
+    budget_2025: 16500000000,
+    financial_health_score: 55,
+    audit_rating: 'B-',
+    auditStatus: 'adverse',
+    budget: 16500000000,
+    debt: 4800000000,
+  },
+  {
+    id: '6',
+    name: 'Kiambu',
+    population: 2417735,
+    budget_2025: 19800000000,
+    financial_health_score: 68,
+    audit_rating: 'B+',
+    auditStatus: 'clean',
+    budget: 19800000000,
+    debt: 3900000000,
+  },
+  {
+    id: '7',
+    name: 'Machakos',
+    population: 1421932,
+    budget_2025: 14100000000,
+    financial_health_score: 62,
+    audit_rating: 'B',
+    auditStatus: 'qualified',
+    budget: 14100000000,
+    debt: 2900000000,
+  },
+  {
+    id: '8',
+    name: 'Kilifi',
+    population: 1453787,
+    budget_2025: 13400000000,
+    financial_health_score: 48,
+    audit_rating: 'C+',
+    auditStatus: 'adverse',
+    budget: 13400000000,
+    debt: 4200000000,
+  },
+  {
+    id: '9',
+    name: 'Uasin Gishu',
+    population: 1163186,
+    budget_2025: 15600000000,
+    financial_health_score: 71,
+    audit_rating: 'B+',
+    auditStatus: 'clean',
+    budget: 15600000000,
+    debt: 2800000000,
+  },
+  {
+    id: '10',
+    name: 'Bungoma',
+    population: 1670570,
+    budget_2025: 12900000000,
+    financial_health_score: 45,
+    audit_rating: 'C',
+    auditStatus: 'disclaimer',
+    budget: 12900000000,
+    debt: 5100000000,
+  },
+];
+
 export default function HomeDashboard() {
-  const { data: counties, isLoading: countiesLoading, error: countiesError } = useCounties();
   const [selectedCounty, setSelectedCounty] = useState<County | null>(null);
-  const [currentCountyIndex, setCurrentCountyIndex] = useState(0);
-  const [isInteractingWithDetails, setIsInteractingWithDetails] = useState(false);
+  const [countyIndex, setCountyIndex] = useState(0);
 
-  const handleCountySelect = (county: County) => {
-    setSelectedCounty(county);
-  };
-
-  const handleCountyIndexChange = (index: number) => {
-    if (counties && index < counties.length) {
-      setCurrentCountyIndex(index);
-      // Clear selected county when auto-rotating to allow continuous rotation
-      if (selectedCounty) {
-        setSelectedCounty(null);
-      }
-    }
-  };
-
-  const handleDetailsHoverStart = () => {
-    setIsInteractingWithDetails(true);
-  };
-
-  const handleDetailsHoverEnd = () => {
-    setIsInteractingWithDetails(false);
-  };
-
-  // Show loading state
-  if (countiesLoading) {
-    return (
-      <div className='min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center'>
-        <div className='text-center'>
-          <div className='animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4'></div>
-          <p className='text-lg text-slate-600'>Loading counties data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state
-  if (countiesError || !counties) {
-    return (
-      <div className='min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center'>
-        <div className='text-center'>
-          <p className='text-lg text-red-600 mb-4'>Error loading counties data</p>
-          <button
-            onClick={() => window.location.reload()}
-            className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700'>
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Get current county from API data
-  const currentCounty =
-    selectedCounty || (counties && counties.length > 0 ? counties[currentCountyIndex] : null);
+  // The county shown in the details panel: explicit selection OR the auto-rotating one
+  const activeCounty = selectedCounty ?? MOCK_COUNTIES[countyIndex] ?? null;
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100'>
-      {/* Decorative background pattern */}
-      <div className='absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] pointer-events-none'></div>
+    <ScenicBackgroundLayout
+      topImage='/kenya_bg_top.jpg'
+      bottomImage='/kenya_bg_bottom.jpg'
+      topHeight='50vh'
+      bottomHeight='50vh'
+      readabilityMode='light'
+      intensity={0.94}>
+      {/* Hero title — scenic image visible behind */}
+      <HeroSection />
 
-      {/* Main Content */}
-      <main className='relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12'>
-        {/* Page Title */}
+      {/* ══════════════════════════════════════════════════
+          ONE GLASS CONTAINER — wraps ALL dashboard content.
+          Background transitions (scenic → neutral → scenic)
+          show through the translucent glass as you scroll.
+          ══════════════════════════════════════════════════ */}
+      <div className='max-w-[1340px] mx-auto px-5 lg:px-8 pb-12'>
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 36 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className='text-center mb-12'>
-          <h1 className='text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-4'>
-            Kenya Government Transparency Dashboard
-          </h1>
-          <p className='text-lg text-slate-600 max-w-2xl mx-auto'>
-            Explore county-level audit reports, national debt insights, and government financial
-            transparency data
-          </p>
-        </motion.div>
-        {/* Main Content Row: National Debt (left) + Map with County Slider stacked (right) */}
-        <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8'>
-          <div className='flex flex-col h-full'>
-            <h2 className='text-2xl font-bold text-center bg-gradient-to-r from-slate-700 to-slate-900 bg-clip-text text-transparent mb-4'>
-              National Debt
-            </h2>
-            <div className='bg-white/60 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-1 h-full'>
-              <NationalDebtPanel className='bg-transparent h-full' />
-            </div>
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.4 }}
+          className='rounded-2xl bg-white/20 backdrop-blur-xl border border-white/25 shadow-[0_8px_40px_rgba(0,0,0,0.12)] p-4 sm:p-6 space-y-6'>
+          {/* ── Summary strip ── */}
+          <SummaryStrip />
+
+          {/* ── Debt chart + Kenyan Government card ── */}
+          <div className='grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4 items-stretch'>
+            <NationalDebtPanel />
+            <KenyanGovCard />
           </div>
-          <div className='flex flex-col'>
-            <h2 className='text-2xl font-bold text-center bg-gradient-to-r from-slate-700 to-slate-900 bg-clip-text text-transparent mb-4'>
-              Kenya Counties Financial Map
-            </h2>
-            <div className='flex flex-col gap-4'>
-              <div className='bg-white/60 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-1'>
-                <InteractiveKenyaMap
-                  counties={counties}
-                  onCountySelect={handleCountySelect}
-                  selectedCounty={selectedCounty}
-                  currentCountyIndex={currentCountyIndex}
-                  onCountyIndexChange={handleCountyIndexChange}
-                  isInteractingWithDetails={isInteractingWithDetails}
-                  className='bg-transparent'
-                />
-              </div>
-              {/* County Slider below the map */}
-              <div className='bg-white/60 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20'>
-                <CountySlider
-                  counties={counties}
-                  currentCountyIndex={currentCountyIndex}
-                  onCountyIndexChange={handleCountyIndexChange}
-                  onCountySelect={handleCountySelect}
-                  className='flex-shrink-0 bg-transparent'
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-        {/* County Details Section - Full Width */}
-        {currentCounty && (
-          <div className='mb-8'>
-            <CountyDetails
-              county={currentCounty}
-              onHoverStart={handleDetailsHoverStart}
-              onHoverEnd={handleDetailsHoverEnd}
-              className=''
+
+          {/* ── Map (left) + County Details Panel (right) ── */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className='grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 items-stretch'>
+            <InteractiveKenyaMap
+              counties={MOCK_COUNTIES}
+              onCountySelect={setSelectedCounty}
+              selectedCounty={selectedCounty}
+              currentCountyIndex={countyIndex}
+              onCountyIndexChange={setCountyIndex}
             />
+            <CountyDetailsPanel county={activeCounty} />
+          </motion.div>
+
+          {/* ── Latest Audit Reports ── */}
+          <AuditReportsSection />
+
+          {/* ── County Finances + Audit Transparency ── */}
+          <div className='grid grid-cols-1 lg:grid-cols-2 gap-5'>
+            <CountyFinancesCard />
+            <AuditTransparencyCard />
           </div>
-        )}{' '}
-        {/* Footer Information */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1, duration: 0.5 }}
-          className='mt-12 text-center'>
-          <div className='bg-white/60 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-8'>
-            <h3 className='text-2xl font-bold bg-gradient-to-r from-slate-700 to-slate-900 bg-clip-text text-transparent mb-4'>
-              About This Dashboard
-            </h3>
-            <p className='text-slate-700 max-w-3xl mx-auto text-lg leading-relaxed'>
-              This platform provides transparent access to Kenya's government financial data,
-              including budget allocations, spending patterns, debt levels, and audit findings. All
-              data is sourced from official government reports and updated regularly to ensure
-              accuracy.
-            </p>
-            <div className='grid grid-cols-1 md:grid-cols-3 gap-8 mt-8'>
-              <div className='text-center p-6 rounded-xl bg-white/30 backdrop-blur-sm border border-white/30'>
-                <div className='text-4xl mb-3'>📊</div>
-                <div className='font-bold text-blue-600 text-lg'>Real-Time Data</div>
-                <div className='text-slate-600 mt-2'>Updated from official sources</div>
-              </div>
-              <div className='text-center p-6 rounded-xl bg-white/30 backdrop-blur-sm border border-white/30'>
-                <div className='text-4xl mb-3'>🔍</div>
-                <div className='font-bold text-blue-600 text-lg'>Full Transparency</div>
-                <div className='text-slate-600 mt-2'>Complete audit trail & provenance</div>
-              </div>
-              <div className='text-center p-6 rounded-xl bg-white/30 backdrop-blur-sm border border-white/30'>
-                <div className='text-4xl mb-3'>⚡</div>
-                <div className='font-bold text-blue-600 text-lg'>Easy to Use</div>
-                <div className='text-slate-600 mt-2'>Complex data made simple</div>
-              </div>
-            </div>
-          </div>
+
+          {/* ── Feature Navigation Cards ── */}
+          <FeatureNavCards />
+
+          {/* ── Learning Hub CTA ── */}
+          <LearningHubCTA />
         </motion.div>
-      </main>
-    </div>
+      </div>
+
+      {/* Spacer for bottom scenic image to show below glass */}
+      <div className='h-20' />
+    </ScenicBackgroundLayout>
   );
 }

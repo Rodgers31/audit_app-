@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 
-const DEBT_TIMELINE_DATA = [
+const DEFAULT_DEBT_TIMELINE_DATA = [
   { year: 2015, debt: 3200 },
   { year: 2016, debt: 3800 },
   { year: 2017, debt: 4500 },
@@ -15,15 +15,45 @@ const DEBT_TIMELINE_DATA = [
   { year: 2024, debt: 10800 },
 ];
 
-export default function DebtTimelineChart() {
-  const maxDebt = Math.max(...DEBT_TIMELINE_DATA.map((item) => item.debt));
+interface DebtTimelineDataPoint {
+  year: number;
+  debt: number;
+}
+
+interface DebtTimelineChartProps {
+  data?: DebtTimelineDataPoint[];
+}
+
+export default function DebtTimelineChart({ data }: DebtTimelineChartProps) {
+  // Use provided data or fall back to defaults
+  const timelineData: DebtTimelineDataPoint[] =
+    data && data.length > 0 ? data : DEFAULT_DEBT_TIMELINE_DATA;
+
+  const maxDebt = Math.max(...timelineData.map((item) => item.debt));
+  const minYear = timelineData[0]?.year ?? 2015;
+  const latestDebt = timelineData[timelineData.length - 1]?.debt ?? 0;
+  const earliestDebt = timelineData[0]?.debt ?? 1;
+  const growthPct = ((latestDebt / earliestDebt - 1) * 100).toFixed(0);
+  const prevDebt =
+    timelineData.length > 1 ? timelineData[timelineData.length - 2].debt : latestDebt;
+  const addedLast = latestDebt - prevDebt;
+  const avgGrowth =
+    timelineData.length > 1
+      ? (
+          timelineData.reduce(
+            (sum, item, idx) => (idx > 0 ? sum + (item.debt - timelineData[idx - 1].debt) : sum),
+            0
+          ) /
+          (timelineData.length - 1)
+        ).toFixed(0)
+      : '0';
 
   return (
     <div className='h-80 w-full'>
       <div className='mb-4'>
         <p className='text-gray-600 text-sm'>
           Kenya's debt has grown dramatically over the past decade, increasing by over
-          <span className='font-semibold text-red-600'> 237%</span> since 2015.
+          <span className='font-semibold text-red-600'> {growthPct}%</span> since {minYear}.
         </p>
       </div>
 
@@ -54,16 +84,18 @@ export default function DebtTimelineChart() {
             strokeWidth='3'
             strokeLinecap='round'
             strokeLinejoin='round'
-            points={DEBT_TIMELINE_DATA.map((item, index) => {
-              const x = (index / (DEBT_TIMELINE_DATA.length - 1)) * 400;
-              const y = 200 - (item.debt / maxDebt) * 180;
-              return `${x},${y}`;
-            }).join(' ')}
+            points={timelineData
+              .map((item, index) => {
+                const x = (index / (timelineData.length - 1)) * 400;
+                const y = 200 - (item.debt / maxDebt) * 180;
+                return `${x},${y}`;
+              })
+              .join(' ')}
           />
 
           {/* Data points */}
-          {DEBT_TIMELINE_DATA.map((item, index) => {
-            const x = (index / (DEBT_TIMELINE_DATA.length - 1)) * 400;
+          {timelineData.map((item, index) => {
+            const x = (index / (timelineData.length - 1)) * 400;
             const y = 200 - (item.debt / maxDebt) * 180;
             return (
               <motion.circle
@@ -85,7 +117,7 @@ export default function DebtTimelineChart() {
 
         {/* X-axis labels */}
         <div className='flex justify-between mt-2 px-2'>
-          {DEBT_TIMELINE_DATA.map((item, index) => (
+          {timelineData.map((item, index) => (
             <div key={index} className='text-xs text-gray-500 font-medium'>
               {item.year}
             </div>
@@ -105,41 +137,17 @@ export default function DebtTimelineChart() {
       {/* Statistics */}
       <div className='mt-4 grid grid-cols-3 gap-4 text-center'>
         <div className='bg-red-50 rounded-lg p-3'>
-          <div className='text-lg font-bold text-red-600'>
-            +
-            {(
-              (DEBT_TIMELINE_DATA[DEBT_TIMELINE_DATA.length - 1].debt / DEBT_TIMELINE_DATA[0].debt -
-                1) *
-              100
-            ).toFixed(0)}
-            %
-          </div>
-          <div className='text-xs text-gray-600'>Growth since 2015</div>
+          <div className='text-lg font-bold text-red-600'>+{growthPct}%</div>
+          <div className='text-xs text-gray-600'>Growth since {minYear}</div>
         </div>
         <div className='bg-orange-50 rounded-lg p-3'>
-          <div className='text-lg font-bold text-orange-600'>
-            KES{' '}
-            {(
-              DEBT_TIMELINE_DATA[DEBT_TIMELINE_DATA.length - 1].debt -
-              DEBT_TIMELINE_DATA[DEBT_TIMELINE_DATA.length - 2].debt
-            ).toLocaleString()}
-            B
+          <div className='text-lg font-bold text-orange-600'>KES {addedLast.toLocaleString()}B</div>
+          <div className='text-xs text-gray-600'>
+            Added in {timelineData[timelineData.length - 1]?.year}
           </div>
-          <div className='text-xs text-gray-600'>Added in 2024</div>
         </div>
         <div className='bg-blue-50 rounded-lg p-3'>
-          <div className='text-lg font-bold text-blue-600'>
-            KES{' '}
-            {(
-              DEBT_TIMELINE_DATA.reduce(
-                (sum, item, index) =>
-                  index > 0 ? sum + (item.debt - DEBT_TIMELINE_DATA[index - 1].debt) : sum,
-                0
-              ) /
-              (DEBT_TIMELINE_DATA.length - 1)
-            ).toFixed(0)}
-            B
-          </div>
+          <div className='text-lg font-bold text-blue-600'>KES {avgGrowth}B</div>
           <div className='text-xs text-gray-600'>Avg annual growth</div>
         </div>
       </div>

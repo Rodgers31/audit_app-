@@ -81,7 +81,7 @@ export default function MapTooltip({
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
         className={`relative rounded-xl shadow-2xl border-2 p-4 w-72 max-w-sm backdrop-blur-sm cursor-pointer ${getStatusGradient(
-          county.auditStatus
+          county.auditStatus || 'pending'
         )}`}
         onClick={() => onCountyClick(county)}>
         {/* Invisible hover area for easier mouse movement */}

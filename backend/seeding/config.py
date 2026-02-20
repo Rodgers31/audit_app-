@@ -1,0 +1,165 @@
+"""Runtime configuration for the seeding orchestration."""
+
+from __future__ import annotations
+
+from functools import lru_cache
+from pathlib import Path
+from typing import Dict, Optional, Tuple
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from .utils import parse_rate_limit
+
+
+class SeedingSettings(BaseSettings):
+    """Configuration options controlling seeding behaviour."""
+
+    rate_limit: str = Field(
+        default="60/min",
+        description="Requests per time window e.g. '60/min' or '5/sec'.",
+    )
+    timeout_seconds: float = Field(
+        default=30.0,
+        description="HTTP request timeout in seconds for upstream fetches.",
+    )
+    max_retries: int = Field(
+        default=3, description="Maximum retry attempts for transient HTTP failures."
+    )
+    retry_backoff: float = Field(
+        default=2.0, description="Exponential backoff factor between retries."
+    )
+    user_agent: str = Field(
+        default="KenyaAuditAppSeeder/1.0 (+https://github.com/Rodgers31/audit_app-)",
+        description="User agent sent with outbound HTTP requests.",
+    )
+    contact_email: Optional[str] = Field(
+        default=None, description="Contact email advertised to data providers."
+    )
+    storage_path: Path = Field(
+        default=Path("data/seeding"),
+        description="Base directory for caching downloads and generated assets.",
+    )
+    cache_path: Path = Field(
+        default=Path("data/seeding/cache"),
+        description="Directory dedicated to HTTP/download caches.",
+    )
+    cache_ttl_seconds: int = Field(
+        default=86_400,
+        description="How long cached HTTP responses remain valid (in seconds).",
+    )
+    log_level: str = Field(
+        default="INFO", description="Logging level for seeding runs."
+    )
+    log_path: Optional[Path] = Field(
+        default=None,
+        description="Optional file path for JSON logs (stdout only when unset).",
+    )
+    http_cache_enabled: bool = Field(
+        default=True,
+        description="Toggle lightweight caching of HTTP responses where safe.",
+    )
+    http_follow_redirects: bool = Field(
+        default=True,
+        description="Whether HTTP client should automatically follow redirects.",
+    )
+    population_dataset_url: str = Field(
+        default="file://backend/seeding/fixtures/population.json",
+        description=(
+            "Endpoint providing population statistics payloads. "
+            "Use file:// for local fixtures or https:// for production APIs "
+            "(e.g., https://www.knbs.or.ke/data/population.json)."
+        ),
+    )
+    budgets_dataset_url: str = Field(
+        default="file://backend/seeding/fixtures/budgets.json",
+        description=(
+            "Endpoint containing county budget summaries. "
+            "Use file:// for local fixtures or https:// for production APIs "
+            "(e.g., https://cob.go.ke/api/budgets or OpenData portal)."
+        ),
+    )
+    audits_dataset_url: str = Field(
+        default="file://backend/seeding/fixtures/audits.json",
+        description=(
+            "Endpoint containing audit findings dataset. "
+            "Use file:// for local fixtures or https:// for production APIs "
+            "(e.g., https://oagkenya.go.ke/reports/data.json)."
+        ),
+    )
+    economic_indicators_dataset_url: str = Field(
+        default="file://backend/seeding/fixtures/economic_indicators.json",
+        description=(
+            "Endpoint containing economic indicator time series. "
+            "Use file:// for local fixtures or https:// for production APIs "
+            "(e.g., https://www.knbs.or.ke/data/economic-indicators.json)."
+        ),
+    )
+    national_debt_dataset_url: str = Field(
+        default="file://backend/seeding/fixtures/national_debt.json",
+        description=(
+            "Endpoint containing national debt and loan data. "
+            "Use file:// for local fixtures or https:// for production APIs "
+            "(e.g., https://treasury.go.ke/debt-bulletins/latest.json)."
+        ),
+    )
+    learning_hub_dataset_url: str = Field(
+        default="file://backend/seeding/fixtures/learning_hub.json",
+        description=(
+            "Endpoint containing educational questions for the learning hub. "
+            "Use file:// for local fixtures or curated content APIs."
+        ),
+    )
+    budget_default_currency: str = Field(
+        default="KES",
+        description="Fallback currency code for budget records when missing.",
+    )
+    dry_run_default: bool = Field(
+        default=False,
+        description="Whether runs should avoid DB writes unless explicitly overridden.",
+    )
+
+    model_config = SettingsConfigDict(env_prefix="SEED_", extra="ignore")
+
+    def ensure_directories(self) -> None:
+        """Create storage-related directories if they do not already exist."""
+
+        self.storage_path.expanduser().mkdir(parents=True, exist_ok=True)
+        self.cache_path.expanduser().mkdir(parents=True, exist_ok=True)
+        if self.log_path:
+            self.log_path.expanduser().parent.mkdir(parents=True, exist_ok=True)
+
+    @property
+    def rate_limit_window(self) -> Tuple[int, float]:
+        """Return rate limiter configuration (tokens, period seconds)."""
+
+        return parse_rate_limit(self.rate_limit)
+
+    @property
+    def default_headers(self) -> Dict[str, str]:
+        """Return default headers to include with outbound HTTP requests."""
+
+        headers: Dict[str, str] = {"User-Agent": self.user_agent}
+        if self.contact_email:
+            headers["From"] = self.contact_email
+        return headers
+
+    def dataset_title(self, domain: str) -> str:
+        """Return a human readable title for a dataset domain."""
+
+        mapping = {
+            "population": "Kenya Population Statistics",
+            "budgets": "County Budget Execution Summary",
+            "audits": "County Audit Findings",
+            "economic_indicators": "Economic Indicators Time Series",
+        }
+        return mapping.get(domain, f"{domain.title()} Dataset")
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> SeedingSettings:
+    """Return cached settings instance."""
+
+    settings = SeedingSettings()
+    settings.ensure_directories()
+    return settings

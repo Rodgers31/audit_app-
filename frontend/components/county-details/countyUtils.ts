@@ -139,11 +139,13 @@ export const getAuditDescription = (status: string) => {
  * Calculate county financial metrics
  */
 export const calculateCountyMetrics = (county: County) => {
-  const budgetUtilization = county.budgetUtilization || 85;
-  const debtRatio = (county.debt / county.budget) * 100;
-  const perCapitaDebt = county.debt / county.population;
-  const revenue = county.revenueCollection || county.budget * 0.8;
-  const expenditure = county.budget * (budgetUtilization / 100);
+  const budgetUtilization = county.budgetUtilization ?? 85;
+  const budget = county.budget ?? county.totalBudget ?? 0;
+  const debt = county.debt ?? county.totalDebt ?? 0;
+  const debtRatio = budget > 0 ? (debt / budget) * 100 : 0;
+  const perCapitaDebt = county.population > 0 ? debt / county.population : 0;
+  const revenue = county.revenueCollection ?? budget * 0.8;
+  const expenditure = budget * (budgetUtilization / 100);
   const balance = revenue - expenditure;
 
   return {

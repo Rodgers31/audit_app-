@@ -13,6 +13,7 @@ interface CountyHeaderProps {
 }
 
 export default function CountyHeader({ county }: CountyHeaderProps) {
+  const status = county.auditStatus || 'pending';
   return (
     <div className='flex items-center justify-between mb-6'>
       {/* County Info */}
@@ -27,27 +28,27 @@ export default function CountyHeader({ county }: CountyHeaderProps) {
       {/* Audit Status Badge */}
       <div
         className={`px-4 py-2 rounded-lg border ${
-          county.auditStatus === 'clean'
+          status === 'clean'
             ? 'bg-green-50 border-green-200'
-            : county.auditStatus === 'qualified'
+            : status === 'qualified'
             ? 'bg-yellow-50 border-yellow-200'
-            : county.auditStatus === 'adverse'
+            : status === 'adverse'
             ? 'bg-red-50 border-red-200'
             : 'bg-orange-50 border-orange-200'
         }`}>
         <div className='flex items-center gap-2'>
-          <AlertTriangle size={16} className={getAuditStatusTextColor(county.auditStatus)} />
+          <AlertTriangle size={16} className={getAuditStatusTextColor(status)} />
           <span
             className={`font-medium text-sm ${
-              county.auditStatus === 'clean'
+              status === 'clean'
                 ? 'text-green-700'
-                : county.auditStatus === 'qualified'
+                : status === 'qualified'
                 ? 'text-yellow-700'
-                : county.auditStatus === 'adverse'
+                : status === 'adverse'
                 ? 'text-red-700'
                 : 'text-orange-700'
             }`}>
-            {county.auditStatus} Audit (2024)
+            {status} Audit (2024)
           </span>
         </div>
       </div>

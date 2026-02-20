@@ -5,10 +5,10 @@ import { CheckCircle } from 'lucide-react';
 import { getCitizenImpactMessage } from './auditUtils';
 
 interface CitizenImpactProps {
-  auditStatus: string;
+  auditStatus?: string;
 }
 
-export default function CitizenImpact({ auditStatus }: CitizenImpactProps) {
+export default function CitizenImpact({ auditStatus = 'pending' }: CitizenImpactProps) {
   return (
     <div>
       <h5 className='text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2'>

@@ -1,0 +1,16 @@
+{
+  "data": {
+    "total_debt": 11500,
+    "debt_to_gdp_ratio": 70.2,
+    "debt_breakdown": {
+      "domestic_debt": 4600,
+      "external_debt": 6900,
+      "domestic_percentage": 40.0,
+      "external_percentage": 60.0
+    },
+    "debt_sustainability": {
+      "risk_level": "High",
+      "debt_service_ratio": 37.0
+    }
+  }
+}

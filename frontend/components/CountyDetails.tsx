@@ -35,6 +35,7 @@ export default function CountyDetails({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
       className={`bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 ${className}`}
+      data-testid='county-details'
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}>
       {/* County Header */}

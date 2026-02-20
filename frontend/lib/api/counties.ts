@@ -6,7 +6,7 @@ import { apiClient } from './axios';
 import { COUNTIES_ENDPOINTS, buildUrlWithParams } from './endpoints';
 import { ApiResponse, CountyFilters, CountyResponse, PaginatedResponse } from './types';
 
-// Backend county response type
+// Backend county response type — matches enriched backend endpoint
 interface BackendCountyResponse {
   id: string;
   name: string;
@@ -14,6 +14,25 @@ interface BackendCountyResponse {
   budget_2025: number;
   financial_health_score: number;
   audit_rating: string;
+  // Enriched fields from DB aggregation
+  coordinates?: [number, number];
+  total_allocated?: number;
+  total_spent?: number;
+  budget_utilization?: number;
+  development_budget?: number;
+  recurrent_budget?: number;
+  total_debt?: number;
+  pending_bills?: number;
+  revenue_2024?: number;
+  gcp_contribution?: number;
+  sector_breakdown?: Record<string, number>;
+  audit_issues?: Array<{
+    id: number;
+    severity: string;
+    finding_summary: string;
+  }>;
+  audit_issue_count?: number;
+  data_freshness?: string;
 }
 
 // Transform backend county data to frontend County type
@@ -31,32 +50,47 @@ const transformCountyData = (backendCounty: BackendCountyResponse): County => {
     F: 'disclaimer',
   };
 
-  // Generate default coordinates (you might want to have a proper mapping)
-  const defaultCoordinates: [number, number] = [36.8219, -1.2921]; // Nairobi as default
+  const coordinates: [number, number] = backendCounty.coordinates || [36.8219, -1.2921];
+
+  // Use real backend-computed values — no fabricated multipliers
+  const budget = backendCounty.total_allocated || backendCounty.budget_2025 || 0;
+  const debt = backendCounty.total_debt || 0;
+  const sectors = backendCounty.sector_breakdown || {};
 
   return {
     id: backendCounty.id,
     name: backendCounty.name,
-    code: backendCounty.name.substring(0, 3).toUpperCase(), // Generate code from name
-    coordinates: defaultCoordinates,
-    budget: backendCounty.budget_2025,
-    debt: backendCounty.budget_2025 * 0.3, // Estimate debt as 30% of budget
+    code: backendCounty.name.substring(0, 3).toUpperCase(),
+    coordinates,
+    // Backend canonical fields
+    budget_2025: backendCounty.budget_2025,
+    financial_health_score: backendCounty.financial_health_score,
+    audit_rating: backendCounty.audit_rating,
+    budget,
+    debt,
     population: backendCounty.population,
     auditStatus: auditStatusMap[backendCounty.audit_rating] || 'pending',
-    lastAuditDate: new Date().toISOString().split('T')[0], // Current date as default
-    gdp: backendCounty.budget_2025 * 2, // Estimate GDP as 2x budget
-    moneyReceived: backendCounty.budget_2025 * 0.8, // 80% of budget as transfers
-    budgetUtilization: backendCounty.financial_health_score, // Use health score as utilization
-    revenueCollection: backendCounty.budget_2025 * 0.4, // 40% local revenue
-    pendingBills: backendCounty.budget_2025 * 0.1, // 10% pending bills
-    developmentBudget: backendCounty.budget_2025 * 0.4, // 40% development
-    recurrentBudget: backendCounty.budget_2025 * 0.6, // 60% recurrent
-    auditIssues: [], // Empty for now
-    totalBudget: backendCounty.budget_2025,
-    totalDebt: backendCounty.budget_2025 * 0.3,
-    education: backendCounty.budget_2025 * 0.3, // 30% education
-    health: backendCounty.budget_2025 * 0.25, // 25% health
-    infrastructure: backendCounty.budget_2025 * 0.2, // 20% infrastructure
+    lastAuditDate: backendCounty.data_freshness || new Date().toISOString().split('T')[0],
+    gdp: backendCounty.gcp_contribution || 0,
+    moneyReceived: backendCounty.total_spent || 0,
+    budgetUtilization:
+      backendCounty.budget_utilization || backendCounty.financial_health_score || 0,
+    revenueCollection: backendCounty.revenue_2024 || 0,
+    pendingBills: backendCounty.pending_bills || 0,
+    developmentBudget: backendCounty.development_budget || 0,
+    recurrentBudget: backendCounty.recurrent_budget || 0,
+    auditIssues: (backendCounty.audit_issues || []).map((a) => ({
+      id: String(a.id),
+      type: 'financial' as const,
+      severity: (a.severity || 'medium') as 'low' | 'medium' | 'high' | 'critical',
+      description: a.finding_summary || '',
+      status: 'open' as const,
+    })),
+    totalBudget: budget,
+    totalDebt: debt,
+    education: sectors['Education'] || sectors['education'] || 0,
+    health: sectors['Health'] || sectors['health'] || 0,
+    infrastructure: sectors['Infrastructure'] || sectors['infrastructure'] || 0,
   };
 };
 

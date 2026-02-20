@@ -1,0 +1,188 @@
+version: '3.9'
+
+x-common-logging: &common-logging
+  options:
+    max-size: '10m'
+    max-file: '3'
+
+x-common-security: &common-security
+  security_opt:
+    - no-new-privileges:true
+  read_only: true
+  tmpfs:
+    - /tmp
+
+networks:
+  web:
+    external: false
+  internal:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  etl_downloads:
+  traefik_letsencrypt:
+
+services:
+  reverse-proxy:
+    image: traefik:v2.11
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.web.http.redirections.entryPoint.to=websecure
+      - --entrypoints.web.http.redirections.entryPoint.scheme=https
+      - --certificatesresolvers.le.acme.tlschallenge=true
+      - --certificatesresolvers.le.acme.email=${LETSENCRYPT_EMAIL}
+      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_letsencrypt:/letsencrypt
+    networks:
+      - web
+      - internal
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: audit_app
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d audit_app || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1g
+    networks:
+      - internal
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256m
+    networks:
+      - internal
+    restart: unless-stopped
+
+  backend:
+    image: ${BACKEND_IMAGE:-${DOCKERHUB_NAMESPACE:-yourhubname}/audit-app-backend:latest}
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/audit_app
+      REDIS_URL: redis://redis:6379
+      ENVIRONMENT: production
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.backend.rule=Host(`${BACKEND_HOST}`)
+      - traefik.http.routers.backend.entrypoints=websecure
+      - traefik.http.routers.backend.tls.certresolver=le
+      - traefik.http.services.backend.loadbalancer.server.port=8000
+      # Rate limit middleware (avg 120 req/s with burst 60)
+      - traefik.http.middlewares.backend-rl.rateLimit.average=120
+      - traefik.http.middlewares.backend-rl.rateLimit.burst=60
+      # Security headers middleware
+      - traefik.http.middlewares.secure-headers.headers.stsSeconds=63072000
+      - traefik.http.middlewares.secure-headers.headers.stsIncludeSubdomains=true
+      - traefik.http.middlewares.secure-headers.headers.stsPreload=true
+      - traefik.http.middlewares.secure-headers.headers.forceSTSHeader=true
+      - traefik.http.middlewares.secure-headers.headers.frameDeny=true
+      - traefik.http.middlewares.secure-headers.headers.browserXssFilter=true
+      - traefik.http.middlewares.secure-headers.headers.contentTypeNosniff=true
+      # Attach middlewares
+      - traefik.http.routers.backend.middlewares=backend-rl,secure-headers
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512m
+    <<: *common-security
+    logging:
+      driver: json-file
+      <<: *common-logging
+    networks:
+      - web
+      - internal
+    restart: unless-stopped
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-${DOCKERHUB_NAMESPACE:-yourhubname}/audit-app-frontend:latest}
+    environment:
+      NEXT_PUBLIC_API_URL: https://${BACKEND_HOST}
+      NODE_ENV: production
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.frontend.rule=Host(`${FRONTEND_HOST}`)
+      - traefik.http.routers.frontend.entrypoints=websecure
+      - traefik.http.routers.frontend.tls.certresolver=le
+      - traefik.http.services.frontend.loadbalancer.server.port=3000
+      # Rate limit and security headers
+      - traefik.http.routers.frontend.middlewares=backend-rl,secure-headers
+    depends_on:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512m
+    <<: *common-security
+    logging:
+      driver: json-file
+      <<: *common-logging
+    networks:
+      - web
+      - internal
+    restart: unless-stopped
+
+  etl:
+    image: ${ETL_IMAGE:-${DOCKERHUB_NAMESPACE:-yourhubname}/audit-app-etl:latest}
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/audit_app
+      ETL_SCHEDULE_CONFIG: /app/config/etl_schedule.yaml
+      PLAYWRIGHT_ENABLED: '1'
+      TZ: Africa/Nairobi
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./config:/app/config:ro
+      - etl_downloads:/app/downloads
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2g
+    # ETL needs write access to /app/downloads, so read_only is not enabled here
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      <<: *common-logging
+    networks:
+      - internal
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', "python -c 'import socket; print(1)' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5

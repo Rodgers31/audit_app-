@@ -1,0 +1,345 @@
+name: Build and Deploy (Docker Hub)
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to deploy (e.g., v1.2.3) or leave empty for latest'
+        required: false
+        default: ''
+      skip_tests:
+        description: 'Skip tests (emergency deployment only)'
+        required: false
+        default: 'false'
+
+env:
+  REGISTRY: docker.io
+  DOCKERHUB_NAMESPACE: ${{ secrets.DOCKERHUB_NAMESPACE }}
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+
+concurrency:
+  group: audit-app-prod
+  cancel-in-progress: true
+
+jobs:
+  # CRITICAL: Backend tests must pass
+  test-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event.inputs.skip_tests != 'true'
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: audit_app_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run Core Backend Tests (REQUIRED)
+        run: |
+          cd backend
+          pytest tests/ --verbose --maxfail=1 \
+            --cov=. --cov-report=xml --cov-report=term \
+            --cov-fail-under=50 \
+            -m "not slow"
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/audit_app_test
+          REDIS_URL: redis://localhost:6379
+          TESTING: true
+
+  # CRITICAL: Frontend tests must pass
+  test-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event.inputs.skip_tests != 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint (REQUIRED)
+        working-directory: frontend
+        run: npm run lint -- --max-warnings=0
+
+      - name: Type Check (REQUIRED)
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Run unit tests (REQUIRED)
+        working-directory: frontend
+        run: npm test -- --ci --passWithNoTests
+
+      - name: Build Next.js (REQUIRED)
+        working-directory: frontend
+        run: npm run build
+
+      - name: Install Playwright Browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright E2E tests (REQUIRED)
+        working-directory: frontend
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+          PORT: 3000
+          CI: true
+        run: npx playwright test --project=chromium --reporter=list
+
+      - name: Upload E2E Test Results
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-test-results-prod
+          path: frontend/playwright-report/
+          retention-days: 7
+
+  # Quality Gate - All tests must pass
+  quality-gate:
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    if: always() && github.event.inputs.skip_tests != 'true'
+
+    steps:
+      - name: Check All Tests Passed
+        run: |
+          echo "Backend Tests: ${{ needs.test-backend.result }}"
+          echo "Frontend Tests: ${{ needs.test-frontend.result }}"
+
+          if [[ "${{ needs.test-backend.result }}" != "success" ]] || \
+             [[ "${{ needs.test-frontend.result }}" != "success" ]]; then
+            echo "❌ Quality Gate FAILED - Deployment blocked"
+            exit 1
+          fi
+
+          echo "✅ Quality Gate PASSED - Proceeding with build and deployment"
+
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: [quality-gate]
+    # Allow builds if tests skipped (emergency deployment)
+    if: |
+      always() && 
+      (needs.quality-gate.result == 'success' || 
+       (github.event.inputs.skip_tests == 'true' && needs.quality-gate.result == 'skipped'))
+    outputs:
+      version: ${{ steps.vars.outputs.version }}
+      sha: ${{ steps.vars.outputs.sha }}
+      channel: ${{ steps.vars.outputs.channel }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Compute Tags
+        id: vars
+        run: |
+          SHA=${GITHUB_SHA}
+          REF_NAME=${GITHUB_REF_NAME}
+          # Determine channel/version
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+            CHANNEL=prod
+          elif [[ "$REF_NAME" == develop ]]; then
+            VERSION=dev
+            CHANNEL=dev
+          elif [[ $REF_NAME == qa || $REF_NAME == qa-* || $REF_NAME == release/* ]]; then
+            VERSION=qa
+            CHANNEL=qa
+          elif [[ "$REF_NAME" == main ]]; then
+            VERSION=latest
+            CHANNEL=prod
+          else
+            # Fallback to branch-based tag (sanitized)
+            VERSION=$(echo "$REF_NAME" | tr '/_' '--')
+            CHANNEL=dev
+          fi
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
+
+      - name: Build & Push Backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile.prod
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ env.DOCKERHUB_NAMESPACE }}/audit-app-backend:${{ steps.vars.outputs.version }}
+            ${{ env.DOCKERHUB_NAMESPACE }}/audit-app-backend:${{ steps.vars.outputs.sha }}
+
+      - name: Build & Push Frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile.prod
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ env.DOCKERHUB_NAMESPACE }}/audit-app-frontend:${{ steps.vars.outputs.version }}
+            ${{ env.DOCKERHUB_NAMESPACE }}/audit-app-frontend:${{ steps.vars.outputs.sha }}
+
+      - name: Build & Push ETL
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./etl/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ env.DOCKERHUB_NAMESPACE }}/audit-app-etl:${{ steps.vars.outputs.version }}
+            ${{ env.DOCKERHUB_NAMESPACE }}/audit-app-etl:${{ steps.vars.outputs.sha }}
+
+      - name: Export Image Tags
+        id: images
+        run: |
+          echo "backend=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-backend:${{ steps.vars.outputs.version }}" >> $GITHUB_OUTPUT
+          echo "frontend=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-frontend:${{ steps.vars.outputs.version }}" >> $GITHUB_OUTPUT
+          echo "etl=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-etl:${{ steps.vars.outputs.version }}" >> $GITHUB_OUTPUT
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    environment: prod
+    steps:
+      - name: SSH Deploy (docker compose pull && up -d)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: 22
+          script: |
+            set -euo pipefail
+            cd ${{ secrets.PROD_APP_DIR }}
+            echo "Pulling images..."
+            BACKEND_IMAGE=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-backend:${{ needs.build-and-push.outputs.version }} \
+            FRONTEND_IMAGE=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-frontend:${{ needs.build-and-push.outputs.version }} \
+            ETL_IMAGE=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-etl:${{ needs.build-and-push.outputs.version }} \
+            docker compose -f docker-compose.prod.yml --env-file .env.prod pull
+            echo "Recreating services..."
+            BACKEND_IMAGE=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-backend:${{ needs.build-and-push.outputs.version }} \
+            FRONTEND_IMAGE=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-frontend:${{ needs.build-and-push.outputs.version }} \
+            ETL_IMAGE=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-etl:${{ needs.build-and-push.outputs.version }} \
+            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+            echo "Deployment complete."
+
+  deploy-dev:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/develop'
+    environment: dev
+    steps:
+      - name: SSH Deploy to Dev
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEV_SSH_HOST }}
+          username: ${{ secrets.DEV_SSH_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          port: 22
+          script: |
+            set -euo pipefail
+            cd ${{ secrets.DEV_APP_DIR }}
+            echo "Pulling images (dev channel)..."
+            BACKEND_IMAGE=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-backend:${{ needs.build-and-push.outputs.version }} \
+            FRONTEND_IMAGE=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-frontend:${{ needs.build-and-push.outputs.version }} \
+            ETL_IMAGE=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-etl:${{ needs.build-and-push.outputs.version }} \
+            docker compose -f docker-compose.dev.yml --env-file .env.dev pull
+            echo "Recreating services..."
+            BACKEND_IMAGE=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-backend:${{ needs.build-and-push.outputs.version }} \
+            FRONTEND_IMAGE=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-frontend:${{ needs.build-and-push.outputs.version }} \
+            ETL_IMAGE=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-etl:${{ needs.build-and-push.outputs.version }} \
+            docker compose -f docker-compose.dev.yml --env-file .env.dev up -d
+            echo "Dev deployment complete."
+
+  deploy-qa:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: startsWith(github.ref, 'refs/heads/qa') || startsWith(github.ref, 'refs/heads/release/')
+    environment: qa
+    steps:
+      - name: SSH Deploy to QA
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.QA_SSH_HOST }}
+          username: ${{ secrets.QA_SSH_USER }}
+          key: ${{ secrets.QA_SSH_KEY }}
+          port: 22
+          script: |
+            set -euo pipefail
+            cd ${{ secrets.QA_APP_DIR }}
+            echo "Pulling images (qa channel)..."
+            BACKEND_IMAGE=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-backend:${{ needs.build-and-push.outputs.version }} \
+            FRONTEND_IMAGE=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-frontend:${{ needs.build-and-push.outputs.version }} \
+            ETL_IMAGE=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-etl:${{ needs.build-and-push.outputs.version }} \
+            docker compose -f docker-compose.qa.yml --env-file .env.qa pull
+            echo "Recreating services..."
+            BACKEND_IMAGE=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-backend:${{ needs.build-and-push.outputs.version }} \
+            FRONTEND_IMAGE=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-frontend:${{ needs.build-and-push.outputs.version }} \
+            ETL_IMAGE=${{ env.DOCKERHUB_NAMESPACE }}/audit-app-etl:${{ needs.build-and-push.outputs.version }} \
+            docker compose -f docker-compose.qa.yml --env-file .env.qa up -d
+            echo "QA deployment complete."

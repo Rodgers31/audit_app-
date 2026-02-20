@@ -50,11 +50,11 @@ export default function CountyExplorerPage() {
   // Show loading state
   if (countiesLoading) {
     return (
-      <div className='min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center'>
-        <div className='text-center'>
-          <div className='animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4'></div>
-          <p className='text-lg text-slate-600'>Loading counties data...</p>
-        </div>
+      <div className='page-wrapper flex items-center justify-center'>
+        <main className='w-full max-w-md mx-auto px-6 py-12 text-center bg-white rounded-2xl shadow-soft border border-border'>
+          <div className='animate-spin rounded-full h-32 w-32 border-b-2 border-brand-700 mx-auto mb-6'></div>
+          <p className='text-lg text-gray-500'>Loading counties data...</p>
+        </main>
       </div>
     );
   }
@@ -62,15 +62,15 @@ export default function CountyExplorerPage() {
   // Show error state
   if (countiesError || !counties) {
     return (
-      <div className='min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center'>
-        <div className='text-center'>
-          <p className='text-lg text-red-600 mb-4'>Error loading counties data</p>
+      <div className='page-wrapper flex items-center justify-center'>
+        <main className='w-full max-w-md mx-auto px-6 py-12 text-center bg-white rounded-2xl shadow-soft border border-border'>
+          <p className='text-lg text-risk mb-6'>Error loading counties data</p>
           <button
             onClick={() => window.location.reload()}
-            className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700'>
+            className='px-4 py-2 bg-brand-700 text-white rounded-xl hover:bg-brand-900'>
             Retry
           </button>
-        </div>
+        </main>
       </div>
     );
   }
@@ -84,20 +84,17 @@ export default function CountyExplorerPage() {
   };
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100'>
-      {/* Decorative background pattern */}
-      <div className='absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] pointer-events-none'></div>
-
+    <div className='page-wrapper'>
       {/* Main Content */}
-      <main className='relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12'>
+      <main className='page-content'>
         {/* Page Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className='text-center mb-12'>
-          <h1 className='text-5xl font-bold text-gray-900 mb-6'>County Explorer</h1>
-          <p className='text-xl text-gray-600 max-w-3xl mx-auto'>
+          className='page-header text-center mb-12'>
+          <h1 className='text-4xl font-bold text-brand-900 mb-4'>County Explorer</h1>
+          <p className='text-lg text-gray-500 max-w-3xl mx-auto'>
             Explore detailed financial information and audit status for each county
           </p>
         </motion.div>
@@ -149,7 +146,7 @@ export default function CountyExplorerPage() {
                   </h2>
                   <div className='space-y-3'>
                     <div className='flex items-center gap-3'>
-                      <Users className='text-blue-600' size={20} />
+                      <Users className='text-brand-700' size={20} />
                       <span className='text-gray-700'>
                         Population:{' '}
                         <span className='font-semibold'>
@@ -180,12 +177,12 @@ export default function CountyExplorerPage() {
 
                 {/* Audit Status */}
                 <div className='md:col-span-2'>
-                  <div className='bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6'>
+                  <div className='bg-brand-50 rounded-2xl p-6'>
                     <div className='flex items-center justify-between mb-4'>
                       <h3 className='text-lg font-semibold text-gray-900'>Audit Status</h3>
                       <button
                         onClick={() => setIsAuditModalOpen(true)}
-                        className='flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors'>
+                        className='flex items-center gap-2 px-3 py-2 bg-brand-700 text-white text-sm font-medium rounded-xl hover:bg-brand-900 transition-colors'>
                         <Eye size={16} />
                         Transparency Report
                       </button>

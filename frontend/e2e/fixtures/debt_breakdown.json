@@ -1,0 +1,10 @@
+{
+  "domestic": 4600,
+  "external": 6900,
+  "categories": [
+    { "name": "Bonds", "value": 2500 },
+    { "name": "Treasury Bills", "value": 2100 },
+    { "name": "Multilateral", "value": 3000 },
+    { "name": "Bilateral", "value": 3900 }
+  ]
+}

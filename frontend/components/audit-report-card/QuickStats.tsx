@@ -14,7 +14,7 @@ export default function QuickStats({ county }: QuickStatsProps) {
     <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mb-4'>
       <div className='flex items-center gap-2 text-sm text-gray-600'>
         <DollarSign size={16} className='text-blue-600' />
-        <span>Budget: {formatCurrency(county.budget)}</span>
+        <span>Budget: {formatCurrency(county.budget ?? county.totalBudget ?? 0)}</span>
       </div>
       <div className='flex items-center gap-2 text-sm text-gray-600'>
         <Users size={16} className='text-purple-600' />
@@ -28,7 +28,7 @@ export default function QuickStats({ county }: QuickStatsProps) {
       </div>
       <div className='flex items-center gap-2 text-sm text-gray-600'>
         <Calendar size={16} className='text-green-600' />
-        <span>Last Audit: {formatDate(county.lastAuditDate)}</span>
+        <span>Last Audit: {county.lastAuditDate ? formatDate(county.lastAuditDate) : 'N/A'}</span>
       </div>
     </div>
   );

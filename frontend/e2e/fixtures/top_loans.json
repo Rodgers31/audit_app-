@@ -1,0 +1,57 @@
+[
+  {
+    "id": 1,
+    "lender": "China Development Bank",
+    "country": "China",
+    "amount": 1850,
+    "purpose": "SGR",
+    "interestRate": 3.6,
+    "year": 2017,
+    "maturity": 2037,
+    "flag": "🇨🇳"
+  },
+  {
+    "id": 2,
+    "lender": "World Bank",
+    "country": "International",
+    "amount": 1200,
+    "purpose": "Infrastructure",
+    "interestRate": 2.1,
+    "year": 2020,
+    "maturity": 2045,
+    "flag": "🌍"
+  },
+  {
+    "id": 3,
+    "lender": "African Development Bank",
+    "country": "Regional",
+    "amount": 890,
+    "purpose": "Energy & Water",
+    "interestRate": 2.8,
+    "year": 2019,
+    "maturity": 2039,
+    "flag": "🌍"
+  },
+  {
+    "id": 4,
+    "lender": "JICA",
+    "country": "Japan",
+    "amount": 750,
+    "purpose": "Ports",
+    "interestRate": 1.9,
+    "year": 2021,
+    "maturity": 2051,
+    "flag": "🇯🇵"
+  },
+  {
+    "id": 5,
+    "lender": "EIB",
+    "country": "Europe",
+    "amount": 650,
+    "purpose": "Renewables",
+    "interestRate": 2.5,
+    "year": 2022,
+    "maturity": 2042,
+    "flag": "🇪🇺"
+  }
+]

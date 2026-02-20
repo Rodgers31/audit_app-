@@ -4,15 +4,24 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Kenya Audit Transparency',
-  description: 'Government Financial Transparency and Audit Platform',
-  keywords: ['government', 'transparency', 'audit', 'kenya', 'budget', 'spending'],
+  title: 'Kenya Public Money Tracker',
+  description: 'Where your taxes go, in real time — Government Financial Transparency Dashboard',
+  keywords: [
+    'government',
+    'transparency',
+    'audit',
+    'kenya',
+    'budget',
+    'spending',
+    'national debt',
+    'county finances',
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang='en'>
-      <body>
+      <body className='bg-gov-sand antialiased'>
         <QueryProvider>
           <Navigation />
           {children}

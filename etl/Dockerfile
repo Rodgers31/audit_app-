@@ -1,30 +1,35 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
+
+# Prevents Python from writing .pyc files and forces stdout/stderr to be unbuffered
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    pkg-config \
-    libpq-dev \
-    python3-dev \
-    curl \
+# System deps (minimal); playwright --with-deps will install remaining runtime deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl unzip ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python deps (use project-root paths)
+COPY etl/requirements.txt /app/etl/requirements.txt
+RUN pip install --no-cache-dir -r /app/etl/requirements.txt \
+    && python -m playwright install chromium firefox --with-deps
 
-# Copy application code
-COPY . .
+# Copy full project (so package path `etl.*` exists)
+COPY . /app/
 
-# Create directories
-RUN mkdir -p downloads extractions logs
+# Create non-root user and set permissions for writable paths
+RUN useradd -u 10001 -m etluser \
+    && mkdir -p /app/downloads /app/logs \
+    && chown -R etluser:etluser /app/downloads /app/logs
 
-# Set environment variables
-ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1
+# Switch to non-root user
+USER etluser
 
-# Run ETL processes
-CMD ["python", "-m", "scheduler"]
+# Helpful envs
+ENV PYTHONPATH=/app \
+    PLAYWRIGHT_ENABLED=1
+
+# Run the scheduler/worker
+ENTRYPOINT ["python", "-m", "etl.worker"]

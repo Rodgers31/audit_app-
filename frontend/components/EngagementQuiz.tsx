@@ -257,7 +257,7 @@ export default function EngagementQuiz({ searchTerm }: EngagementQuizProps) {
       setSelectedAnswer(null);
     } else {
       setShowResult(true);
-      if (!quizCompleted.includes(currentQuiz)) {
+      if (currentQuiz && !quizCompleted.includes(currentQuiz)) {
         setQuizCompleted([...quizCompleted, currentQuiz]);
       }
     }

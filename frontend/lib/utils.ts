@@ -28,9 +28,9 @@ export function formatNumber(value: number): string {
 }
 
 export function getDebtRiskColor(debtToGdpRatio: number): string {
-  if (debtToGdpRatio < 40) return 'text-success-600';
-  if (debtToGdpRatio < 60) return 'text-warning-600';
-  return 'text-danger-600';
+  if (debtToGdpRatio < 40) return 'text-brand-500';
+  if (debtToGdpRatio < 60) return 'text-caution';
+  return 'text-risk';
 }
 
 export function getDebtRiskLevel(debtToGdpRatio: number): string {

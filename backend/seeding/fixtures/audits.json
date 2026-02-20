@@ -1,0 +1,19 @@
+{
+  "records": [
+    {
+      "fields": {
+        "entity_slug": "nairobi-county",
+        "entity": "Nairobi City County",
+        "period_label": "FY2022/2023",
+        "start_date": "2022-07-01",
+        "end_date": "2023-06-30",
+        "finding": "Unreconciled revenue collections identified in several departments.",
+        "severity": "Critical",
+        "recommended_action": "Implement countywide revenue reconciliation procedures.",
+        "reference": "NAO/2023/FIN/045",
+        "dataset_id": "fixture-audits",
+        "source_url": "https://fixtures.example/audits"
+      }
+    }
+  ]
+}

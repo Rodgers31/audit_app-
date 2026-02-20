@@ -102,3 +102,4 @@ frontend/.env.*
 
 # Docker overrides
 docker-compose.override.yml
+nul

@@ -1,0 +1,138 @@
+name: Database Seeding
+
+on:
+  # Schedule nightly seeding at 2 AM UTC (5 AM EAT)
+  schedule:
+    - cron: '0 2 * * *'
+
+  # Allow manual triggering
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: 'Domain to seed (leave empty for all)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run (no database commits)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  seed:
+    name: Seed Database
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          cd backend
+          alembic upgrade head
+
+      - name: Seed all domains
+        if: github.event.inputs.domain == ''
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SEED_RATE_LIMIT: ${{ vars.SEED_RATE_LIMIT || '60/min' }}
+          SEED_TIMEOUT_SECONDS: ${{ vars.SEED_TIMEOUT_SECONDS || '30.0' }}
+          SEED_BUDGETS_DATASET_URL: ${{ secrets.SEED_BUDGETS_DATASET_URL }}
+          SEED_AUDITS_DATASET_URL: ${{ secrets.SEED_AUDITS_DATASET_URL }}
+          SEED_POPULATION_DATASET_URL: ${{ secrets.SEED_POPULATION_DATASET_URL }}
+          SEED_ECONOMIC_INDICATORS_DATASET_URL: ${{ secrets.SEED_ECONOMIC_INDICATORS_DATASET_URL }}
+          SEED_LOG_LEVEL: INFO
+        run: |
+          cd backend
+          python -m seeding.cli seed --all ${{ github.event.inputs.dry_run && '--dry-run' || '' }}
+
+      - name: Seed specific domain
+        if: github.event.inputs.domain != ''
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SEED_RATE_LIMIT: ${{ vars.SEED_RATE_LIMIT || '60/min' }}
+          SEED_TIMEOUT_SECONDS: ${{ vars.SEED_TIMEOUT_SECONDS || '30.0' }}
+          SEED_BUDGETS_DATASET_URL: ${{ secrets.SEED_BUDGETS_DATASET_URL }}
+          SEED_AUDITS_DATASET_URL: ${{ secrets.SEED_AUDITS_DATASET_URL }}
+          SEED_POPULATION_DATASET_URL: ${{ secrets.SEED_POPULATION_DATASET_URL }}
+          SEED_ECONOMIC_INDICATORS_DATASET_URL: ${{ secrets.SEED_ECONOMIC_INDICATORS_DATASET_URL }}
+          SEED_LOG_LEVEL: INFO
+        run: |
+          cd backend
+          python -m seeding.cli seed --domain ${{ github.event.inputs.domain }} ${{ github.event.inputs.dry_run && '--dry-run' || '' }}
+
+      - name: Check ingestion jobs
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          cd backend
+          python -c "
+          from database import SessionLocal
+          from models import IngestionJob
+          from datetime import datetime, timedelta
+
+          session = SessionLocal()
+          cutoff = datetime.utcnow() - timedelta(minutes=30)
+          jobs = session.query(IngestionJob).filter(IngestionJob.started_at >= cutoff).all()
+
+          print('\n📊 Recent Ingestion Jobs:')
+          for job in jobs:
+              status_emoji = '✅' if job.status.value == 'completed' else '⚠️' if job.status.value == 'completed_with_errors' else '❌'
+              print(f'{status_emoji} Job #{job.id}: {job.domain} ({job.status.value})')
+              print(f'   Created: {job.items_created}, Updated: {job.items_updated}, Processed: {job.items_processed}')
+              if job.errors:
+                  print(f'   Errors: {job.errors[:200]}')
+
+          session.close()
+          "
+
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## Seeding Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered By:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ github.event.inputs.domain }}" ]; then
+            echo "- **Domain:** ${{ github.event.inputs.domain }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Domain:** All" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "- **Dry Run:** ${{ github.event.inputs.dry_run || 'false' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "See [seeding guide](https://github.com/${{ github.repository }}/blob/main/docs/seeding-guide.md) for details." >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 Database seeding failed - ${new Date().toISOString().split('T')[0]}`,
+              body: `Automated database seeding workflow failed.
+              
+              **Run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
+              **Triggered by:** ${context.eventName}
+              **Domain:** ${{ github.event.inputs.domain || 'all' }}
+              
+              Please check the logs and ingestion_jobs table for details.`,
+              labels: ['bug', 'seeding', 'automated']
+            });

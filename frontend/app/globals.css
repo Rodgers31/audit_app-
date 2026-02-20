@@ -2,52 +2,117 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Serif+Display&display=swap');
 
+/* ── Base ── */
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
+    scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-gov-sand text-neutral-text;
   }
 }
 
+/* ── Component tokens ── */
 @layer components {
+  /* Glass surfaces */
+  .glass-surface {
+    @apply bg-white/60 backdrop-blur-xl border border-white/30 shadow-surface;
+  }
+  .glass-surface-dark {
+    @apply bg-gov-dark/40 backdrop-blur-xl border border-white/10;
+  }
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-lg border border-white/40 shadow-surface rounded-2xl;
+  }
+
+  /* Editorial metric type */
+  .metric-hero {
+    @apply text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-none;
+  }
+  .metric-large {
+    @apply text-3xl md:text-4xl font-bold tracking-tight;
+  }
+  .metric-medium {
+    @apply text-xl md:text-2xl font-bold tabular-nums;
+  }
+
+  /* Buttons */
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-offset-2;
   }
-
   .btn-primary {
-    @apply btn bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+    @apply btn bg-gov-copper text-white hover:bg-gov-copper/90
+           focus:ring-gov-copper shadow-md hover:shadow-elevated
+           active:scale-[0.97];
   }
-
   .btn-secondary {
-    @apply btn bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500;
+    @apply btn bg-white/80 text-gov-forest border border-gov-forest/20
+           hover:bg-gov-forest hover:text-white focus:ring-gov-forest;
+  }
+  .btn-ghost {
+    @apply btn bg-transparent text-white/80 hover:bg-white/10 hover:text-white;
   }
 
+  /* Risk badges */
+  .pill-risk {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+           text-xs font-semibold bg-gov-copper/15 text-gov-copper;
+  }
+  .pill-safe {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+           text-xs font-semibold bg-gov-sage/15 text-gov-sage;
+  }
+
+  /* Cards / panels */
   .card {
     @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6;
   }
-
   .metric-card {
     @apply card hover:shadow-md transition-shadow duration-200;
   }
 
-  .number-large {
-    @apply text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight;
+  /* Spatial depth helpers */
+  .depth-0 {
+    z-index: 0;
+  }
+  .depth-1 {
+    z-index: 10;
+  }
+  .depth-2 {
+    z-index: 20;
+  }
+  .depth-3 {
+    z-index: 30;
+  }
+  .depth-4 {
+    z-index: 40;
+  }
+  .depth-map {
+    z-index: 25;
   }
 
-  .number-medium {
-    @apply text-2xl md:text-3xl font-bold tracking-tight;
-  }
-
+  /* Tooltips */
   .tooltip {
-    @apply absolute z-50 px-3 py-2 text-sm bg-gray-900 text-white rounded-lg shadow-lg opacity-0 pointer-events-none transition-opacity duration-200;
+    @apply absolute z-50 px-3 py-2 text-sm bg-gray-900 text-white
+           rounded-lg shadow-lg opacity-0 pointer-events-none transition-opacity duration-200;
   }
-
   .tooltip.show {
     @apply opacity-100;
+  }
+
+  /* Scrollbar styling */
+  .scroll-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+  .scroll-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scroll-thin::-webkit-scrollbar-thumb {
+    @apply bg-gov-sage/30 rounded-full;
   }
 }

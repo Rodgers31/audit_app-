@@ -27,12 +27,32 @@ class EntityType(enum.Enum):
     MUNICIPALITY = "municipality"
 
 
+class DebtCategory(enum.Enum):
+    """Categories of government debt per Treasury classification."""
+
+    EXTERNAL_MULTILATERAL = "external_multilateral"  # World Bank, IMF, AfDB, etc.
+    EXTERNAL_BILATERAL = "external_bilateral"  # China, Japan, France, etc.
+    EXTERNAL_COMMERCIAL = "external_commercial"  # Eurobonds, syndicated loans
+    DOMESTIC_BONDS = "domestic_bonds"  # Treasury bonds (long-term)
+    DOMESTIC_BILLS = "domestic_bills"  # Treasury bills (short-term)
+    DOMESTIC_OVERDRAFT = "domestic_overdraft"  # CBK overdraft facility
+    PENDING_BILLS = "pending_bills"  # Accumulated arrears/pending bills
+    COUNTY_GUARANTEED = "county_guaranteed"  # County government guaranteed debt
+    OTHER = "other"
+
+
 class DocumentType(enum.Enum):
     BUDGET = "budget"
     AUDIT = "audit"
     REPORT = "report"
     LOAN = "loan"
     OTHER = "other"
+
+
+class DocumentStatus(enum.Enum):
+    AVAILABLE = "available"
+    ARCHIVED = "archived"
+    FAILED = "failed"
 
 
 class Severity(enum.Enum):
@@ -106,6 +126,10 @@ class SourceDocument(Base):
     fetch_date = Column(DateTime, nullable=False)
     md5 = Column(String(32), nullable=True)
     doc_type = Column(Enum(DocumentType), nullable=False)
+    status = Column(
+        Enum(DocumentStatus), nullable=False, default=DocumentStatus.AVAILABLE
+    )
+    last_seen_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     meta = Column("metadata", JSONB, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -152,13 +176,19 @@ class BudgetLine(Base):
     page_ref = Column(String(50), nullable=True)
     notes = Column(Text, nullable=True)
     provenance = Column(JSONB, default=list)  # List of source references
+    source_hash = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
     entity = relationship("Entity", back_populates="budget_lines")
     period = relationship("FiscalPeriod", back_populates="budget_lines")
     source_document = relationship("SourceDocument", back_populates="budget_lines")
-    annotations = relationship("Annotation", back_populates="budget_line")
+    annotations = relationship(
+        "Annotation",
+        back_populates="budget_line",
+        primaryjoin="and_(Annotation.ref_type=='budget_line', Annotation.ref_id==BudgetLine.id)",
+        foreign_keys="[Annotation.ref_id]",
+    )
 
 
 class Loan(Base):
@@ -167,8 +197,12 @@ class Loan(Base):
     id = Column(Integer, primary_key=True, index=True)
     entity_id = Column(Integer, ForeignKey("entities.id"), nullable=False)
     lender = Column(String(200), nullable=False)
+    debt_category = Column(
+        Enum(DebtCategory), nullable=True, default=DebtCategory.OTHER
+    )
     principal = Column(Numeric(15, 2), nullable=False)
     outstanding = Column(Numeric(15, 2), nullable=False)
+    interest_rate = Column(Numeric(5, 2), nullable=True)  # Annual interest rate %
     issue_date = Column(DateTime, nullable=False)
     maturity_date = Column(DateTime, nullable=True)
     currency = Column(String(3), nullable=False)
@@ -177,6 +211,7 @@ class Loan(Base):
     )
     provenance = Column(JSONB, default=list)
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     entity = relationship("Entity", back_populates="loans")
@@ -286,3 +321,145 @@ class UserQuestionAnswer(Base):
     # Relationships
     user = relationship("User", back_populates="question_answers")
     question = relationship("QuickQuestion", back_populates="user_answers")
+
+
+# ===== KNBS Economic Data Models =====
+
+
+class PopulationData(Base):
+    """Population data from KNBS (Kenya National Bureau of Statistics)."""
+
+    __tablename__ = "population_data"
+
+    id = Column(Integer, primary_key=True, index=True)
+    entity_id = Column(
+        Integer, ForeignKey("entities.id"), nullable=True
+    )  # County or national
+    year = Column(Integer, nullable=False, index=True)
+    total_population = Column(Integer, nullable=False)
+    male_population = Column(Integer, nullable=True)
+    female_population = Column(Integer, nullable=True)
+    urban_population = Column(Integer, nullable=True)
+    rural_population = Column(Integer, nullable=True)
+    population_density = Column(Numeric(10, 2), nullable=True)  # People per sq km
+    source_document_id = Column(
+        Integer, ForeignKey("source_documents.id"), nullable=True
+    )
+    source_page = Column(Integer, nullable=True)
+    confidence = Column(Numeric(3, 2), nullable=True, default=1.0)
+    meta = Column("metadata", JSONB, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    entity = relationship("Entity")
+    source_document = relationship("SourceDocument")
+
+
+class GDPData(Base):
+    """GDP and Gross County Product data from KNBS."""
+
+    __tablename__ = "gdp_data"
+
+    id = Column(Integer, primary_key=True, index=True)
+    entity_id = Column(
+        Integer, ForeignKey("entities.id"), nullable=True
+    )  # NULL for national, county_id for GCP
+    year = Column(Integer, nullable=False, index=True)
+    quarter = Column(String(2), nullable=True, index=True)  # Q1, Q2, Q3, Q4
+    gdp_value = Column(Numeric(20, 2), nullable=False)  # KES
+    gdp_growth_rate = Column(Numeric(5, 2), nullable=True)  # Percentage
+    currency = Column(String(3), nullable=False, default="KES")
+    source_document_id = Column(
+        Integer, ForeignKey("source_documents.id"), nullable=True
+    )
+    source_page = Column(Integer, nullable=True)
+    confidence = Column(Numeric(3, 2), nullable=True, default=1.0)
+    meta = Column("metadata", JSONB, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    entity = relationship("Entity")
+    source_document = relationship("SourceDocument")
+
+
+class EconomicIndicator(Base):
+    """Economic indicators from KNBS (CPI, PPI, inflation, unemployment, etc.)."""
+
+    __tablename__ = "economic_indicators"
+
+    id = Column(Integer, primary_key=True, index=True)
+    indicator_type = Column(
+        String(50), nullable=False, index=True
+    )  # CPI, PPI, inflation_rate, unemployment_rate
+    indicator_date = Column(DateTime, nullable=False, index=True)
+    value = Column(Numeric(10, 2), nullable=False)
+    entity_id = Column(
+        Integer, ForeignKey("entities.id"), nullable=True
+    )  # NULL for national, county_id for county-level
+    unit = Column(String(20), nullable=True)  # percent, index, etc.
+    source_document_id = Column(
+        Integer, ForeignKey("source_documents.id"), nullable=True
+    )
+    source_page = Column(Integer, nullable=True)
+    confidence = Column(Numeric(3, 2), nullable=True, default=1.0)
+    meta = Column("metadata", JSONB, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    entity = relationship("Entity")
+    source_document = relationship("SourceDocument")
+
+
+class IngestionStatus(enum.Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    COMPLETED_WITH_ERRORS = "completed_with_errors"
+    FAILED = "failed"
+
+
+class IngestionJob(Base):
+    """Track each seeding domain execution for observability."""
+
+    __tablename__ = "ingestion_jobs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    domain = Column(String(100), nullable=False, index=True)
+    status = Column(
+        Enum(IngestionStatus), nullable=False, default=IngestionStatus.PENDING
+    )
+    dry_run = Column(Boolean, nullable=False, default=False)
+    started_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    finished_at = Column(DateTime, nullable=True)
+    items_processed = Column(Integer, nullable=False, default=0)
+    items_created = Column(Integer, nullable=False, default=0)
+    items_updated = Column(Integer, nullable=False, default=0)
+    errors = Column(JSONB, default=list)
+    meta = Column("metadata", JSONB, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class PovertyIndex(Base):
+    """Poverty indices from KNBS."""
+
+    __tablename__ = "poverty_indices"
+
+    id = Column(Integer, primary_key=True, index=True)
+    entity_id = Column(
+        Integer, ForeignKey("entities.id"), nullable=True
+    )  # County or national
+    year = Column(Integer, nullable=False, index=True)
+    poverty_headcount_rate = Column(Numeric(5, 2), nullable=True)  # Percentage
+    extreme_poverty_rate = Column(Numeric(5, 2), nullable=True)  # Percentage
+    gini_coefficient = Column(Numeric(4, 3), nullable=True)  # 0-1 scale
+    source_document_id = Column(
+        Integer, ForeignKey("source_documents.id"), nullable=True
+    )
+    source_page = Column(Integer, nullable=True)
+    confidence = Column(Numeric(3, 2), nullable=True, default=1.0)
+    meta = Column("metadata", JSONB, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    entity = relationship("Entity")
+    source_document = relationship("SourceDocument")

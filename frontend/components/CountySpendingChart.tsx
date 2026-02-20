@@ -10,7 +10,7 @@ interface CountySpendingChartProps {
 
 export default function CountySpendingChart({ county }: CountySpendingChartProps) {
   // Calculate spending categories based on county budget
-  const totalBudget = county.budget;
+  const totalBudget = county.budget ?? county.totalBudget ?? 0;
 
   // Estimated spending breakdown (in real scenario, this would come from data)
   const spendingCategories = [
@@ -59,7 +59,7 @@ export default function CountySpendingChart({ county }: CountySpendingChartProps
   };
 
   const formatPercentage = (amount: number) => {
-    return `${((amount / totalBudget) * 100).toFixed(1)}%`;
+    return totalBudget > 0 ? `${((amount / totalBudget) * 100).toFixed(1)}%` : '0%';
   };
 
   return (

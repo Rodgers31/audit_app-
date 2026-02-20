@@ -18,8 +18,11 @@ interface MetricsCardsProps {
 export default function MetricsCards({ county, budgetUtilization, debtRatio }: MetricsCardsProps) {
   return (
     <div className='grid grid-cols-1 md:grid-cols-3 gap-5 mb-6'>
-      <BudgetCard budget={county.budget} budgetUtilization={budgetUtilization} />
-      <DebtCard debt={county.debt} debtRatio={debtRatio} />
+      <BudgetCard
+        budget={county.budget ?? county.totalBudget ?? 0}
+        budgetUtilization={budgetUtilization}
+      />
+      <DebtCard debt={county.debt ?? county.totalDebt ?? 0} debtRatio={debtRatio} />
       <AuditCard county={county} />
     </div>
   );
