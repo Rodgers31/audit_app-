@@ -28,8 +28,8 @@ export const getDebtBreakdown = async (countyId?: string): Promise<any> => {
   return response.data.data;
 };
 
-// Get debt timeline data
-export const getDebtTimeline = async (countyId?: string, years?: number): Promise<any> => {
+// Get county debt timeline data
+export const getCountyDebtTimeline = async (countyId?: string, years?: number): Promise<any> => {
   const queryParams: Record<string, any> = {};
   if (years) queryParams.years = years;
 
@@ -71,4 +71,101 @@ export const getDebtSustainabilityIndicators = async (countyId?: string): Promis
 export const getDebtRiskAssessment = async (): Promise<any> => {
   const response = await apiClient.get<ApiResponse<any>>(DEBT_ENDPOINTS.RISK_ASSESSMENT);
   return response.data.data;
+};
+
+// Get individual national government loans
+export interface NationalLoan {
+  lender: string;
+  lender_type: string;
+  principal: string;
+  outstanding: string;
+  interest_rate: string;
+  issue_date: string;
+  maturity_date: string;
+  status: string;
+  annual_service_cost: number;
+  outstanding_numeric: number;
+  principal_numeric: number;
+}
+
+export interface NationalLoansResponse {
+  loans: NationalLoan[];
+  total_loans: number;
+  total_outstanding: number;
+  total_annual_service_cost: number;
+  source: string;
+  source_url: string;
+}
+
+export const getNationalLoans = async (): Promise<NationalLoansResponse> => {
+  const response = await apiClient.get<NationalLoansResponse>(DEBT_ENDPOINTS.LOANS);
+  return response.data;
+};
+
+// Get historical debt timeline (year-by-year external/domestic breakdown)
+export interface DebtTimelineEntry {
+  year: number;
+  external: number;
+  domestic: number;
+  total: number;
+  gdp: number;
+  gdp_ratio: number;
+}
+
+export interface DebtTimelineResponse {
+  status: string;
+  data_source: string;
+  last_updated: string;
+  source: string;
+  years: number;
+  timeline: DebtTimelineEntry[];
+}
+
+export const getDebtTimeline = async (): Promise<DebtTimelineResponse> => {
+  const response = await apiClient.get<DebtTimelineResponse>(DEBT_ENDPOINTS.TIMELINE);
+  return response.data;
+};
+
+// Pending bills types and API
+export interface PendingBillEntry {
+  entity_name: string;
+  entity_type: string;
+  lender: string;
+  total_pending: number;
+  eligible_pending: number | null;
+  ineligible_pending: number | null;
+  fiscal_year: string;
+  category: string;
+  notes: string | null;
+}
+
+export interface PendingBillsSummary {
+  total_pending: number;
+  national_total: number;
+  county_total: number;
+  record_count: number;
+  as_at_date?: string;
+}
+
+export interface PendingBillsResponse {
+  status: string;
+  data_source: string;
+  last_updated?: string;
+  pending_bills: PendingBillEntry[];
+  summary: PendingBillsSummary;
+  source: string;
+  source_url: string;
+  currency: string;
+  explanation: string;
+  how_to_populate?: {
+    option_1: string;
+    option_2: string;
+    option_3: string;
+    data_sources: string[];
+  };
+}
+
+export const getPendingBills = async (): Promise<PendingBillsResponse> => {
+  const response = await apiClient.get<PendingBillsResponse>(DEBT_ENDPOINTS.PENDING_BILLS);
+  return response.data;
 };

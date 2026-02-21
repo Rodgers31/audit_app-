@@ -51,7 +51,10 @@ def _resolve_local_path(url: str) -> Path:
                 path = path.lstrip("/")
         else:
             if netloc:
-                path = f"//{netloc}{path}"
+                # file://relative/path gets misinterpreted as netloc="relative",
+                # path="/path".  Reconstruct the intended relative path instead
+                # of producing an invalid "//netloc/path" UNC path on Unix.
+                path = f"{netloc}{path}"
         return Path(unquote(path)).expanduser()
 
     return Path(unquote(url)).expanduser()

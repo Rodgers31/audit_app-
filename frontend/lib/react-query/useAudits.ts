@@ -2,6 +2,7 @@
  * Custom React Query hooks for audit data
  */
 import { useInfiniteQuery, useQuery, UseQueryOptions } from '@tanstack/react-query';
+import type { FederalAuditResponse } from '../api/audits';
 import {
   getAuditReport,
   getAuditReports,
@@ -11,6 +12,7 @@ import {
   getCountyAuditList,
   getCountyAuditReports,
   getCountyAuditsEnriched,
+  getFederalAudits,
   getLatestCountyAudit,
 } from '../api/audits';
 import { AuditFilters, AuditReportResponse } from '../api/types';
@@ -30,6 +32,7 @@ const QUERY_KEYS = {
   ) => ['audits', 'county', countyId, 'list', params] as const,
   statistics: ['audits', 'statistics'] as const,
   fiscalYears: ['audits', 'fiscal-years'] as const,
+  federal: ['audits', 'federal'] as const,
 };
 
 // Get all audit reports
@@ -40,7 +43,7 @@ export const useAuditReports = (
   return useQuery({
     queryKey: QUERY_KEYS.auditsFiltered(filters),
     queryFn: () => getAuditReports(filters),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 60 * 1000, // 30 minutes — audit reports rarely change
     ...options,
   });
 };
@@ -83,7 +86,7 @@ export const useLatestCountyAudit = (
     queryKey: QUERY_KEYS.latestCountyAudit(countyId),
     queryFn: () => getLatestCountyAudit(countyId),
     enabled: !!countyId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 60 * 1000, // 30 minutes
     ...options,
   });
 };
@@ -156,6 +159,18 @@ export const useCountyAuditList = (
     queryFn: () => getCountyAuditList(countyId, params),
     enabled: !!countyId,
     staleTime: 5 * 60 * 1000,
+    ...options,
+  });
+};
+
+// Federal / national government audit findings
+export const useFederalAudits = (
+  options?: Omit<UseQueryOptions<FederalAuditResponse>, 'queryKey' | 'queryFn'>
+) => {
+  return useQuery({
+    queryKey: QUERY_KEYS.federal,
+    queryFn: getFederalAudits,
+    staleTime: 15 * 60 * 1000, // 15 minutes
     ...options,
   });
 };

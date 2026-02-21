@@ -123,6 +123,56 @@ export const getAuditStatistics = async (): Promise<any> => {
   return response.data.data;
 };
 
+// Federal / national government audit findings
+export interface FederalAuditFinding {
+  id: number;
+  entity_name: string;
+  entity_type: string;
+  finding: string;
+  severity: string;
+  recommended_action: string;
+  amount_involved: string;
+  amount_numeric: number;
+  status: string;
+  category: string;
+  query_type: string;
+  report_section: string;
+  date_raised: string;
+  date: string | null;
+}
+
+export interface FederalAuditResponse {
+  report_title: string;
+  auditor_general: string;
+  fiscal_year: string;
+  report_date: string;
+  opinion_type: string;
+  total_findings: number;
+  total_amount_questioned: number;
+  total_amount_questioned_label: string;
+  by_severity: Record<string, number>;
+  basis_for_qualification: string[];
+  emphasis_of_matter: string[];
+  key_statistics: {
+    total_ministries_audited: number;
+    total_findings: number;
+    critical_findings: number;
+    significant_findings: number;
+    minor_findings: number;
+    total_amount_flagged_kes: number;
+    response_rate_to_previous_queries: string;
+    recurring_issues_from_prior_year: number;
+  };
+  findings: FederalAuditFinding[];
+  top_ministries: { ministry: string; finding_count: number }[];
+  last_updated: string;
+}
+
+export const getFederalAudits = async (): Promise<FederalAuditResponse> => {
+  const response = await apiClient.get<FederalAuditResponse>(AUDITS_ENDPOINTS.FEDERAL);
+  return response.data;
+};
+
 // Get fiscal years with available audit data
 export const getAvailableFiscalYears = async (): Promise<string[]> => {
   const response = await apiClient.get<ApiResponse<string[]>>(AUDITS_ENDPOINTS.FISCAL_YEARS);

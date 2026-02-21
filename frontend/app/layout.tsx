@@ -20,11 +20,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang='en'>
-      <body className='bg-gov-sand antialiased'>
+    <html lang='en' suppressHydrationWarning>
+      <body className='bg-gov-sand antialiased' suppressHydrationWarning>
         <QueryProvider>
           <Navigation />
-          {children}
+          <div className='relative z-[1]'>{children}</div>
         </QueryProvider>
       </body>
     </html>

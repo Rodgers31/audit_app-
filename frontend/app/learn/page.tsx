@@ -3,6 +3,7 @@
 import EngagementQuiz from '@/components/EngagementQuiz';
 import ExplainerVideos from '@/components/ExplainerVideos';
 import InteractiveGlossary from '@/components/InteractiveGlossary';
+import PageShell from '@/components/layout/PageShell';
 import WhyThisMatters from '@/components/WhyThisMatters';
 import { motion } from 'framer-motion';
 import { BookOpen, Brain, Lightbulb, Play, Search, Star } from 'lucide-react';
@@ -78,224 +79,208 @@ export default function LearningHubPage() {
   };
 
   return (
-    <div className='page-wrapper'>
-      {/* Main Content */}
-      <main className='page-content'>
-        {/* Page Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className='page-header text-center mb-12'>
-          <h1 className='text-4xl font-bold text-brand-900 mb-4'>Learning Hub</h1>
-          <p className='text-lg text-gray-500 max-w-3xl mx-auto'>
-            Master government finance concepts with interactive lessons, videos, and real-world
-            examples
-          </p>
-        </motion.div>
-
-        {/* Quick Stats */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.6 }}
-          className='mb-12'>
-          <div className='bg-white rounded-3xl p-6 shadow-xl border border-gray-200'>
-            <div className='grid grid-cols-1 md:grid-cols-4 gap-6 text-center'>
-              <div>
-                <div className='text-3xl font-bold text-brand-700 mb-2'>50+</div>
-                <div className='text-sm text-gray-600'>Terms Explained</div>
-              </div>
-              <div>
-                <div className='text-3xl font-bold text-purple-600 mb-2'>12</div>
-                <div className='text-sm text-gray-600'>Video Lessons</div>
-              </div>
-              <div>
-                <div className='text-3xl font-bold text-green-600 mb-2'>25</div>
-                <div className='text-sm text-gray-600'>Quiz Questions</div>
-              </div>
-              <div>
-                <div className='text-3xl font-bold text-orange-600 mb-2'>100%</div>
-                <div className='text-sm text-gray-600'>Free Learning</div>
-              </div>
+    <PageShell
+      title='Learning Hub'
+      subtitle='Master government finance concepts with interactive lessons, videos, and real-world examples'>
+      {/* Quick Stats */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.6 }}
+        className='mb-12'>
+        <div className='bg-white rounded-3xl p-6 shadow-xl border border-gray-200'>
+          <div className='grid grid-cols-1 md:grid-cols-4 gap-6 text-center'>
+            <div>
+              <div className='text-3xl font-bold text-brand-700 mb-2'>50+</div>
+              <div className='text-sm text-gray-600'>Terms Explained</div>
+            </div>
+            <div>
+              <div className='text-3xl font-bold text-purple-600 mb-2'>12</div>
+              <div className='text-sm text-gray-600'>Video Lessons</div>
+            </div>
+            <div>
+              <div className='text-3xl font-bold text-green-600 mb-2'>25</div>
+              <div className='text-sm text-gray-600'>Quiz Questions</div>
+            </div>
+            <div>
+              <div className='text-3xl font-bold text-orange-600 mb-2'>100%</div>
+              <div className='text-sm text-gray-600'>Free Learning</div>
             </div>
           </div>
-        </motion.section>
+        </div>
+      </motion.section>
 
-        {/* Search Bar */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-          className='mb-12'>
-          <div className='bg-white rounded-3xl p-6 shadow-xl border border-gray-200'>
-            <div className='relative max-w-2xl mx-auto'>
-              <Search
-                className='absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400'
-                size={20}
-              />
-              <input
-                type='text'
-                placeholder='Search for terms like "budget", "debt", "audit"...'
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className='w-full pl-12 pr-4 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors text-lg'
-              />
-            </div>
+      {/* Search Bar */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3, duration: 0.6 }}
+        className='mb-12'>
+        <div className='bg-white rounded-3xl p-6 shadow-xl border border-gray-200'>
+          <div className='relative max-w-2xl mx-auto'>
+            <Search
+              className='absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400'
+              size={20}
+            />
+            <input
+              type='text'
+              placeholder='Search for terms like "budget", "debt", "audit"...'
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className='w-full pl-12 pr-4 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors text-lg'
+            />
           </div>
-        </motion.section>
+        </div>
+      </motion.section>
 
-        {/* Section Navigation */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.6 }}
-          className='mb-12'>
-          <div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
-            {sections.map((section, index) => {
-              const Icon = section.icon;
-              const isActive = activeSection === section.id;
+      {/* Section Navigation */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4, duration: 0.6 }}
+        className='mb-12'>
+        <div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
+          {sections.map((section, index) => {
+            const Icon = section.icon;
+            const isActive = activeSection === section.id;
 
-              return (
-                <motion.button
-                  key={section.id}
-                  onClick={() => setActiveSection(section.id)}
-                  className={getSectionClasses(section.color, isActive)}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 + index * 0.1, duration: 0.5 }}
-                  whileHover={{ scale: isActive ? 1.05 : 1.02 }}
-                  whileTap={{ scale: 0.98 }}>
-                  <div className='flex items-center gap-3 mb-3'>
-                    <div
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                        isActive ? 'bg-white/30' : `bg-${section.color}-100`
-                      }`}>
-                      <Icon
-                        size={24}
-                        className={isActive ? 'text-white' : `text-${section.color}-600`}
-                      />
-                    </div>
-                    <div className='text-left'>
-                      <h3 className='font-semibold text-lg'>{section.title}</h3>
-                      <p className={`text-sm ${isActive ? 'opacity-90' : 'opacity-75'}`}>
-                        {section.description}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Selection Indicator */}
-                  {isActive && (
-                    <motion.div
-                      layoutId='activeSection'
-                      className='absolute inset-0 border-2 border-white/40 rounded-2xl pointer-events-none'
-                      transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+            return (
+              <motion.button
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                className={getSectionClasses(section.color, isActive)}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 + index * 0.1, duration: 0.5 }}
+                whileHover={{ scale: isActive ? 1.05 : 1.02 }}
+                whileTap={{ scale: 0.98 }}>
+                <div className='flex items-center gap-3 mb-3'>
+                  <div
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      isActive ? 'bg-white/30' : `bg-${section.color}-100`
+                    }`}>
+                    <Icon
+                      size={24}
+                      className={isActive ? 'text-white' : `text-${section.color}-600`}
                     />
-                  )}
-                </motion.button>
-              );
-            })}
+                  </div>
+                  <div className='text-left'>
+                    <h3 className='font-semibold text-lg'>{section.title}</h3>
+                    <p className={`text-sm ${isActive ? 'opacity-90' : 'opacity-75'}`}>
+                      {section.description}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Selection Indicator */}
+                {isActive && (
+                  <motion.div
+                    layoutId='activeSection'
+                    className='absolute inset-0 border-2 border-white/40 rounded-2xl pointer-events-none'
+                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+              </motion.button>
+            );
+          })}
+        </div>
+      </motion.section>
+
+      {/* Active Section Content */}
+      <motion.section
+        key={activeSection}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className='mb-12'>
+        {activeSection === 'glossary' && <InteractiveGlossary searchTerm={searchTerm} />}
+
+        {activeSection === 'videos' && <ExplainerVideos searchTerm={searchTerm} />}
+
+        {activeSection === 'quiz' && <EngagementQuiz searchTerm={searchTerm} />}
+
+        {activeSection === 'why-matters' && <WhyThisMatters searchTerm={searchTerm} />}
+      </motion.section>
+
+      {/* Featured Content */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.8, duration: 0.6 }}
+        className='mb-12'>
+        <div className='bg-gradient-to-r from-brand-700 to-brand-900 rounded-2xl p-8 text-white'>
+          <div className='text-center'>
+            <Star size={48} className='mx-auto mb-4 text-yellow-300' />
+            <h2 className='text-3xl font-bold mb-4'>Did You Know?</h2>
+            <p className='text-xl mb-6 opacity-90'>
+              Every Kenyan contributes about KES 65,000 per year in taxes. Understanding how this
+              money is used helps you hold government accountable.
+            </p>
+            <div className='grid grid-cols-1 md:grid-cols-3 gap-6 mt-8'>
+              <div className='bg-white/10 rounded-2xl p-6 backdrop-blur-sm'>
+                <div className='text-2xl font-bold mb-2'>KES 3.7T</div>
+                <div className='text-sm opacity-80'>Annual National Budget</div>
+              </div>
+              <div className='bg-white/10 rounded-2xl p-6 backdrop-blur-sm'>
+                <div className='text-2xl font-bold mb-2'>47</div>
+                <div className='text-sm opacity-80'>Counties to Track</div>
+              </div>
+              <div className='bg-white/10 rounded-2xl p-6 backdrop-blur-sm'>
+                <div className='text-2xl font-bold mb-2'>21%</div>
+                <div className='text-sm opacity-80'>Goes to Education</div>
+              </div>
+            </div>
           </div>
-        </motion.section>
+        </div>
+      </motion.section>
 
-        {/* Active Section Content */}
-        <motion.section
-          key={activeSection}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className='mb-12'>
-          {activeSection === 'glossary' && <InteractiveGlossary searchTerm={searchTerm} />}
+      {/* Learning Path */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.0, duration: 0.6 }}>
+        <div className='bg-white rounded-3xl p-8 shadow-xl border border-gray-200'>
+          <h2 className='text-2xl font-bold text-gray-900 mb-6 text-center'>
+            Recommended Learning Path
+          </h2>
 
-          {activeSection === 'videos' && <ExplainerVideos searchTerm={searchTerm} />}
-
-          {activeSection === 'quiz' && <EngagementQuiz searchTerm={searchTerm} />}
-
-          {activeSection === 'why-matters' && <WhyThisMatters searchTerm={searchTerm} />}
-        </motion.section>
-
-        {/* Featured Content */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8, duration: 0.6 }}
-          className='mb-12'>
-          <div className='bg-gradient-to-r from-brand-700 to-brand-900 rounded-2xl p-8 text-white'>
+          <div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
             <div className='text-center'>
-              <Star size={48} className='mx-auto mb-4 text-yellow-300' />
-              <h2 className='text-3xl font-bold mb-4'>Did You Know?</h2>
-              <p className='text-xl mb-6 opacity-90'>
-                Every Kenyan contributes about KES 65,000 per year in taxes. Understanding how this
-                money is used helps you hold government accountable.
+              <div className='w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4'>
+                <span className='text-2xl font-bold text-brand-700'>1</span>
+              </div>
+              <h3 className='font-semibold text-gray-900 mb-2'>Start with Basics</h3>
+              <p className='text-sm text-gray-600'>Learn key terms in the Interactive Glossary</p>
+            </div>
+
+            <div className='text-center'>
+              <div className='w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4'>
+                <span className='text-2xl font-bold text-purple-600'>2</span>
+              </div>
+              <h3 className='font-semibold text-gray-900 mb-2'>Watch & Learn</h3>
+              <p className='text-sm text-gray-600'>
+                View short explainer videos for complex topics
               </p>
-              <div className='grid grid-cols-1 md:grid-cols-3 gap-6 mt-8'>
-                <div className='bg-white/10 rounded-2xl p-6 backdrop-blur-sm'>
-                  <div className='text-2xl font-bold mb-2'>KES 3.7T</div>
-                  <div className='text-sm opacity-80'>Annual National Budget</div>
-                </div>
-                <div className='bg-white/10 rounded-2xl p-6 backdrop-blur-sm'>
-                  <div className='text-2xl font-bold mb-2'>47</div>
-                  <div className='text-sm opacity-80'>Counties to Track</div>
-                </div>
-                <div className='bg-white/10 rounded-2xl p-6 backdrop-blur-sm'>
-                  <div className='text-2xl font-bold mb-2'>21%</div>
-                  <div className='text-sm opacity-80'>Goes to Education</div>
-                </div>
+            </div>
+
+            <div className='text-center'>
+              <div className='w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4'>
+                <span className='text-2xl font-bold text-green-600'>3</span>
               </div>
+              <h3 className='font-semibold text-gray-900 mb-2'>Test Knowledge</h3>
+              <p className='text-sm text-gray-600'>Take quizzes to reinforce what you've learned</p>
+            </div>
+
+            <div className='text-center'>
+              <div className='w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4'>
+                <span className='text-2xl font-bold text-orange-600'>4</span>
+              </div>
+              <h3 className='font-semibold text-gray-900 mb-2'>Apply Knowledge</h3>
+              <p className='text-sm text-gray-600'>Explore real data in our dashboard tools</p>
             </div>
           </div>
-        </motion.section>
-
-        {/* Learning Path */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.0, duration: 0.6 }}>
-          <div className='bg-white rounded-3xl p-8 shadow-xl border border-gray-200'>
-            <h2 className='text-2xl font-bold text-gray-900 mb-6 text-center'>
-              Recommended Learning Path
-            </h2>
-
-            <div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
-              <div className='text-center'>
-                <div className='w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4'>
-                  <span className='text-2xl font-bold text-brand-700'>1</span>
-                </div>
-                <h3 className='font-semibold text-gray-900 mb-2'>Start with Basics</h3>
-                <p className='text-sm text-gray-600'>Learn key terms in the Interactive Glossary</p>
-              </div>
-
-              <div className='text-center'>
-                <div className='w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4'>
-                  <span className='text-2xl font-bold text-purple-600'>2</span>
-                </div>
-                <h3 className='font-semibold text-gray-900 mb-2'>Watch & Learn</h3>
-                <p className='text-sm text-gray-600'>
-                  View short explainer videos for complex topics
-                </p>
-              </div>
-
-              <div className='text-center'>
-                <div className='w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4'>
-                  <span className='text-2xl font-bold text-green-600'>3</span>
-                </div>
-                <h3 className='font-semibold text-gray-900 mb-2'>Test Knowledge</h3>
-                <p className='text-sm text-gray-600'>
-                  Take quizzes to reinforce what you've learned
-                </p>
-              </div>
-
-              <div className='text-center'>
-                <div className='w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4'>
-                  <span className='text-2xl font-bold text-orange-600'>4</span>
-                </div>
-                <h3 className='font-semibold text-gray-900 mb-2'>Apply Knowledge</h3>
-                <p className='text-sm text-gray-600'>Explore real data in our dashboard tools</p>
-              </div>
-            </div>
-          </div>
-        </motion.section>
-      </main>
-    </div>
+        </div>
+      </motion.section>
+    </PageShell>
   );
 }

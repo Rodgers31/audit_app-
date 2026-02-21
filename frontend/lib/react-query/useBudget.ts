@@ -36,7 +36,7 @@ export const useBudgetAllocation = (
     queryKey: QUERY_KEYS.allocation(countyId, fiscalYear),
     queryFn: () => getBudgetAllocation(countyId, fiscalYear),
     enabled: !!countyId,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 30 * 60 * 1000, // 30 minutes — budget data rarely changes
     ...options,
   });
 };
@@ -51,7 +51,7 @@ export const useBudgetComparison = (
     queryKey: QUERY_KEYS.comparison(countyIds, fiscalYear),
     queryFn: () => getBudgetComparison(countyIds, fiscalYear),
     enabled: countyIds.length > 0,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 30 * 60 * 1000, // 30 minutes
     ...options,
   });
 };
@@ -64,7 +64,7 @@ export const useNationalBudgetSummary = (
   return useQuery({
     queryKey: QUERY_KEYS.nationalSummary(fiscalYear),
     queryFn: () => getNationalBudgetSummary(fiscalYear),
-    staleTime: 15 * 60 * 1000, // 15 minutes
+    staleTime: 60 * 60 * 1000, // 1 hour — national budget changes infrequently
     ...options,
   });
 };

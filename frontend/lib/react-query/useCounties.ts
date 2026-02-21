@@ -34,7 +34,7 @@ export const useCounties = (
   return useQuery({
     queryKey: QUERY_KEYS.countiesFiltered(filters),
     queryFn: () => getCounties(filters),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 60 * 1000, // 30 minutes — county list rarely changes
     ...options,
   });
 };

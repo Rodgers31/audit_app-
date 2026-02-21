@@ -1,6 +1,6 @@
 /**
- * CountyMarker - Animated location marker for the active county
- * Shows pulsing circle animation at county coordinates
+ * CountyMarker – animated pulsing dot at the active county's coordinates.
+ * Uses gov-forest green with a ripple ring for visibility.
  */
 'use client';
 
@@ -13,48 +13,30 @@ interface CountyMarkerProps {
 }
 
 export default function CountyMarker({ county }: CountyMarkerProps) {
-  // Don't render if no coordinates available
   if (!county?.coordinates) return null;
 
   return (
     <Marker coordinates={county.coordinates}>
-      <g
-        fill='none'
-        stroke='#059669'
-        strokeWidth='2'
-        strokeLinecap='round'
-        strokeLinejoin='round'
-        transform='translate(-12, -24)'>
-        {/* Inner pulsing circle */}
+      <g transform='translate(0, 0)'>
+        {/* Expanding ripple ring */}
         <motion.circle
-          cx='12'
-          cy='12'
-          r='3'
-          fill='#059669'
-          initial={{ scale: 0 }}
-          animate={{ scale: [1, 1.3, 1] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-        />
-
-        {/* Outer expanding circle */}
-        <motion.circle
-          cx='12'
-          cy='12'
-          r='8'
+          r={10}
           fill='none'
-          stroke='#059669'
-          strokeWidth='2'
-          opacity='0.6'
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{
-            scale: [1, 1.5, 1],
-            opacity: [0.6, 0, 0.6],
-          }}
-          transition={{
-            repeat: Infinity,
-            duration: 2,
-            delay: 0.5,
-          }}
+          stroke='#1B3A2A'
+          strokeWidth={1.5}
+          initial={{ r: 4, opacity: 0.7 }}
+          animate={{ r: 14, opacity: 0 }}
+          transition={{ repeat: Infinity, duration: 2, ease: 'easeOut' }}
+        />
+        {/* Solid centre dot */}
+        <motion.circle
+          r={4}
+          fill='#1B3A2A'
+          stroke='#fff'
+          strokeWidth={1.5}
+          initial={{ scale: 0.8 }}
+          animate={{ scale: [1, 1.15, 1] }}
+          transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
         />
       </g>
     </Marker>

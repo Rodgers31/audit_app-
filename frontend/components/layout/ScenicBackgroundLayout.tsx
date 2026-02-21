@@ -119,23 +119,26 @@ export default function ScenicBackgroundLayout({
             loading='eager'
             decoding='async'
           />
-          {/* L2 — header-matching tint: only covers top ~35% of image.
-               Top-left matches nav bg (#0F1A12 gov-dark), fades to
-               transparent so the raw landscape is fully revealed below. */}
+          {/* L2 — header-matching tint: seamless merge with fixed nav.
+               Uses a smooth multi-stop gradient that avoids any visible
+               "line" where the nav ends and the image begins. */}
           <div
             className='absolute top-0 left-0 right-0 pointer-events-none'
             style={{ height: '75%' }}>
-            {/* Vertical fade: solid header color at top → transparent well before container edge */}
+            {/* Vertical fade: solid header color at top → transparent */}
             <div
               className='absolute inset-0'
               style={{
                 background: `linear-gradient(
                   to bottom,
-                  rgba(15,26,18,0.95) 0%,
-                  rgba(15,26,18,0.72) 15%,
-                  rgba(15,26,18,0.35) 32%,
-                  rgba(15,26,18,0.10) 45%,
-                  transparent 58%
+                  rgba(15,26,18,0.97) 0%,
+                  rgba(15,26,18,0.88) 8%,
+                  rgba(15,26,18,0.72) 16%,
+                  rgba(15,26,18,0.50) 26%,
+                  rgba(15,26,18,0.30) 36%,
+                  rgba(15,26,18,0.14) 46%,
+                  rgba(15,26,18,0.05) 56%,
+                  transparent 66%
                 )`,
               }}
             />
@@ -153,18 +156,24 @@ export default function ScenicBackgroundLayout({
             />
           </div>
 
-          {/* Bottom-edge fade: scenic image → neutral background */}
+          {/* Bottom-edge fade: scenic image → neutral background
+              Uses a tall 50% zone with many stops for a perfectly smooth
+              blend that eliminates the visible "layer line". */}
           <div
             className='absolute bottom-0 left-0 right-0 pointer-events-none'
             aria-hidden='true'
-            style={{ height: '30%' }}>
+            style={{ height: '50%' }}>
             <div
               className='absolute inset-0'
               style={{
                 background: `linear-gradient(to bottom,
                   transparent 0%,
-                  rgba(${rgb},${a * 0.45}) 40%,
+                  rgba(${rgb},${a * 0.08}) 15%,
+                  rgba(${rgb},${a * 0.22}) 30%,
+                  rgba(${rgb},${a * 0.42}) 45%,
+                  rgba(${rgb},${a * 0.65}) 60%,
                   rgba(${rgb},${a * 0.82}) 75%,
+                  rgba(${rgb},${a * 0.94}) 88%,
                   rgba(${rgb},${a}) 100%
                 )`,
               }}
@@ -204,18 +213,23 @@ export default function ScenicBackgroundLayout({
             }}
           />
 
-          {/* Top-edge fade: neutral background → scenic image */}
+          {/* Top-edge fade: neutral background → scenic image
+              Mirror of the top-image bottom-edge — tall zone, many stops. */}
           <div
             className='absolute top-0 left-0 right-0 pointer-events-none'
             aria-hidden='true'
-            style={{ height: '30%' }}>
+            style={{ height: '50%' }}>
             <div
               className='absolute inset-0'
               style={{
                 background: `linear-gradient(to top,
                   transparent 0%,
-                  rgba(${rgb},${a * 0.45}) 40%,
+                  rgba(${rgb},${a * 0.08}) 15%,
+                  rgba(${rgb},${a * 0.22}) 30%,
+                  rgba(${rgb},${a * 0.42}) 45%,
+                  rgba(${rgb},${a * 0.65}) 60%,
                   rgba(${rgb},${a * 0.82}) 75%,
+                  rgba(${rgb},${a * 0.94}) 88%,
                   rgba(${rgb},${a}) 100%
                 )`,
               }}

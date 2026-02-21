@@ -463,3 +463,64 @@ class PovertyIndex(Base):
     # Relationships
     entity = relationship("Entity")
     source_document = relationship("SourceDocument")
+
+
+class DebtTimeline(Base):
+    """Historical public debt composition by year (external vs domestic).
+
+    Source: CBK Annual Reports & National Treasury Budget Policy Statements.
+    """
+
+    __tablename__ = "debt_timeline"
+
+    id = Column(Integer, primary_key=True, index=True)
+    year = Column(Integer, nullable=False, unique=True, index=True)
+    external = Column(Numeric(15, 2), nullable=False)  # Billions KES
+    domestic = Column(Numeric(15, 2), nullable=False)  # Billions KES
+    total = Column(Numeric(15, 2), nullable=False)  # Billions KES
+    gdp = Column(Numeric(15, 2), nullable=True)  # Billions KES
+    gdp_ratio = Column(Numeric(5, 1), nullable=True)  # e.g. 77.6
+    source_document_id = Column(
+        Integer, ForeignKey("source_documents.id"), nullable=True
+    )
+    meta = Column("metadata", JSONB, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    source_document = relationship("SourceDocument")
+
+
+class FiscalSummary(Base):
+    """National fiscal summary per fiscal year.
+
+    Source: National Treasury BPS, Controller of Budget, CBK.
+    """
+
+    __tablename__ = "fiscal_summaries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    fiscal_year = Column(String(20), nullable=False, unique=True, index=True)
+    appropriated_budget = Column(Numeric(15, 2), nullable=True)  # Billions KES
+    total_revenue = Column(Numeric(15, 2), nullable=True)
+    tax_revenue = Column(Numeric(15, 2), nullable=True)
+    non_tax_revenue = Column(Numeric(15, 2), nullable=True)
+    total_borrowing = Column(Numeric(15, 2), nullable=True)
+    borrowing_pct_of_budget = Column(Numeric(5, 1), nullable=True)
+    debt_service_cost = Column(Numeric(15, 2), nullable=True)
+    debt_service_per_shilling = Column(Numeric(5, 1), nullable=True)
+    debt_ceiling = Column(Numeric(15, 2), nullable=True)
+    actual_debt = Column(Numeric(15, 2), nullable=True)
+    debt_ceiling_usage_pct = Column(Numeric(5, 1), nullable=True)
+    development_spending = Column(Numeric(15, 2), nullable=True)
+    recurrent_spending = Column(Numeric(15, 2), nullable=True)
+    county_allocation = Column(Numeric(15, 2), nullable=True)
+    source_document_id = Column(
+        Integer, ForeignKey("source_documents.id"), nullable=True
+    )
+    meta = Column("metadata", JSONB, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    source_document = relationship("SourceDocument")

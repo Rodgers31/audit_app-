@@ -727,15 +727,19 @@ security = HTTPBearer()
 
 # Cache decorator helper
 def cached(key_prefix: str, ttl: int = 3600):
-    """Decorator to cache endpoint responses using Redis."""
+    """Decorator to cache endpoint responses.
+
+    Uses Redis when available, otherwise falls back to a lightweight
+    in-memory TTL cache so that repeated calls don't hit the DB /
+    filesystem on every request.
+    """
 
     def decorator(func):
+        # Module-level in-memory fallback cache (per-endpoint)
+        _mem_cache: Dict[str, Dict[str, Any]] = {}
+
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
-            # Skip caching if Redis not available
-            if not redis_cache:
-                return await func(*args, **kwargs)
-
             # Build cache key from prefix and path params
             cache_key_parts = [key_prefix]
             for k, v in kwargs.items():
@@ -743,19 +747,25 @@ def cached(key_prefix: str, ttl: int = 3600):
                     cache_key_parts.append(f"{k}:{v}")
             cache_key = ":".join(cache_key_parts)
 
-            # Try to get from cache
-            cached_data = redis_cache.get(cache_key)
-            if cached_data is not None:
-                logger.debug(f"Cache HIT: {cache_key}")
-                return cached_data
+            # --- Redis path ---
+            if redis_cache:
+                cached_data = redis_cache.get(cache_key)
+                if cached_data is not None:
+                    logger.debug(f"Redis cache HIT: {cache_key}")
+                    return cached_data
 
-            # Cache miss - call function
-            logger.debug(f"Cache MISS: {cache_key}")
+                result = await func(*args, **kwargs)
+                redis_cache.set(cache_key, result, ttl=ttl)
+                return result
+
+            # --- In-memory fallback path ---
+            rec = _mem_cache.get(cache_key)
+            if rec and (time.time() - rec["ts"]) < ttl:
+                logger.debug(f"Memory cache HIT: {cache_key}")
+                return rec["value"]
+
             result = await func(*args, **kwargs)
-
-            # Store in cache
-            redis_cache.set(cache_key, result, ttl=ttl)
-
+            _mem_cache[cache_key] = {"value": result, "ts": time.time()}
             return result
 
         return wrapper
@@ -1813,6 +1823,280 @@ async def get_budget_line_provenance(line_id: int):
         raise
     except Exception as e:
         logging.error(f"Error in get_budget_line_provenance: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+# ── Audit Statistics & Top-Level Routes ──────────────────────────────────
+
+
+@app.get("/api/v1/audits/statistics")
+@cached(key_prefix="audits:statistics", ttl=3600)
+async def get_audit_statistics():
+    """Aggregate audit statistics across all counties for the dashboard.
+
+    Returns severity breakdown, top flagged counties, recent critical findings,
+    and overall totals from the Audit table.
+    """
+    if not DATABASE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    try:
+        with next(get_db()) as db:
+            from sqlalchemy import case, func
+
+            # Total counts
+            total = db.query(func.count(DBAudit.id)).scalar() or 0
+
+            # By severity
+            severity_rows = (
+                db.query(DBAudit.severity, func.count(DBAudit.id))
+                .group_by(DBAudit.severity)
+                .all()
+            )
+            by_severity = {(s.value if s else "unknown"): c for s, c in severity_rows}
+
+            # Counties with most critical findings
+            top_flagged = (
+                db.query(
+                    DBEntity.canonical_name,
+                    func.count(DBAudit.id).label("finding_count"),
+                )
+                .join(DBEntity, DBAudit.entity_id == DBEntity.id)
+                .filter(DBAudit.severity == Severity.CRITICAL)
+                .group_by(DBEntity.canonical_name)
+                .order_by(func.count(DBAudit.id).desc())
+                .limit(5)
+                .all()
+            )
+
+            # Recent critical findings (most recent 6)
+            recent_critical = (
+                db.query(DBAudit, DBEntity.canonical_name)
+                .join(DBEntity, DBAudit.entity_id == DBEntity.id)
+                .filter(DBAudit.severity == Severity.CRITICAL)
+                .order_by(DBAudit.created_at.desc())
+                .limit(6)
+                .all()
+            )
+
+            recent_items = []
+            for audit, county_name in recent_critical:
+                amount = 0.0
+                if audit.finding_text:
+                    match = re.search(r"KES\s*([\d,]+)", audit.finding_text)
+                    if match:
+                        try:
+                            amount = float(match.group(1).replace(",", ""))
+                        except Exception:
+                            pass
+                period_label = ""
+                if audit.period and hasattr(audit.period, "label"):
+                    period_label = audit.period.label
+                recent_items.append(
+                    {
+                        "id": audit.id,
+                        "county": county_name.replace(" County", ""),
+                        "finding": audit.finding_text,
+                        "severity": (
+                            audit.severity.value if audit.severity else "unknown"
+                        ),
+                        "amount": amount,
+                        "fiscal_year": period_label,
+                        "date": (
+                            audit.created_at.isoformat() if audit.created_at else None
+                        ),
+                    }
+                )
+
+            # Counties audited count
+            counties_audited = (
+                db.query(func.count(func.distinct(DBAudit.entity_id))).scalar() or 0
+            )
+
+            # Total amount involved across all findings
+            all_audits = db.query(DBAudit.finding_text).all()
+            total_amount = 0.0
+            for (text_val,) in all_audits:
+                if text_val:
+                    match = re.search(r"KES\s*([\d,]+)", text_val)
+                    if match:
+                        try:
+                            total_amount += float(match.group(1).replace(",", ""))
+                        except Exception:
+                            pass
+
+            return {
+                "total_findings": total,
+                "counties_audited": counties_audited,
+                "total_counties": 47,
+                "total_amount_flagged": total_amount,
+                "by_severity": by_severity,
+                "top_flagged_counties": [
+                    {"county": name.replace(" County", ""), "critical_count": count}
+                    for name, count in top_flagged
+                ],
+                "recent_critical": recent_items,
+                "report_title": "Office of the Auditor General — County Audit Findings",
+                "fiscal_year": "FY 2024/25",
+                "last_updated": datetime.datetime.utcnow().isoformat(),
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error computing audit statistics: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.get("/api/v1/audits/federal")
+@cached(key_prefix="audits:federal", ttl=3600)
+async def get_federal_audits():
+    """Get national/federal government audit findings from the Auditor General.
+
+    Returns audit findings for ministries, departments and agencies (MDAs)
+    with the overall audit opinion summary.
+    """
+    if not DATABASE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    try:
+        with next(get_db()) as db:
+            from sqlalchemy import func
+
+            # Get all federal findings (MINISTRY + NATIONAL entities)
+            federal_audits = (
+                db.query(DBAudit, DBEntity)
+                .join(DBEntity, DBAudit.entity_id == DBEntity.id)
+                .filter(DBEntity.type.in_([EntityType.MINISTRY, EntityType.NATIONAL]))
+                .order_by(DBAudit.severity.desc(), DBAudit.created_at.desc())
+                .all()
+            )
+
+            findings = []
+            total_amount = 0.0
+            severity_counts = {}
+
+            for audit, entity in federal_audits:
+                # Parse amount from provenance or finding_text
+                amount_str = ""
+                amount_val = 0.0
+                status = ""
+                category = ""
+                query_type = ""
+                report_section = ""
+                date_raised = ""
+
+                if audit.provenance and isinstance(audit.provenance, list):
+                    prov = audit.provenance[0] if audit.provenance else {}
+                    amount_str = prov.get("amount_involved", "")
+                    status = prov.get("status", "")
+                    category = prov.get("category", "")
+                    query_type = prov.get("query_type", "")
+                    report_section = prov.get("report_section", "")
+                    date_raised = prov.get("date_raised", "")
+
+                # Parse numeric amount
+                if amount_str:
+                    cleaned = amount_str.upper().replace("KES", "").strip()
+                    try:
+                        mult = 1.0
+                        if cleaned.endswith("T"):
+                            mult = 1_000_000_000_000
+                            cleaned = cleaned[:-1]
+                        elif cleaned.endswith("B"):
+                            mult = 1_000_000_000
+                            cleaned = cleaned[:-1]
+                        elif cleaned.endswith("M"):
+                            mult = 1_000_000
+                            cleaned = cleaned[:-1]
+                        amount_val = float(cleaned.replace(",", "").strip()) * mult
+                    except (ValueError, TypeError):
+                        amount_val = 0.0
+
+                total_amount += amount_val
+                sev_key = (audit.severity.value if audit.severity else "INFO").upper()
+                severity_counts[sev_key] = severity_counts.get(sev_key, 0) + 1
+
+                findings.append(
+                    {
+                        "id": audit.id,
+                        "entity_name": entity.canonical_name,
+                        "entity_type": entity.type.value if entity.type else "MINISTRY",
+                        "finding": audit.finding_text,
+                        "severity": sev_key,
+                        "recommended_action": audit.recommended_action,
+                        "amount_involved": amount_str,
+                        "amount_numeric": amount_val,
+                        "status": status,
+                        "category": category,
+                        "query_type": query_type,
+                        "report_section": report_section,
+                        "date_raised": date_raised,
+                        "date": (
+                            audit.created_at.isoformat() if audit.created_at else None
+                        ),
+                    }
+                )
+
+            # Load the audit opinion summary from the JSON file
+            opinion_summary = {}
+            try:
+                import json
+                from pathlib import Path
+
+                nat_path = (
+                    Path(__file__).resolve().parent.parent
+                    / "apis"
+                    / "oag_national_audit_data.json"
+                )
+                if nat_path.exists():
+                    with open(nat_path) as f:
+                        nat_data = json.load(f)
+                    opinion_summary = nat_data.get("audit_opinion_summary", {})
+            except Exception:
+                pass
+
+            # Ministries with most findings
+            top_ministries = (
+                db.query(
+                    DBEntity.canonical_name,
+                    func.count(DBAudit.id).label("count"),
+                )
+                .join(DBEntity, DBAudit.entity_id == DBEntity.id)
+                .filter(DBEntity.type == EntityType.MINISTRY)
+                .group_by(DBEntity.canonical_name)
+                .order_by(func.count(DBAudit.id).desc())
+                .limit(10)
+                .all()
+            )
+
+            return {
+                "report_title": "Report of the Auditor General on the National Government — FY 2023/2024",
+                "auditor_general": "Nancy Gathungu, CPA",
+                "fiscal_year": "FY 2023/24",
+                "report_date": "2024-12-15",
+                "opinion_type": opinion_summary.get("opinion_type", "Qualified"),
+                "total_findings": len(findings),
+                "total_amount_questioned": total_amount,
+                "total_amount_questioned_label": opinion_summary.get(
+                    "total_amount_questioned", ""
+                ),
+                "by_severity": severity_counts,
+                "basis_for_qualification": opinion_summary.get(
+                    "basis_for_qualification", []
+                ),
+                "emphasis_of_matter": opinion_summary.get("emphasis_of_matter", []),
+                "key_statistics": opinion_summary.get("key_statistics", {}),
+                "findings": findings,
+                "top_ministries": [
+                    {"ministry": name, "finding_count": count}
+                    for name, count in top_ministries
+                ],
+                "last_updated": datetime.datetime.utcnow().isoformat(),
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error fetching federal audits: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -3126,7 +3410,397 @@ async def get_budget_utilization_summary(fiscal_year: str = None):
     )
 
 
+@app.get("/api/v1/debt/timeline")
+@cached(key_prefix="debt:timeline", ttl=86400)
+async def get_debt_timeline(db: Session = Depends(get_db)):
+    """Get historical debt timeline (yearly external/domestic breakdown).
+
+    Reads from the debt_timeline table, seeded from CBK Annual Reports
+    and National Treasury Budget Policy Statements.
+    """
+    from models import DebtTimeline
+
+    try:
+        rows = db.query(DebtTimeline).order_by(DebtTimeline.year.asc()).all()
+
+        if not rows:
+            return {
+                "status": "no_data",
+                "data_source": "database_empty",
+                "last_updated": None,
+                "source": "Run seeder: python -m seeding.cli seed --domain debt_timeline",
+                "years": 0,
+                "timeline": [],
+            }
+
+        timeline = []
+        for r in rows:
+            timeline.append(
+                {
+                    "year": r.year,
+                    "external": float(r.external),
+                    "domestic": float(r.domestic),
+                    "total": float(r.total),
+                    "gdp": float(r.gdp) if r.gdp else None,
+                    "gdp_ratio": float(r.gdp_ratio) if r.gdp_ratio else None,
+                }
+            )
+
+        # Source info from the DB source document
+        source_title = "Central Bank of Kenya Annual Reports & National Treasury BPS"
+        last_updated = None
+        if rows[0].source_document_id:
+            sdoc = (
+                db.query(DBSourceDocument)
+                .filter(DBSourceDocument.id == rows[0].source_document_id)
+                .first()
+            )
+            if sdoc:
+                source_title = sdoc.title or source_title
+        if rows[-1].updated_at:
+            last_updated = rows[-1].updated_at.isoformat()
+
+        return {
+            "status": "success",
+            "data_source": "database",
+            "last_updated": last_updated,
+            "source": source_title,
+            "years": len(timeline),
+            "timeline": timeline,
+        }
+    except Exception as e:
+        logging.error(f"Error fetching debt timeline: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.get("/api/v1/fiscal/summary")
+@cached(key_prefix="fiscal:summary", ttl=86400)
+async def get_fiscal_summary(db: Session = Depends(get_db)):
+    """Get national fiscal summary — budget, revenue, borrowing, debt service, debt ceiling.
+
+    Reads from the fiscal_summaries table, seeded from National Treasury BPS,
+    Controller of Budget reports, and CBK data.
+    """
+    from models import FiscalSummary as FSModel
+
+    try:
+        rows = db.query(FSModel).order_by(FSModel.fiscal_year.asc()).all()
+
+        if not rows:
+            return {
+                "status": "no_data",
+                "data_source": "database_empty",
+                "last_updated": None,
+                "source": "Run seeder: python -m seeding.cli seed --domain fiscal_summary",
+                "current": None,
+                "history": [],
+                "total_fiscal_years": 0,
+            }
+
+        def _row_to_dict(r: FSModel) -> dict:
+            return {
+                "fiscal_year": r.fiscal_year,
+                "appropriated_budget": (
+                    float(r.appropriated_budget) if r.appropriated_budget else None
+                ),
+                "total_revenue": float(r.total_revenue) if r.total_revenue else None,
+                "tax_revenue": float(r.tax_revenue) if r.tax_revenue else None,
+                "non_tax_revenue": (
+                    float(r.non_tax_revenue) if r.non_tax_revenue else None
+                ),
+                "total_borrowing": (
+                    float(r.total_borrowing) if r.total_borrowing else None
+                ),
+                "borrowing_pct_of_budget": (
+                    float(r.borrowing_pct_of_budget)
+                    if r.borrowing_pct_of_budget
+                    else None
+                ),
+                "debt_service_cost": (
+                    float(r.debt_service_cost) if r.debt_service_cost else None
+                ),
+                "debt_service_per_shilling": (
+                    float(r.debt_service_per_shilling)
+                    if r.debt_service_per_shilling
+                    else None
+                ),
+                "debt_ceiling": float(r.debt_ceiling) if r.debt_ceiling else None,
+                "actual_debt": float(r.actual_debt) if r.actual_debt else None,
+                "debt_ceiling_usage_pct": (
+                    float(r.debt_ceiling_usage_pct)
+                    if r.debt_ceiling_usage_pct
+                    else None
+                ),
+                "development_spending": (
+                    float(r.development_spending) if r.development_spending else None
+                ),
+                "recurrent_spending": (
+                    float(r.recurrent_spending) if r.recurrent_spending else None
+                ),
+                "county_allocation": (
+                    float(r.county_allocation) if r.county_allocation else None
+                ),
+            }
+
+        fiscal_years = [_row_to_dict(r) for r in rows]
+        latest = fiscal_years[-1]
+
+        # Source info
+        source_title = "National Treasury BPS & Controller of Budget Reports"
+        last_updated = None
+        if rows[-1].source_document_id:
+            sdoc = (
+                db.query(DBSourceDocument)
+                .filter(DBSourceDocument.id == rows[-1].source_document_id)
+                .first()
+            )
+            if sdoc:
+                source_title = sdoc.title or source_title
+        if rows[-1].updated_at:
+            last_updated = rows[-1].updated_at.isoformat()
+
+        return {
+            "status": "success",
+            "data_source": "database",
+            "last_updated": last_updated,
+            "source": source_title,
+            "current": latest,
+            "history": fiscal_years,
+            "total_fiscal_years": len(fiscal_years),
+        }
+    except Exception as e:
+        logging.error(f"Error fetching fiscal summary: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.get("/api/v1/debt/top-loans")
+@cached(key_prefix="debt:top-loans", ttl=3600)
+async def get_top_loans(limit: int = 10, db: Session = Depends(get_db)):
+    """Get top N national government loans by outstanding balance.
+
+    Reads from the database (loans table seeded from Treasury data).
+    """
+    from models import DebtCategory
+
+    try:
+        # Get national entity
+        from models import EntityType as ET
+
+        national_entity = (
+            db.query(DBEntity).filter(DBEntity.type == ET.NATIONAL).first()
+        )
+
+        if not national_entity:
+            return {
+                "loans": [],
+                "total_available": 0,
+                "limit": limit,
+                "source": "No national entity found — run seeder",
+            }
+
+        # Query loans excluding pending bills, sorted by outstanding desc
+        loans = (
+            db.query(DBLoan)
+            .filter(
+                DBLoan.entity_id == national_entity.id,
+                DBLoan.debt_category != DebtCategory.PENDING_BILLS,
+            )
+            .order_by(DBLoan.outstanding.desc())
+            .all()
+        )
+
+        if not loans:
+            return {
+                "loans": [],
+                "total_available": 0,
+                "limit": limit,
+                "source": "No loan records in database — run seeder",
+            }
+
+        top = loans[:limit]
+        result_loans = []
+        for loan in top:
+            outstanding = float(loan.outstanding or 0)
+            principal = float(loan.principal or 0)
+            rate = float(loan.interest_rate or 0) / 100
+            result_loans.append(
+                {
+                    "lender": loan.lender,
+                    "lender_type": (
+                        loan.debt_category.value if loan.debt_category else "other"
+                    ),
+                    "principal": str(principal),
+                    "outstanding": str(outstanding),
+                    "outstanding_numeric": outstanding,
+                    "principal_numeric": principal,
+                    "interest_rate": f"{float(loan.interest_rate or 0):.2f}%",
+                    "issue_date": (
+                        loan.issue_date.strftime("%Y-%m-%d") if loan.issue_date else ""
+                    ),
+                    "maturity_date": (
+                        loan.maturity_date.strftime("%Y-%m-%d")
+                        if loan.maturity_date
+                        else ""
+                    ),
+                    "currency": loan.currency,
+                    "status": (
+                        "active"
+                        if loan.maturity_date and loan.maturity_date > datetime.utcnow()
+                        else "matured"
+                    ),
+                    "annual_service_cost": round(outstanding * rate, 2),
+                }
+            )
+
+        # Get source from first loan's source document
+        source_title = "National Treasury Public Debt Data"
+        if top[0].source_document_id:
+            sdoc = (
+                db.query(DBSourceDocument)
+                .filter(DBSourceDocument.id == top[0].source_document_id)
+                .first()
+            )
+            if sdoc and sdoc.title:
+                source_title = sdoc.title
+
+        return {
+            "loans": result_loans,
+            "total_available": len(loans),
+            "limit": limit,
+            "source": source_title,
+        }
+
+    except Exception as e:
+        logging.error(f"Error fetching top loans: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.get("/api/v1/debt/loans")
+@cached(key_prefix="debt:loans", ttl=3600)
+async def get_national_loans(db: Session = Depends(get_db)):
+    """Get individual national government loan records with full detail.
+
+    Returns each loan with lender, principal, outstanding balance,
+    interest rate, issue date, maturity date, and status.
+    All data comes from the database (seeded from Treasury/CBK sources).
+    """
+    from models import DebtCategory
+
+    try:
+        from models import EntityType as ET
+
+        national_entity = (
+            db.query(DBEntity).filter(DBEntity.type == ET.NATIONAL).first()
+        )
+
+        if not national_entity:
+            return {
+                "loans": [],
+                "total_loans": 0,
+                "total_outstanding": 0,
+                "total_annual_service_cost": 0,
+                "source": "No national entity found — run seeder",
+                "source_url": "",
+                "last_updated": "",
+            }
+
+        # Query all national loans (excluding pending bills)
+        loans = (
+            db.query(DBLoan)
+            .filter(
+                DBLoan.entity_id == national_entity.id,
+                DBLoan.debt_category != DebtCategory.PENDING_BILLS,
+            )
+            .order_by(DBLoan.outstanding.desc())
+            .all()
+        )
+
+        if not loans:
+            return {
+                "loans": [],
+                "total_loans": 0,
+                "total_outstanding": 0,
+                "total_annual_service_cost": 0,
+                "source": "No loan records in database — run seeder",
+                "source_url": "",
+                "last_updated": "",
+            }
+
+        national_loans = []
+        total_outstanding = 0.0
+        total_annual_service = 0.0
+
+        for loan in loans:
+            outstanding = float(loan.outstanding or 0)
+            principal = float(loan.principal or 0)
+            rate = float(loan.interest_rate or 0)
+            annual_cost = round(outstanding * (rate / 100), 2)
+
+            total_outstanding += outstanding
+            total_annual_service += annual_cost
+
+            national_loans.append(
+                {
+                    "lender": loan.lender,
+                    "lender_type": (
+                        loan.debt_category.value if loan.debt_category else "other"
+                    ),
+                    "principal": str(principal),
+                    "outstanding": str(outstanding),
+                    "outstanding_numeric": outstanding,
+                    "principal_numeric": principal,
+                    "interest_rate": f"{rate:.2f}%",
+                    "issue_date": (
+                        loan.issue_date.strftime("%Y-%m-%d") if loan.issue_date else ""
+                    ),
+                    "maturity_date": (
+                        loan.maturity_date.strftime("%Y-%m-%d")
+                        if loan.maturity_date
+                        else ""
+                    ),
+                    "currency": loan.currency,
+                    "status": (
+                        "active"
+                        if loan.maturity_date and loan.maturity_date > datetime.utcnow()
+                        else "matured"
+                    ),
+                    "annual_service_cost": annual_cost,
+                }
+            )
+
+        # Determine source info from first loan's source document
+        source_title = "National Treasury Public Debt Data"
+        source_url = "https://www.treasury.go.ke/public-debt/"
+        last_updated = ""
+        if loans[0].source_document_id:
+            sdoc = (
+                db.query(DBSourceDocument)
+                .filter(DBSourceDocument.id == loans[0].source_document_id)
+                .first()
+            )
+            if sdoc:
+                source_title = sdoc.title or source_title
+                source_url = sdoc.url or source_url
+        if loans[0].updated_at:
+            last_updated = loans[0].updated_at.isoformat()
+
+        return {
+            "loans": national_loans,
+            "total_loans": len(national_loans),
+            "total_outstanding": total_outstanding,
+            "total_annual_service_cost": total_annual_service,
+            "source": source_title,
+            "source_url": source_url,
+            "last_updated": last_updated,
+        }
+
+    except Exception as e:
+        logging.error(f"Error fetching national loans: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
 @app.get("/api/v1/debt/national")
+@cached(key_prefix="debt:national", ttl=1800)
 async def get_national_debt():
     """Get national debt overview with categorized breakdown."""
     # Try database first
@@ -3461,6 +4135,200 @@ async def get_national_debt():
             "currency": "KES",
             "data_source": "Fallback - CBK Public Debt data as at April 2025",
         }
+
+
+@app.get("/api/v1/pending-bills")
+@cached(key_prefix="pending_bills:summary", ttl=43200)
+async def get_pending_bills(
+    db: Session = Depends(get_db),
+):
+    """Get government pending bills summary.
+
+    Pending bills are verified unpaid invoices owed by the government
+    to suppliers and contractors. These are real obligations tracked
+    by the Controller of Budget (COB).
+
+    Data sources (in priority order):
+      1. Database (from COB ETL extraction via seeding pipeline)
+      2. Live COB report scraping (if DB empty and pdfplumber available)
+      3. Returns empty with metadata explaining how to populate
+
+    Source: Office of the Controller of Budget
+      - https://cob.go.ke/reports/pending-bills/
+      - https://cob.go.ke/reports/national-government-budget-implementation-review-reports/
+    """
+    from decimal import Decimal as D
+
+    # Strategy 1: Read from database (loans with debt_category = PENDING_BILLS)
+    try:
+        from models import DebtCategory
+
+        pending_loans = (
+            db.query(DBLoan)
+            .filter(DBLoan.debt_category == DebtCategory.PENDING_BILLS)
+            .all()
+        )
+
+        if pending_loans:
+            bills = []
+            total_amount = D("0")
+            national_total = D("0")
+            county_total = D("0")
+
+            for loan in pending_loans:
+                outstanding = loan.outstanding or loan.principal or D("0")
+                total_amount += outstanding
+
+                # Determine entity type from entity relationship
+                entity = (
+                    db.query(DBEntity).filter(DBEntity.id == loan.entity_id).first()
+                    if loan.entity_id
+                    else None
+                )
+                entity_type = "national"
+                entity_name = "National Government"
+                if entity:
+                    entity_name = entity.canonical_name
+                    entity_type = entity.type.value if entity.type else "national"
+
+                if entity_type == "county":
+                    county_total += outstanding
+                else:
+                    national_total += outstanding
+
+                provenance = loan.provenance or {}
+
+                bills.append(
+                    {
+                        "entity_name": entity_name,
+                        "entity_type": entity_type,
+                        "lender": loan.lender,
+                        "total_pending": float(outstanding),
+                        "eligible_pending": provenance.get("eligible_pending"),
+                        "ineligible_pending": provenance.get("ineligible_pending"),
+                        "fiscal_year": provenance.get("fiscal_year", ""),
+                        "category": provenance.get("category", "mda"),
+                        "notes": provenance.get("notes"),
+                    }
+                )
+
+            # Determine source info from provenance of first record
+            first_prov = pending_loans[0].provenance or {}
+            source_url = first_prov.get("source_url", "https://cob.go.ke/reports/")
+
+            # Get source document if available
+            source_title = "Controller of Budget Reports"
+            if pending_loans[0].source_document_id:
+                sdoc = (
+                    db.query(DBSourceDocument)
+                    .filter(DBSourceDocument.id == pending_loans[0].source_document_id)
+                    .first()
+                )
+                if sdoc:
+                    source_title = sdoc.title or source_title
+                    source_url = sdoc.url or source_url
+
+            return {
+                "status": "success",
+                "data_source": "database",
+                "last_updated": max(
+                    (l.updated_at or l.created_at for l in pending_loans),
+                    default=None,
+                ),
+                "pending_bills": bills,
+                "summary": {
+                    "total_pending": float(total_amount),
+                    "national_total": float(national_total),
+                    "county_total": float(county_total),
+                    "record_count": len(bills),
+                },
+                "source": source_title,
+                "source_url": source_url,
+                "currency": "KES",
+                "explanation": (
+                    "Pending bills are verified but unpaid government invoices "
+                    "to suppliers and contractors. Unlike formal loans, they "
+                    "carry no interest but represent real obligations. "
+                    "The Controller of Budget tracks and reports these in "
+                    "quarterly budget implementation review reports."
+                ),
+            }
+
+    except Exception as e:
+        logging.warning(f"DB pending bills query failed: {e}")
+
+    # Strategy 2: Try live COB extraction
+    try:
+        import asyncio
+
+        from etl.pending_bills_extractor import PendingBillsExtractor
+
+        extractor = PendingBillsExtractor()
+        data = await extractor.extract_all()
+
+        if data.get("pending_bills") or data.get("summary", {}).get("grand_total"):
+            summary = data.get("summary", {})
+            return {
+                "status": "success",
+                "data_source": "live_cob_extraction",
+                "last_updated": data.get("extracted_at"),
+                "pending_bills": data.get("pending_bills", []),
+                "summary": {
+                    "total_pending": summary.get("grand_total", 0),
+                    "national_total": summary.get("total_national", 0),
+                    "county_total": summary.get("total_county", 0),
+                    "record_count": len(data.get("pending_bills", [])),
+                    "as_at_date": summary.get("as_at_date"),
+                },
+                "source": data.get("source_title", "Controller of Budget Reports"),
+                "source_url": data.get("source_url", "https://cob.go.ke/reports/"),
+                "currency": "KES",
+                "explanation": (
+                    "Pending bills are verified but unpaid government invoices "
+                    "to suppliers and contractors. This data was extracted live "
+                    "from COB reports."
+                ),
+            }
+    except Exception as e:
+        logging.warning(f"Live COB extraction failed: {e}")
+
+    # Strategy 3: Return empty with guidance
+    return {
+        "status": "no_data",
+        "data_source": "none",
+        "pending_bills": [],
+        "summary": {
+            "total_pending": 0,
+            "national_total": 0,
+            "county_total": 0,
+            "record_count": 0,
+        },
+        "source": "Controller of Budget (https://cob.go.ke/reports/pending-bills/)",
+        "source_url": "https://cob.go.ke/reports/pending-bills/",
+        "currency": "KES",
+        "explanation": (
+            "Pending bills data is not yet populated. Run the seeding "
+            "pipeline: python -m seeding.cli seed --domain pending_bills. "
+            "This will fetch data from COB reports at "
+            "https://cob.go.ke/reports/pending-bills/"
+        ),
+        "how_to_populate": {
+            "option_1": "Run: python -m seeding.cli seed --domain pending_bills",
+            "option_2": (
+                "Set SEED_PENDING_BILLS_DATASET_URL to a JSON fixture "
+                "and run the seeder"
+            ),
+            "option_3": (
+                "Enable Playwright (PLAYWRIGHT_ENABLED=1) for COB PDF "
+                "download + extraction"
+            ),
+            "data_sources": [
+                "https://cob.go.ke/reports/pending-bills/",
+                "https://cob.go.ke/reports/national-government-budget-implementation-review-reports/",
+                "https://www.treasury.go.ke/pending-bills/",
+            ],
+        },
+    }
 
 
 @app.get("/api/v1/entities", response_model=List[EntityResponse])

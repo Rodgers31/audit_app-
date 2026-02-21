@@ -1,15 +1,26 @@
 /**
  * Axios configuration for API requests
+ *
+ * In development, requests are proxied through Next.js rewrites:
+ *   Browser → localhost:3000/api/v1/* → localhost:8000/api/v1/*
+ * This avoids CORS preflight overhead since same-origin requests don't
+ * need OPTIONS pre-flight.
  */
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 const API_VERSION = process.env.NEXT_PUBLIC_API_VERSION || 'v1';
+
+// Use relative URL so requests route through Next.js rewrites (same-origin)
+// In production, set NEXT_PUBLIC_API_URL to the actual backend if not proxied
+const isServer = typeof window === 'undefined';
+const baseURL = isServer
+  ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/${API_VERSION}`
+  : `/api/${API_VERSION}`;
 
 // Create axios instance with default configuration
 export const apiClient = axios.create({
-  baseURL: `${API_URL}/api/${API_VERSION}`,
-  timeout: 10000,
+  baseURL,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },

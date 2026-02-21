@@ -54,6 +54,9 @@ export const AUDITS_ENDPOINTS = {
   // Statistics and metadata
   STATISTICS: '/audits/statistics',
   FISCAL_YEARS: '/audits/fiscal-years',
+
+  // Federal / national government audits
+  FEDERAL: '/audits/federal',
 } as const;
 
 /**
@@ -75,15 +78,24 @@ export const BUDGET_ENDPOINTS = {
 export const DEBT_ENDPOINTS = {
   // National overview
   NATIONAL: '/debt/national',
+  LOANS: '/debt/loans',
   BREAKDOWN: '/debt/breakdown',
   BREAKDOWN_BY_COUNTY: (countyId: string) => `/debt/breakdown/${countyId}`,
   TIMELINE: '/debt/timeline',
+  PENDING_BILLS: '/pending-bills',
 
   // Analysis and comparison
   COMPARISON: '/debt/comparison',
   TOP_LOANS: '/debt/top-loans',
   SUSTAINABILITY: '/debt/sustainability',
   RISK_ASSESSMENT: '/debt/risk-assessment',
+} as const;
+
+/**
+ * Fiscal Endpoints
+ */
+export const FISCAL_ENDPOINTS = {
+  SUMMARY: '/fiscal/summary',
 } as const;
 
 /**

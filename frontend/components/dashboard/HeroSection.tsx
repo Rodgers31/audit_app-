@@ -1,28 +1,15 @@
 'use client';
 
+import { useDebtTimeline, useNationalDebtOverview } from '@/lib/react-query/useDebt';
+import { useFiscalSummary } from '@/lib/react-query/useFiscal';
 import { motion } from 'framer-motion';
-import { BarChart3, Search, TrendingUp } from 'lucide-react';
-import { useState } from 'react';
-import {
-  Area,
-  Bar,
-  CartesianGrid,
-  ComposedChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { Loader2 } from 'lucide-react';
 
-/* ── Chart data ── */
-const debtTimeline = [
-  { year: '2019', debt: 5800, gdpRatio: 58 },
-  { year: '2020', debt: 7200, gdpRatio: 64 },
-  { year: '2021', debt: 8200, gdpRatio: 67 },
-  { year: '2022', debt: 9100, gdpRatio: 69 },
-  { year: '2023', debt: 10200, gdpRatio: 71 },
-  { year: '2024', debt: 11500, gdpRatio: 74 },
-];
+/* ── Formatting helpers ── */
+function fmtB(val: number): string {
+  if (val >= 1000) return `KES ${(val / 1000).toFixed(2)}T`;
+  return `KES ${val}B`;
+}
 
 /**
  * Dashboard Hero — full hero zone with title + 3-container card layout.
@@ -57,16 +44,34 @@ export default function HeroSection() {
   );
 }
 
-/** Summary strip with 11.5T, 74%, High Risk — exported for page.tsx */
+/** Summary strip — pulls latest figures from the debt timeline API */
 export function SummaryStrip() {
+  const { data: timelineResp } = useDebtTimeline();
+  const { data: overviewResp } = useNationalDebtOverview();
+
+  const latest = timelineResp?.timeline?.length
+    ? timelineResp.timeline[timelineResp.timeline.length - 1]
+    : null;
+
+  const totalT = latest ? (latest.total / 1000).toFixed(1) : '—';
+  const gdpPct = latest?.gdp_ratio ?? overviewResp?.data?.debt_to_gdp_ratio ?? '—';
+  const year = latest?.year ?? '—';
+  const riskLevel =
+    overviewResp?.data?.debt_sustainability?.risk_level ||
+    (Number(gdpPct) >= 70 ? 'High' : 'Moderate');
+  const isHigh = riskLevel === 'High';
+
   return (
     <div className='flex flex-wrap items-end gap-x-6 gap-y-3 mb-4 px-1'>
       {/* Flag + Total Debt */}
       <div className='flex items-center gap-2.5'>
-        <span className='text-2xl'>🇰🇪</span>
+        <span className='text-2xl' suppressHydrationWarning>
+          🇰🇪
+        </span>
         <div>
           <span className='text-4xl sm:text-5xl font-extrabold text-gov-dark tracking-tight leading-none'>
-            11.5<span className='text-3xl sm:text-4xl ml-0.5'>T</span>
+            {totalT}
+            <span className='text-3xl sm:text-4xl ml-0.5'>T</span>
           </span>
         </div>
       </div>
@@ -75,18 +80,22 @@ export function SummaryStrip() {
       <div className='flex items-end gap-3'>
         <div>
           <span className='text-3xl sm:text-4xl font-bold text-gov-dark tracking-tight leading-none'>
-            74<span className='text-xl'>%</span>
+            {typeof gdpPct === 'number' ? Math.round(gdpPct) : gdpPct}
+            <span className='text-xl'>%</span>
           </span>
         </div>
-        <span className='inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/60 border border-gov-copper/20 text-gov-copper mb-0.5'>
-          <span className='w-1.5 h-1.5 rounded-full bg-gov-copper inline-block' />
-          High Risk
+        <span
+          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/60 border ${isHigh ? 'border-gov-copper/20 text-gov-copper' : 'border-gov-gold/20 text-gov-gold'} mb-0.5`}>
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${isHigh ? 'bg-gov-copper' : 'bg-gov-gold'} inline-block`}
+          />
+          {riskLevel} Risk
         </span>
       </div>
 
       {/* Labels row */}
       <div className='w-full flex gap-8 mt-0.5'>
-        <span className='text-xs text-gov-dark/60 font-medium'>Total Debt as of 2024</span>
+        <span className='text-xs text-gov-dark/60 font-medium'>Total Debt as of {year}</span>
         <span className='text-xs text-gov-dark/60 font-medium'>
           Risk Level{' '}
           <span className='inline-flex gap-0.5 ml-1'>
@@ -101,240 +110,337 @@ export function SummaryStrip() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   CONTAINER B — inner white card: "Kenya's National Debt"
-   Chart + search + bottom facts
-   ═══════════════════════════════════════════════════════════ */
-export function NationalDebtPanel() {
-  const [searchQuery, setSearchQuery] = useState('');
-
-  return (
-    <div className='bg-white rounded-xl border border-gray-200/60 shadow-sm p-5 sm:p-6'>
-      {/* Header row */}
-      <div className='flex items-start justify-between mb-5'>
-        <div>
-          <h2 className='font-display text-xl sm:text-2xl text-gov-dark mb-1'>
-            Kenya&apos;s National Debt
-          </h2>
-          <p className='text-sm text-neutral-muted leading-snug'>
-            See budget allocations and audit statuses for every county in Kenya.
-          </p>
-        </div>
-        {/* Search */}
-        <div className='relative hidden sm:block flex-shrink-0'>
-          <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-muted' />
-          <input
-            type='text'
-            placeholder='Search county'
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className='pl-9 pr-4 py-2 rounded-full bg-gray-50 border border-gray-200 text-sm
-                       focus:outline-none focus:ring-2 focus:ring-gov-sage/30 focus:border-gov-sage/50
-                       placeholder:text-gray-400 w-44'
-          />
-        </div>
-      </div>
-
-      {/* Chart */}
-      <div className='h-48 sm:h-56 mb-4'>
-        <ResponsiveContainer width='100%' height='100%'>
-          <ComposedChart data={debtTimeline} margin={{ top: 4, right: 4, bottom: 0, left: -12 }}>
-            <defs>
-              <linearGradient id='heroDebtBar' x1='0' y1='0' x2='0' y2='1'>
-                <stop offset='0%' stopColor='#1B3A2A' stopOpacity={0.85} />
-                <stop offset='100%' stopColor='#4A7C5C' stopOpacity={0.55} />
-              </linearGradient>
-              <linearGradient id='heroGdpArea' x1='0' y1='0' x2='0' y2='1'>
-                <stop offset='0%' stopColor='#1B3A2A' stopOpacity={0.2} />
-                <stop offset='100%' stopColor='#1B3A2A' stopOpacity={0.01} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray='3 3' stroke='#E5E7EB' vertical={false} />
-            <XAxis
-              dataKey='year'
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 11, fill: '#9CA3AF' }}
-            />
-            <YAxis
-              yAxisId='debt'
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 10, fill: '#9CA3AF' }}
-              tickFormatter={(v: number) => `${v}`}
-            />
-            <YAxis yAxisId='ratio' orientation='right' hide domain={[40, 100]} />
-            <Tooltip
-              contentStyle={{
-                background: 'rgba(255,255,255,0.92)',
-                backdropFilter: 'blur(8px)',
-                border: '1px solid #E5E7EB',
-                borderRadius: '10px',
-                fontSize: '12px',
-              }}
-            />
-            <Bar
-              yAxisId='debt'
-              dataKey='debt'
-              fill='url(#heroDebtBar)'
-              radius={[4, 4, 0, 0]}
-              barSize={30}
-              name='Debt (B KES)'
-            />
-            <Area
-              yAxisId='ratio'
-              type='monotone'
-              dataKey='gdpRatio'
-              stroke='#1B3A2A'
-              strokeWidth={2}
-              fill='url(#heroGdpArea)'
-              dot={{ r: 3.5, fill: '#1B3A2A', stroke: '#fff', strokeWidth: 2 }}
-              name='Debt-to-GDP %'
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Debt-to-GDP callout */}
-      <div className='flex items-center justify-end gap-2 mb-4'>
-        <span className='text-xs text-gray-500'>Debt-to-GCD to 2024</span>
-        <span className='text-2xl font-bold text-gov-forest'>74%</span>
-      </div>
-
-      {/* Bottom facts row */}
-      <div className='grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-gray-100'>
-        <FactItem
-          icon={<span className='text-base'>🇰🇪</span>}
-          value='KES 32.0 cents'
-          label='of every tax shilling goes to debt service annually.'
-        />
-        <FactItem
-          icon={
-            <div className='w-5 h-5 rounded-full bg-gov-forest/10 flex items-center justify-center'>
-              <BarChart3 className='w-3 h-3 text-gov-forest' />
-            </div>
-          }
-          value='0.0s / GC9 DD'
-          label='Domestic vs § External Debt split: 00% / 100%'
-          badge='GB'
-        />
-        <FactItem
-          icon={
-            <div className='w-5 h-5 rounded-full bg-gov-sage/10 flex items-center justify-center'>
-              <TrendingUp className='w-3 h-3 text-gov-sage' />
-            </div>
-          }
-          value='0.0%'
-          secondaryValue='100%'
-          label='FT adite Ratjuls up 15% in 5 years.'
-        />
-      </div>
-    </div>
-  );
-}
-
-function FactItem({
-  icon,
-  value,
-  secondaryValue,
-  label,
-  badge,
-}: {
-  icon: React.ReactNode;
-  value: string;
-  secondaryValue?: string;
-  label: string;
-  badge?: string;
-}) {
-  return (
-    <div className='flex items-start gap-2'>
-      <div className='mt-0.5 flex-shrink-0'>{icon}</div>
-      <div>
-        <div className='flex items-center gap-1.5'>
-          <span className='text-sm font-semibold text-gov-dark'>{value}</span>
-          {badge && (
-            <span className='text-[9px] font-bold bg-gray-200 text-gray-600 px-1 py-0.5 rounded'>
-              {badge}
-            </span>
-          )}
-          {secondaryValue && (
-            <>
-              <span className='text-gray-400 text-xs'>
-                <TrendingUp className='w-3 h-3 inline' />
-              </span>
-              <span className='text-sm font-semibold text-gov-dark'>{secondaryValue}</span>
-            </>
-          )}
-        </div>
-        <span className='text-xs text-gray-500 leading-tight block'>{label}</span>
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════
    CONTAINER C — Kenyan Government fiscal snapshot card
    Enticing overview of last year's national financials,
    links to the National Debt page for the full picture.
    ═══════════════════════════════════════════════════════════ */
 export function KenyanGovCard() {
-  const items = [
-    { label: 'Appropriated', value: 'KES 3.69T', sub: 'FY 2024/25' },
-    { label: 'Borrowed', value: 'KES 846B', sub: '23% of budget', alert: true },
-    { label: 'Revenue', value: 'KES 2.57T', sub: 'Tax + non-tax' },
-    { label: 'Debt Service', value: 'KES 1.19T', sub: '32¢ per shilling' },
-  ];
+  const { data: fiscal, isLoading } = useFiscalSummary();
+  const fy = fiscal?.current;
+
+  const ceilingPct = fy ? Math.min(fy.debt_ceiling_usage_pct, 100) : 0;
+  const ceilingRaw = fy?.debt_ceiling_usage_pct ?? 0;
+  const ceilingOver = ceilingRaw > 100;
+  const fyLabel = fy?.fiscal_year || '—';
+
+  /* Derive a "fiscal health" tier from the data */
+  const healthTier = !fy
+    ? 'loading'
+    : ceilingRaw > 110
+      ? 'critical'
+      : ceilingRaw > 90
+        ? 'warning'
+        : 'stable';
+
+  const tierColors = {
+    critical: {
+      dot: 'bg-gov-copper',
+      ring: 'ring-gov-copper/30',
+      text: 'text-gov-copper',
+      label: 'Under Strain',
+    },
+    warning: {
+      dot: 'bg-gov-gold',
+      ring: 'ring-gov-gold/30',
+      text: 'text-gov-gold',
+      label: 'Watch List',
+    },
+    stable: {
+      dot: 'bg-emerald-500',
+      ring: 'ring-emerald-500/30',
+      text: 'text-emerald-600',
+      label: 'Stable',
+    },
+    loading: { dot: 'bg-gray-400', ring: 'ring-gray-400/20', text: 'text-gray-400', label: '...' },
+  };
+  const tier = tierColors[healthTier];
 
   return (
-    <div className='rounded-xl bg-white/30 backdrop-blur-md border border-white/20 overflow-hidden flex flex-col h-full'>
-      {/* Header banner */}
-      <div className='relative flex-shrink-0 bg-gradient-to-br from-gov-forest to-gov-dark px-4 py-4'>
-        <div className='flex items-center gap-2.5'>
-          <span className='text-2xl'>🇰🇪</span>
-          <div>
-            <h3 className='text-base font-bold text-white leading-tight'>Kenyan Government</h3>
-            <p className='text-[11px] text-white/60 font-medium'>FY 2024/25 Fiscal Snapshot</p>
-          </div>
+    <div className='rounded-xl overflow-hidden flex flex-col h-full shadow-lg border border-white/15'>
+      {/* ── Header ── */}
+      <div className='relative flex-shrink-0 bg-gradient-to-br from-gov-forest via-gov-dark to-[#0a1a10] px-4 pt-4 pb-5'>
+        {/* Subtle flag stripe accents */}
+        <div className='absolute top-0 left-0 right-0 h-[3px] flex'>
+          <div className='flex-1 bg-black/60' />
+          <div className='flex-1 bg-gov-copper/70' />
+          <div className='flex-1 bg-gov-forest/80' />
         </div>
-        {/* Accent line */}
-        <div className='absolute bottom-0 left-4 right-4 h-[2px] bg-gradient-to-r from-gov-gold/80 via-gov-gold/40 to-transparent' />
+
+        <div className='flex items-center gap-3'>
+          <div
+            className='w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-xl shadow-inner'
+            suppressHydrationWarning>
+            🇰🇪
+          </div>
+          <div className='flex-1 min-w-0'>
+            <h3 className='text-[15px] font-bold text-white leading-tight tracking-tight'>
+              Kenyan Government
+            </h3>
+            <p className='text-[11px] text-white/50 font-medium mt-0.5'>
+              {fyLabel} Fiscal Snapshot
+            </p>
+          </div>
+          {isLoading && <Loader2 className='w-4 h-4 animate-spin text-white/30' />}
+        </div>
+
+        {/* Health status pill */}
+        <div className='mt-3 flex items-center gap-2'>
+          <span className={`relative flex h-2 w-2`}>
+            <span
+              className={`animate-ping absolute inline-flex h-full w-full rounded-full ${tier.dot} opacity-60`}
+            />
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${tier.dot}`} />
+          </span>
+          <span
+            className={`text-[10px] font-semibold uppercase tracking-widest ${healthTier === 'loading' ? 'text-white/40' : 'text-white/70'}`}>
+            Fiscal Health: {tier.label}
+          </span>
+        </div>
       </div>
 
-      {/* Fiscal items */}
-      <div className='p-4 flex-1 flex flex-col gap-3 bg-white/50 backdrop-blur-md'>
-        {items.map((item) => (
-          <div key={item.label} className='flex items-center justify-between'>
-            <span className='text-xs text-gray-500 font-medium'>{item.label}</span>
-            <div className='text-right'>
-              <span
-                className={`text-sm font-bold tabular-nums ${item.alert ? 'text-gov-copper' : 'text-gov-dark'}`}>
-                {item.value}
-              </span>
-              <span className='block text-[10px] text-gray-400 leading-tight'>{item.sub}</span>
+      {/* ── Fiscal stats ── */}
+      <div className='flex-1 flex flex-col bg-gradient-to-b from-white/60 to-white/40 backdrop-blur-md'>
+        {isLoading ? (
+          <div className='flex-1 flex items-center justify-center p-6'>
+            <Loader2 className='w-5 h-5 animate-spin text-gray-300' />
+          </div>
+        ) : fy ? (
+          <div className='p-3 flex-1 flex flex-col gap-2'>
+            {/* Row 1: Budget + Revenue side by side */}
+            <div className='grid grid-cols-2 gap-2'>
+              <StatMiniCard
+                label='Budget'
+                value={fmtB(fy.appropriated_budget)}
+                sub={fy.fiscal_year}
+                color='forest'
+                icon='📊'
+              />
+              <StatMiniCard
+                label='Revenue'
+                value={fmtB(fy.total_revenue)}
+                sub='Tax + non-tax'
+                color='teal'
+                icon='💰'
+              />
             </div>
-          </div>
-        ))}
 
-        {/* Debt ceiling bar */}
-        <div className='mt-1'>
-          <div className='flex items-center justify-between mb-1'>
-            <span className='text-[10px] text-gray-500 font-medium'>Debt Ceiling Usage</span>
-            <span className='text-[10px] font-bold text-gov-copper'>89%</span>
+            {/* Row 2: Borrowed + Debt Service side by side */}
+            <div className='grid grid-cols-2 gap-2'>
+              <StatMiniCard
+                label='Borrowed'
+                value={fmtB(fy.total_borrowing)}
+                sub={`${fy.borrowing_pct_of_budget}% of budget`}
+                color='copper'
+                icon='📉'
+                alert
+              />
+              <StatMiniCard
+                label='Debt Service'
+                value={fmtB(fy.debt_service_cost)}
+                sub={`${fy.debt_service_per_shilling}¢/KES`}
+                color='gold'
+                icon='⚖️'
+              />
+            </div>
+
+            {/* Debt ceiling gauge — dramatic arc */}
+            <div className='mt-1 px-2 py-3 rounded-lg bg-white/50 border border-gray-100'>
+              <div className='flex items-center justify-between mb-2'>
+                <span className='text-[10px] uppercase tracking-wider text-gray-500 font-semibold'>
+                  Debt Ceiling
+                </span>
+                <span
+                  className={`text-xs font-black tabular-nums ${ceilingOver ? 'text-gov-copper' : 'text-gov-dark'}`}>
+                  {ceilingRaw.toFixed(0)}%
+                </span>
+              </div>
+              {/* Multi-segment bar */}
+              <div className='relative h-2.5 rounded-full bg-gray-100 overflow-hidden'>
+                {/* Safe zone fill */}
+                <div
+                  className='absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out'
+                  style={{
+                    width: `${Math.min(ceilingPct, 75)}%`,
+                    background: 'linear-gradient(90deg, #4A7C5C 0%, #D9A441 100%)',
+                  }}
+                />
+                {/* Warning zone fill */}
+                {ceilingPct > 75 && (
+                  <div
+                    className='absolute inset-y-0 rounded-full transition-all duration-700 ease-out'
+                    style={{
+                      left: '75%',
+                      width: `${Math.min(ceilingPct - 75, 25)}%`,
+                      background: 'linear-gradient(90deg, #D9A441 0%, #C94A4A 100%)',
+                    }}
+                  />
+                )}
+                {/* 100% threshold marker */}
+                <div
+                  className='absolute top-0 bottom-0 w-[2px] bg-gov-dark/40'
+                  style={{ left: '100%', transform: 'translateX(-2px)' }}
+                />
+              </div>
+              {/* Scale markers */}
+              <div className='flex justify-between mt-1'>
+                <span className='text-[8px] text-gray-400'>0%</span>
+                <span className='text-[8px] text-gray-400'>50%</span>
+                <span className='text-[8px] text-gray-400 font-semibold'>100%</span>
+              </div>
+              {ceilingOver && (
+                <p
+                  className='text-[9px] text-gov-copper font-medium mt-1.5 text-center'
+                  suppressHydrationWarning>
+                  ⚠ Ceiling breached by {(ceilingRaw - 100).toFixed(0)}%
+                </p>
+              )}
+            </div>
+
+            {/* ── Where the Money Goes — budget breakdown bar ── */}
+            {(() => {
+              const debtSvc = fy.debt_service_cost;
+              const development = fy.development_spending;
+              const county = fy.county_allocation;
+              // Recurrent spending in Kenya's budget INCLUDES debt service
+              // (Consolidated Fund Services). Separate it out to avoid double-counting.
+              const recurrentExclDebt = Math.max(fy.recurrent_spending - debtSvc, 0);
+              // Use appropriated budget as denominator (the actual spending envelope)
+              const total = fy.appropriated_budget;
+              if (total <= 0) return null;
+              // "Other" captures any remaining slice (e.g. contingency, unallocated)
+              const accounted = debtSvc + recurrentExclDebt + development + county;
+              const other = Math.max(total - accounted, 0);
+
+              const segments = [
+                {
+                  label: 'Recurrent',
+                  value: recurrentExclDebt,
+                  color: 'bg-gov-forest',
+                  dot: 'bg-gov-forest',
+                },
+                {
+                  label: 'Debt Service',
+                  value: debtSvc,
+                  color: 'bg-gov-copper',
+                  dot: 'bg-gov-copper',
+                },
+                {
+                  label: 'Development',
+                  value: development,
+                  color: 'bg-gov-gold',
+                  dot: 'bg-gov-gold',
+                },
+                { label: 'Counties', value: county, color: 'bg-[#0D7377]', dot: 'bg-[#0D7377]' },
+                ...(other > total * 0.01
+                  ? [{ label: 'Other', value: other, color: 'bg-gray-300', dot: 'bg-gray-300' }]
+                  : []),
+              ];
+
+              return (
+                <div className='px-2 py-2.5 rounded-lg bg-white/50 border border-gray-100'>
+                  <span className='text-[10px] uppercase tracking-wider text-gray-500 font-semibold block mb-2'>
+                    Where the Money Goes
+                  </span>
+                  {/* Stacked horizontal bar */}
+                  <div className='flex h-3 rounded-full overflow-hidden gap-[1px]'>
+                    {segments.map((seg) => (
+                      <div
+                        key={seg.label}
+                        className={`${seg.color} transition-all duration-500 first:rounded-l-full last:rounded-r-full`}
+                        style={{ width: `${((seg.value / total) * 100).toFixed(1)}%` }}
+                        title={`${seg.label}: KES ${(seg.value / 1000).toFixed(1)}T (${((seg.value / total) * 100).toFixed(0)}%)`}
+                      />
+                    ))}
+                  </div>
+                  {/* Legend grid */}
+                  <div className='grid grid-cols-2 gap-x-3 gap-y-0.5 mt-2'>
+                    {segments.map((seg) => (
+                      <div key={seg.label} className='flex items-center gap-1.5 min-w-0'>
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${seg.dot}`} />
+                        <span className='text-[9px] text-gray-500 truncate'>{seg.label}</span>
+                        <span className='text-[9px] font-semibold text-gov-dark tabular-nums ml-auto'>
+                          {((seg.value / total) * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
-          <div className='h-1.5 rounded-full bg-gray-200 overflow-hidden'>
-            <div
-              className='h-full rounded-full bg-gradient-to-r from-gov-gold to-gov-copper transition-all'
-              style={{ width: '89%' }}
-            />
-          </div>
-        </div>
+        ) : null}
 
         {/* CTA */}
-        <a
-          href='/national-debt'
-          className='mt-auto w-full py-2.5 rounded-full bg-gov-forest text-white text-sm font-medium hover:bg-gov-forest/90 transition-colors shadow-sm text-center block'>
-          Explore National Debt →
-        </a>
+        <div className='px-3 pb-3 mt-auto'>
+          <a
+            href='/debt'
+            className='group w-full py-2.5 rounded-xl bg-gov-forest text-white text-sm font-semibold
+                       hover:bg-gov-dark transition-all duration-300 shadow-md hover:shadow-lg
+                       text-center flex items-center justify-center gap-2'>
+            Explore National Debt
+            <span className='inline-block transition-transform duration-300 group-hover:translate-x-1'>
+              →
+            </span>
+          </a>
+        </div>
       </div>
+    </div>
+  );
+}
+
+/* ── Mini stat card used inside KenyanGovCard ── */
+function StatMiniCard({
+  label,
+  value,
+  sub,
+  color,
+  icon,
+  alert,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  color: 'forest' | 'copper' | 'gold' | 'teal';
+  icon: string;
+  alert?: boolean;
+}) {
+  const colors = {
+    forest: 'border-l-gov-forest/60 bg-gov-forest/5',
+    copper: 'border-l-gov-copper/60 bg-gov-copper/5',
+    gold: 'border-l-gov-gold/60 bg-gov-gold/5',
+    teal: 'border-l-[#0D7377]/60 bg-[#0D7377]/5',
+  };
+  const valueColors = {
+    forest: 'text-gov-dark',
+    copper: 'text-gov-copper',
+    gold: 'text-gov-dark',
+    teal: 'text-gov-dark',
+  };
+
+  return (
+    <div
+      className={`rounded-lg border-l-[3px] ${colors[color]} px-2.5 py-2 relative overflow-hidden`}>
+      {/* Icon watermark */}
+      <span
+        className='absolute -right-1 -bottom-1 text-lg opacity-[0.08] select-none pointer-events-none'
+        suppressHydrationWarning>
+        {icon}
+      </span>
+      <span className='text-[9px] uppercase tracking-wider text-gray-500 font-medium leading-none'>
+        {label}
+      </span>
+      <div className='flex items-baseline gap-1 mt-0.5'>
+        {alert && (
+          <span className='relative flex h-1.5 w-1.5 shrink-0'>
+            <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-gov-copper opacity-50' />
+            <span className='relative inline-flex rounded-full h-1.5 w-1.5 bg-gov-copper' />
+          </span>
+        )}
+        <span className={`text-sm font-bold tabular-nums leading-tight ${valueColors[color]}`}>
+          {value}
+        </span>
+      </div>
+      <span className='text-[9px] text-gray-400 leading-none mt-0.5 block'>{sub}</span>
     </div>
   );
 }

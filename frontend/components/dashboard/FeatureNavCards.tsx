@@ -60,7 +60,9 @@ export default function FeatureNavCards() {
               <div
                 className='w-12 h-12 mx-auto mb-3 rounded-xl bg-gov-sage/8 flex items-center justify-center
                               group-hover:bg-gov-sage/15 transition-colors duration-300'>
-                <span className='text-2xl'>{feat.emoji}</span>
+                <span className='text-2xl' suppressHydrationWarning>
+                  {feat.emoji}
+                </span>
               </div>
 
               <h4 className='text-sm font-semibold text-gov-dark leading-snug mb-1'>

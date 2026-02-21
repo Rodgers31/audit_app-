@@ -130,7 +130,9 @@ export default function TopLoansSection() {
             className='bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-5 border border-gray-200 hover:shadow-md transition-all duration-300'>
             <div className='flex items-start justify-between mb-3'>
               <div className='flex items-start space-x-4'>
-                <div className='text-3xl'>{loan.flag || '🌍'}</div>
+                <div className='text-3xl' suppressHydrationWarning>
+                  {loan.flag || '🌍'}
+                </div>
                 <div className='flex-1'>
                   <div className='flex items-center gap-2 mb-1'>
                     <h4 className='text-lg font-bold text-gray-900'>

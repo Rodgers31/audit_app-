@@ -1,18 +1,15 @@
 /**
- * MapUtilities - Helper functions for map interactions and county data processing
- * Contains reusable logic for county matching, color coding, and status determination
+ * MapUtilities – colour helpers, name matching, legend data
+ * Uses the gov-* design-token palette for visual consistency.
  */
 
 import { County } from '@/types';
 
-/**
- * Match GeoJSON county names to our county data
- * Handles name variations and normalization
- */
+/* ────────────────── name matching ────────────────── */
+
 export const getCountyByName = (geoCountyName: string, counties: County[]): County | undefined => {
   if (!counties || counties.length === 0) return undefined;
 
-  // Normalize names: lowercase, remove spaces, punctuation, and "county" suffix
   const normalize = (s: string) =>
     s
       .toLowerCase()
@@ -20,9 +17,7 @@ export const getCountyByName = (geoCountyName: string, counties: County[]): Coun
       .replace(/[^a-z]/g, '')
       .trim();
 
-  // Common alias corrections between API data and GeoJSON labels
   const aliases: Record<string, string> = {
-    // e.g., "Elgeyo Marakwet" vs "Elgeyo-Marakwet"
     elgeyomarakwet: 'elgeyomarakwet',
     thika: 'kiambu',
     eldoret: 'uasingishu',
@@ -40,159 +35,105 @@ export const getCountyByName = (geoCountyName: string, counties: County[]): Coun
   });
 };
 
-/**
- * Get county color based on selection state and audit rating
- * Enhanced with focus/overview modes and vibrant audit-based colors
- */
+/* ────────────────── audit colour palette (gov tokens) ────────────────── */
+
+const AUDIT_PALETTE: Record<
+  string,
+  { base: string; hover: string; active: string; muted: string }
+> = {
+  // Greens — gov-sage / gov-forest
+  clean: { base: '#5a946c', hover: '#4A7C5C', active: '#1B3A2A', muted: '#b5d4bf' },
+  'A+': { base: '#3d6a4e', hover: '#2f5940', active: '#1B3A2A', muted: '#a6ccb4' },
+  A: { base: '#4A7C5C', hover: '#3d6a4e', active: '#1B3A2A', muted: '#b5d4bf' },
+  'A-': { base: '#5a946c', hover: '#4A7C5C', active: '#2f5940', muted: '#c4dec9' },
+  // Yellows — gov-gold
+  qualified: { base: '#D9A441', hover: '#c49338', active: '#a87a24', muted: '#edd5a2' },
+  'B+': { base: '#89a851', hover: '#6f8e40', active: '#557430', muted: '#c8daa5' },
+  B: { base: '#D9A441', hover: '#c49338', active: '#a87a24', muted: '#edd5a2' },
+  'B-': { base: '#d48c32', hover: '#be7928', active: '#a0651e', muted: '#ecc89a' },
+  // Reds — gov-copper
+  adverse: { base: '#C94A4A', hover: '#b03d3d', active: '#8f2e2e', muted: '#e8b3b3' },
+  C: { base: '#C94A4A', hover: '#b03d3d', active: '#8f2e2e', muted: '#e8b3b3' },
+  'C+': { base: '#d46545', hover: '#c0563a', active: '#a84730', muted: '#ecc1b3' },
+  D: { base: '#8f2e2e', hover: '#7a2525', active: '#651c1c', muted: '#daa4a4' },
+  // Violet
+  disclaimer: { base: '#7c5cbf', hover: '#6a4aad', active: '#573d94', muted: '#c4b5e0' },
+};
+
+const FALLBACK_PAL = { base: '#b0b6ba', hover: '#979ea3', active: '#6b7280', muted: '#d5d8db' };
+
+/** Softer fill for counties with no matching data */
+const UNMATCHED_FILL = '#dce1dd';
+
+/* ────────────────── county fill colour ────────────────── */
+
 export const getCountyColor = (
   geoCountyName: string,
   counties: County[],
-  index: number,
+  _index: number,
   selectedCounty: County | null,
   currentCountyIndex: number,
   hoveredCounty: string | null,
-  animationMode: 'slideshow' | 'pulse' | 'wave',
+  _animationMode: 'slideshow' | 'pulse' | 'wave',
   visualMode: 'focus' | 'overview' = 'overview'
 ): string => {
   const county = getCountyByName(geoCountyName, counties);
-  if (!county) return '#e5e7eb'; // Gray for unknown counties
+  if (!county) return UNMATCHED_FILL;
 
-  // Priority 1: Selected county - always use audit-based color
-  if (selectedCounty?.id === county.id) {
-    return getAuditColor(county.auditStatus ?? 'B', 'selected');
-  }
+  const key = county.auditStatus ?? county.audit_rating ?? 'B';
+  const pal = AUDIT_PALETTE[key] || FALLBACK_PAL;
 
-  // Priority 2: Current auto-rotating county - vibrant audit color
-  const currentCounty = counties && counties.length > 0 ? counties[currentCountyIndex] : null;
-  if (!selectedCounty && currentCounty && county.id === currentCounty.id) {
-    return getAuditColor(county.auditStatus ?? 'B', 'active');
-  }
+  // Selected county — deepest shade
+  if (selectedCounty?.id === county.id) return pal.active;
 
-  // Priority 3: Hovered county - audit color with hover effect
-  if (hoveredCounty === geoCountyName) {
-    return getAuditColor(county.auditStatus ?? 'B', 'hover');
-  }
+  // Auto-rotating county — same as selected
+  const currentCounty = counties[currentCountyIndex] ?? null;
+  if (!selectedCounty && currentCounty?.id === county.id) return pal.active;
 
-  // Focus Mode: Only active/selected counties get audit colors, others are neutral
-  if (visualMode === 'focus') {
-    return '#e2e8f0'; // Light gray for non-active counties
-  }
+  // Hovered county — mid shade
+  if (hoveredCounty === geoCountyName) return pal.hover;
 
-  // Overview Mode: All counties show audit-based colors
-  return getAuditColor(county.auditStatus ?? 'B', 'default');
+  // Focus mode — muted tint for non-active
+  if (visualMode === 'focus') return pal.muted;
+
+  // Overview mode — base audit colour
+  return pal.base;
 };
 
-/**
- * Get vibrant colors based on audit status and interaction state
- */
-const getAuditColor = (
-  auditStatus: string,
-  state: 'default' | 'hover' | 'active' | 'selected'
-): string => {
-  const colors = {
-    'A+': {
-      default: '#10b981', // Emerald-500
-      hover: '#059669', // Emerald-600
-      active: '#047857', // Emerald-700
-      selected: '#065f46', // Emerald-800
-    },
-    A: {
-      default: '#10b981', // Emerald-500
-      hover: '#059669', // Emerald-600
-      active: '#047857', // Emerald-700
-      selected: '#065f46', // Emerald-800
-    },
-    'A-': {
-      default: '#22c55e', // Green-500
-      hover: '#16a34a', // Green-600
-      active: '#15803d', // Green-700
-      selected: '#166534', // Green-800
-    },
-    'B+': {
-      default: '#84cc16', // Lime-500
-      hover: '#65a30d', // Lime-600
-      active: '#4d7c0f', // Lime-700
-      selected: '#3f6212', // Lime-800
-    },
-    B: {
-      default: '#eab308', // Yellow-500
-      hover: '#ca8a04', // Yellow-600
-      active: '#a16207', // Yellow-700
-      selected: '#854d0e', // Yellow-800
-    },
-    'B-': {
-      default: '#f59e0b', // Amber-500
-      hover: '#d97706', // Amber-600
-      active: '#b45309', // Amber-700
-      selected: '#92400e', // Amber-800
-    },
-    C: {
-      default: '#f97316', // Orange-500
-      hover: '#ea580c', // Orange-600
-      active: '#c2410c', // Orange-700
-      selected: '#9a3412', // Orange-800
-    },
-    D: {
-      default: '#ef4444', // Red-500
-      hover: '#dc2626', // Red-600
-      active: '#b91c1c', // Red-700
-      selected: '#991b1b', // Red-800
-    },
-    clean: {
-      default: '#10b981', // Emerald-500
-      hover: '#059669', // Emerald-600
-      active: '#047857', // Emerald-700
-      selected: '#065f46', // Emerald-800
-    },
-    qualified: {
-      default: '#eab308', // Yellow-500
-      hover: '#ca8a04', // Yellow-600
-      active: '#a16207', // Yellow-700
-      selected: '#854d0e', // Yellow-800
-    },
-    adverse: {
-      default: '#ef4444', // Red-500
-      hover: '#dc2626', // Red-600
-      active: '#b91c1c', // Red-700
-      selected: '#991b1b', // Red-800
-    },
-    disclaimer: {
-      default: '#8b5cf6', // Violet-500
-      hover: '#7c3aed', // Violet-600
-      active: '#6d28d9', // Violet-700
-      selected: '#5b21b6', // Violet-800
-    },
-  };
-
-  // Ensure auditStatus is a valid key, fallback to 'B' if not
-  const validAuditStatus = auditStatus in colors ? auditStatus : 'B';
-  return (colors as any)[validAuditStatus]?.[state] || (colors as any)['B']?.[state] || '#eab308';
+/** Get the hover fill for a county (used in Geography hover style) */
+export const getCountyHoverColor = (geoCountyName: string, counties: County[]): string => {
+  const county = getCountyByName(geoCountyName, counties);
+  if (!county) return '#c8cec9';
+  const key = county.auditStatus ?? county.audit_rating ?? 'B';
+  return (AUDIT_PALETTE[key] || FALLBACK_PAL).hover;
 };
 
-/**
- * Determine financial trend based on utilization and debt metrics
- * Used for additional financial health indicators
- */
+/* ────────────────── helpers ────────────────── */
+
 export const getFinancialTrend = (county: County): 'excellent' | 'good' | 'fair' | 'poor' => {
-  const utilizationRate = county.budgetUtilization || 0;
+  const utilization = county.budgetUtilization || 0;
   const debt = county.debt ?? 0;
-  const budget = county.budget && county.budget > 0 ? county.budget : 1; // avoid /0
+  const budget = county.budget && county.budget > 0 ? county.budget : 1;
   const debtRatio = (debt / budget) * 100;
 
-  if (utilizationRate > 90 && debtRatio < 30) return 'excellent';
-  if (utilizationRate > 80 && debtRatio < 50) return 'good';
-  if (utilizationRate > 70) return 'fair';
+  if (utilization > 90 && debtRatio < 30) return 'excellent';
+  if (utilization > 80 && debtRatio < 50) return 'good';
+  if (utilization > 70) return 'fair';
   return 'poor';
 };
 
-/**
- * Animation mode cycling logic
- * Rotates through different visual animation modes
- */
 export const getNextAnimationMode = (
   current: 'slideshow' | 'pulse' | 'wave'
 ): 'slideshow' | 'pulse' | 'wave' => {
   const modes = ['slideshow', 'pulse', 'wave'] as const;
-  const currentIndex = modes.indexOf(current);
-  return modes[(currentIndex + 1) % modes.length];
+  return modes[(modes.indexOf(current) + 1) % modes.length];
 };
+
+/* ────────────────── legend items (for header bar) ────────────────── */
+
+export const LEGEND_ITEMS = [
+  { label: 'Clean / A+', color: '#4A7C5C' },
+  { label: 'Qualified / B', color: '#D9A441' },
+  { label: 'Adverse / C', color: '#C94A4A' },
+  { label: 'Disclaimer', color: '#7c5cbf' },
+] as const;

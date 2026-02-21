@@ -1,39 +1,11 @@
 /**
- * React Query client configuration
+ * Shared query key factory for React Query cache management.
+ *
+ * NOTE: The actual QueryClient is created inside QueryProvider.tsx (via
+ *       useState) so it is stable across re-renders while still scoped
+ *       to the React tree.  Do NOT create a singleton QueryClient here
+ *       — it causes SSR issues and can leak between requests in Next.js.
  */
-import { QueryClient } from '@tanstack/react-query';
-
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // Stale time: How long before data is considered stale (5 minutes)
-      staleTime: 5 * 60 * 1000,
-      // Cache time: How long to keep unused data in cache (30 minutes)
-      gcTime: 30 * 60 * 1000,
-      // Retry configuration
-      retry: (failureCount, error: any) => {
-        // Don't retry on 4xx errors (client errors)
-        if (error?.response?.status >= 400 && error?.response?.status < 500) {
-          return false;
-        }
-        // Retry up to 3 times for other errors
-        return failureCount < 3;
-      },
-      // Retry delay with exponential backoff
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      // Refetch on window focus in production only
-      refetchOnWindowFocus: process.env.NODE_ENV === 'production',
-      // Background refetch interval (10 minutes)
-      refetchInterval: 10 * 60 * 1000,
-    },
-    mutations: {
-      // Retry mutations once
-      retry: 1,
-      // Mutation retry delay
-      retryDelay: 1000,
-    },
-  },
-});
 
 // Query keys factory for consistent key management
 export const queryKeys = {

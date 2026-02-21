@@ -4,6 +4,7 @@ import CountyQuickSelect from '@/components/county/CountyQuickSelect';
 import CountyDebtChart from '@/components/CountyDebtChart';
 import CountySpendingChart from '@/components/CountySpendingChart';
 import InteractiveKenyaMap from '@/components/InteractiveKenyaMap';
+import PageShell from '@/components/layout/PageShell';
 import TransparencyModal from '@/components/TransparencyModal';
 import { useCounties } from '@/lib/react-query';
 import { County } from '@/types';
@@ -84,21 +85,10 @@ export default function CountyExplorerPage() {
   };
 
   return (
-    <div className='page-wrapper'>
-      {/* Main Content */}
-      <main className='page-content'>
-        {/* Page Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className='page-header text-center mb-12'>
-          <h1 className='text-4xl font-bold text-brand-900 mb-4'>County Explorer</h1>
-          <p className='text-lg text-gray-500 max-w-3xl mx-auto'>
-            Explore detailed financial information and audit status for each county
-          </p>
-        </motion.div>
-
+    <>
+      <PageShell
+        title='County Explorer'
+        subtitle='Explore detailed financial information and audit status for each county'>
         {/* Map Selector */}
         <motion.section
           initial={{ opacity: 0, y: 20 }}
@@ -300,7 +290,7 @@ export default function CountyExplorerPage() {
             </p>
           </motion.div>
         )}
-      </main>
+      </PageShell>
 
       {/* Transparency Modal */}
       {selectedCounty && (
@@ -310,6 +300,6 @@ export default function CountyExplorerPage() {
           county={selectedCounty}
         />
       )}
-    </div>
+    </>
   );
 }

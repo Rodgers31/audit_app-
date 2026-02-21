@@ -6,91 +6,107 @@ import { apiClient } from './axios';
 import { COUNTIES_ENDPOINTS, buildUrlWithParams } from './endpoints';
 import { ApiResponse, CountyFilters, CountyResponse, PaginatedResponse } from './types';
 
-// Backend county response type — matches enriched backend endpoint
+// Backend county response type — matches the real /api/v1/counties endpoint shape
 interface BackendCountyResponse {
   id: string;
   name: string;
+  code?: string;
   population: number;
   budget_2025: number;
   financial_health_score: number;
-  audit_rating: string;
-  // Enriched fields from DB aggregation
+  audit_rating: string; // severity: info/warning/critical
+  audit_status: string; // clean/qualified/adverse/disclaimer/pending
+  last_audit_date?: string;
+  audit_findings_count?: number;
+  // Budget
   coordinates?: [number, number];
-  total_allocated?: number;
+  total_budget?: number;
   total_spent?: number;
   budget_utilization?: number;
   development_budget?: number;
   recurrent_budget?: number;
-  total_debt?: number;
+  sector_breakdown?: Record<string, { allocated: number; spent: number }>;
+  // Revenue / money
+  money_received?: number;
+  revenue_collection?: number;
   pending_bills?: number;
-  revenue_2024?: number;
-  gcp_contribution?: number;
-  sector_breakdown?: Record<string, number>;
+  // Debt
+  debt?: number;
+  total_debt?: number;
+  // Economic
+  gdp?: number | null;
+  // Audit issues
   audit_issues?: Array<{
-    id: number;
+    id: string;
+    type: string;
     severity: string;
-    finding_summary: string;
+    description: string;
+    status: string;
   }>;
-  audit_issue_count?: number;
-  data_freshness?: string;
+  // Provenance
+  data_freshness?: {
+    budget_source?: number | null;
+    last_audit_source?: number | null;
+  };
 }
 
 // Transform backend county data to frontend County type
-const transformCountyData = (backendCounty: BackendCountyResponse): County => {
-  // Map audit rating to audit status
-  const auditStatusMap: Record<string, County['auditStatus']> = {
-    'A+': 'clean',
-    A: 'clean',
-    'A-': 'clean',
-    'B+': 'qualified',
-    B: 'qualified',
-    'B-': 'qualified',
-    C: 'adverse',
-    D: 'disclaimer',
-    F: 'disclaimer',
+const transformCountyData = (bc: BackendCountyResponse): County => {
+  const coordinates: [number, number] = bc.coordinates || [36.8219, -1.2921];
+  const budget = bc.total_budget || bc.budget_2025 || 0;
+  const debt = bc.total_debt || bc.debt || 0;
+
+  // Build letter-grade audit_rating from financial_health_score when
+  // the backend returns severity strings ("info"/"warning"/"critical").
+  const score = bc.financial_health_score || 0;
+  const letterGrade =
+    score >= 85 ? 'A' : score >= 70 ? 'B+' : score >= 55 ? 'B' : score >= 40 ? 'B-' : 'C';
+
+  // The backend already classifies audit_status – use it directly.
+  const validStatuses = ['clean', 'qualified', 'adverse', 'disclaimer'];
+  const auditStatus: County['auditStatus'] = validStatuses.includes(bc.audit_status)
+    ? (bc.audit_status as County['auditStatus'])
+    : 'pending';
+
+  // Sector breakdown comes as { name: { allocated, spent } } — flatten to allocated amounts
+  const sectors = bc.sector_breakdown || {};
+  const sectorVal = (key: string) => {
+    const entry = (sectors as any)[key];
+    return entry?.allocated ?? entry ?? 0;
   };
 
-  const coordinates: [number, number] = backendCounty.coordinates || [36.8219, -1.2921];
-
-  // Use real backend-computed values — no fabricated multipliers
-  const budget = backendCounty.total_allocated || backendCounty.budget_2025 || 0;
-  const debt = backendCounty.total_debt || 0;
-  const sectors = backendCounty.sector_breakdown || {};
-
   return {
-    id: backendCounty.id,
-    name: backendCounty.name,
-    code: backendCounty.name.substring(0, 3).toUpperCase(),
+    id: bc.id,
+    name: bc.name,
+    code: bc.code || bc.id,
     coordinates,
-    // Backend canonical fields
-    budget_2025: backendCounty.budget_2025,
-    financial_health_score: backendCounty.financial_health_score,
-    audit_rating: backendCounty.audit_rating,
+    budget_2025: bc.budget_2025,
+    financial_health_score: bc.financial_health_score,
+    audit_rating: letterGrade,
     budget,
     debt,
-    population: backendCounty.population,
-    auditStatus: auditStatusMap[backendCounty.audit_rating] || 'pending',
-    lastAuditDate: backendCounty.data_freshness || new Date().toISOString().split('T')[0],
-    gdp: backendCounty.gcp_contribution || 0,
-    moneyReceived: backendCounty.total_spent || 0,
-    budgetUtilization:
-      backendCounty.budget_utilization || backendCounty.financial_health_score || 0,
-    revenueCollection: backendCounty.revenue_2024 || 0,
-    pendingBills: backendCounty.pending_bills || 0,
-    developmentBudget: backendCounty.development_budget || 0,
-    recurrentBudget: backendCounty.recurrent_budget || 0,
-    auditIssues: (backendCounty.audit_issues || []).map((a) => ({
+    population: bc.population,
+    auditStatus,
+    lastAuditDate: bc.last_audit_date || undefined,
+    gdp: bc.gdp ?? 0,
+    moneyReceived: bc.money_received || bc.total_spent || 0,
+    budgetUtilization: bc.budget_utilization || 0,
+    revenueCollection: bc.revenue_collection || 0,
+    pendingBills: bc.pending_bills || 0,
+    developmentBudget: bc.development_budget || 0,
+    recurrentBudget: bc.recurrent_budget || 0,
+    auditIssues: (bc.audit_issues || []).map((a) => ({
       id: String(a.id),
       type: 'financial' as const,
       severity: (a.severity || 'medium') as 'low' | 'medium' | 'high' | 'critical',
-      description: a.finding_summary || '',
-      status: 'open' as const,
+      description: a.description || '',
+      status: (a.status === 'open' ? 'open' : 'resolved') as 'open' | 'pending' | 'resolved',
     })),
     totalBudget: budget,
     totalDebt: debt,
-    education: sectors['Education'] || sectors['education'] || 0,
-    health: sectors['Health'] || sectors['health'] || 0,
-    infrastructure: sectors['Infrastructure'] || sectors['infrastructure'] || 0,
+    education: sectorVal('Education'),
+    health: sectorVal('Health Services') || sectorVal('Health'),
+    infrastructure: sectorVal('Roads and Public Works') || sectorVal('Infrastructure'),
   };
 };
 

@@ -18,30 +18,32 @@ export function QueryProvider({ children }: QueryProviderProps) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            // Stale time: How long before data is considered stale (5 minutes)
-            staleTime: 5 * 60 * 1000,
-            // Cache time: How long to keep unused data in cache (30 minutes)
-            gcTime: 30 * 60 * 1000,
+            // Stale time: data stays fresh for 10 minutes by default
+            // Individual hooks override this for data that changes less often
+            staleTime: 10 * 60 * 1000,
+            // Cache time: keep unused data in memory for 60 minutes
+            // This prevents re-fetching when navigating between pages
+            gcTime: 60 * 60 * 1000,
             // Retry configuration
             retry: (failureCount, error: any) => {
               // Don't retry on 4xx errors (client errors)
               if (error?.response?.status >= 400 && error?.response?.status < 500) {
                 return false;
               }
-              // Retry up to 3 times for other errors
-              return failureCount < 3;
+              // Retry up to 2 times for other errors
+              return failureCount < 2;
             },
             // Retry delay with exponential backoff
-            retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-            // Refetch on window focus in production only
-            refetchOnWindowFocus: process.env.NODE_ENV === 'production',
-            // Background refetch interval (10 minutes for county data)
-            refetchInterval: 10 * 60 * 1000,
+            retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 15000),
+            // Only refetch on window focus in production (not on every tab switch)
+            refetchOnWindowFocus: false,
+            // Don't refetch on reconnect — stale data is fine for gov stats
+            refetchOnReconnect: false,
+            // ❌ REMOVED: refetchInterval — was polling ALL queries every 10min
+            // Individual hooks can set refetchInterval if they need live data
           },
           mutations: {
-            // Retry mutations once
             retry: 1,
-            // Mutation retry delay
             retryDelay: 1000,
           },
         },

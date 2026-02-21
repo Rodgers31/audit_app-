@@ -103,6 +103,33 @@ class SeedingSettings(BaseSettings):
             "(e.g., https://treasury.go.ke/debt-bulletins/latest.json)."
         ),
     )
+    pending_bills_dataset_url: Optional[str] = Field(
+        default="file://backend/seeding/fixtures/pending_bills.json",
+        description=(
+            "Endpoint containing pending bills data. "
+            "If None, the live COB ETL extractor runs instead. "
+            "Use file:// for local fixtures or https:// for production APIs "
+            "(e.g., https://cob.go.ke/api/pending-bills). "
+            "Source: Office of the Controller of Budget "
+            "(https://cob.go.ke/reports/pending-bills/)."
+        ),
+    )
+    debt_timeline_dataset_url: str = Field(
+        default="file://backend/seeding/fixtures/debt_timeline.json",
+        description=(
+            "Endpoint containing historical public debt timeline by year. "
+            "Use file:// for local fixtures or https:// for production APIs. "
+            "Source: CBK Annual Reports & National Treasury BPS."
+        ),
+    )
+    fiscal_summary_dataset_url: str = Field(
+        default="file://backend/seeding/fixtures/fiscal_summary.json",
+        description=(
+            "Endpoint containing national fiscal summary (budget, revenue, debt service). "
+            "Use file:// for local fixtures or https:// for production APIs. "
+            "Source: National Treasury BPS & Controller of Budget Reports."
+        ),
+    )
     learning_hub_dataset_url: str = Field(
         default="file://backend/seeding/fixtures/learning_hub.json",
         description=(

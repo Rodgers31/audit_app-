@@ -1,0 +1,184 @@
+{
+  "pending_bills": [
+    {
+      "entity_name": "Ministry of Health",
+      "entity_type": "national",
+      "category": "mda",
+      "fiscal_year": "FY2024/25",
+      "total_pending": 89700000000,
+      "eligible_pending": 62500000000,
+      "ineligible_pending": 27200000000,
+      "notes": "Includes pending claims from county referral hospitals and Level 5 facilities"
+    },
+    {
+      "entity_name": "Ministry of Roads and Transport",
+      "entity_type": "national",
+      "category": "mda",
+      "fiscal_year": "FY2024/25",
+      "total_pending": 76300000000,
+      "eligible_pending": 54100000000,
+      "ineligible_pending": 22200000000,
+      "notes": "Outstanding contractor payments for road construction projects"
+    },
+    {
+      "entity_name": "Ministry of Education",
+      "entity_type": "national",
+      "category": "mda",
+      "fiscal_year": "FY2024/25",
+      "total_pending": 45200000000,
+      "eligible_pending": 38600000000,
+      "ineligible_pending": 6600000000,
+      "notes": "Capitation grants and school infrastructure development payments"
+    },
+    {
+      "entity_name": "Ministry of Interior and National Administration",
+      "entity_type": "national",
+      "category": "mda",
+      "fiscal_year": "FY2024/25",
+      "total_pending": 32100000000,
+      "eligible_pending": 24800000000,
+      "ineligible_pending": 7300000000,
+      "notes": "Security operations support and facility maintenance contracts"
+    },
+    {
+      "entity_name": "Ministry of Defence",
+      "entity_type": "national",
+      "category": "mda",
+      "fiscal_year": "FY2024/25",
+      "total_pending": 28900000000,
+      "eligible_pending": 21500000000,
+      "ineligible_pending": 7400000000
+    },
+    {
+      "entity_name": "Ministry of Water, Sanitation and Irrigation",
+      "entity_type": "national",
+      "category": "mda",
+      "fiscal_year": "FY2024/25",
+      "total_pending": 24600000000,
+      "eligible_pending": 19200000000,
+      "ineligible_pending": 5400000000,
+      "notes": "Dam construction and water supply project contractor payments"
+    },
+    {
+      "entity_name": "Ministry of Energy and Petroleum",
+      "entity_type": "national",
+      "category": "mda",
+      "fiscal_year": "FY2024/25",
+      "total_pending": 18400000000,
+      "eligible_pending": 14700000000,
+      "ineligible_pending": 3700000000
+    },
+    {
+      "entity_name": "State Department for Public Works",
+      "entity_type": "national",
+      "category": "mda",
+      "fiscal_year": "FY2024/25",
+      "total_pending": 15800000000,
+      "eligible_pending": 12100000000,
+      "ineligible_pending": 3700000000
+    },
+    {
+      "entity_name": "Kenya National Highways Authority (KeNHA)",
+      "entity_type": "national",
+      "category": "state_corporation",
+      "fiscal_year": "FY2024/25",
+      "total_pending": 42300000000,
+      "eligible_pending": 35600000000,
+      "ineligible_pending": 6700000000,
+      "notes": "Highway construction and maintenance contractor pending payments"
+    },
+    {
+      "entity_name": "Kenya Rural Roads Authority (KeRRA)",
+      "entity_type": "national",
+      "category": "state_corporation",
+      "fiscal_year": "FY2024/25",
+      "total_pending": 19700000000,
+      "eligible_pending": 15200000000,
+      "ineligible_pending": 4500000000
+    },
+    {
+      "entity_name": "Kenya Power and Lighting Company (KPLC)",
+      "entity_type": "national",
+      "category": "state_corporation",
+      "fiscal_year": "FY2024/25",
+      "total_pending": 12400000000,
+      "eligible_pending": 9800000000,
+      "ineligible_pending": 2600000000
+    },
+    {
+      "entity_name": "Nairobi County",
+      "entity_type": "county",
+      "category": "county",
+      "fiscal_year": "FY2024/25",
+      "total_pending": 98700000000,
+      "eligible_pending": 64200000000,
+      "ineligible_pending": 34500000000,
+      "notes": "Largest county pending bills burden; includes historical arrears from Nairobi City Council"
+    },
+    {
+      "entity_name": "Mombasa County",
+      "entity_type": "county",
+      "category": "county",
+      "fiscal_year": "FY2024/25",
+      "total_pending": 12300000000,
+      "eligible_pending": 8900000000,
+      "ineligible_pending": 3400000000
+    },
+    {
+      "entity_name": "Kiambu County",
+      "entity_type": "county",
+      "category": "county",
+      "fiscal_year": "FY2024/25",
+      "total_pending": 11800000000,
+      "eligible_pending": 8200000000,
+      "ineligible_pending": 3600000000
+    },
+    {
+      "entity_name": "Nakuru County",
+      "entity_type": "county",
+      "category": "county",
+      "fiscal_year": "FY2024/25",
+      "total_pending": 9400000000,
+      "eligible_pending": 6800000000,
+      "ineligible_pending": 2600000000
+    },
+    {
+      "entity_name": "Kisumu County",
+      "entity_type": "county",
+      "category": "county",
+      "fiscal_year": "FY2024/25",
+      "total_pending": 7600000000,
+      "eligible_pending": 5400000000,
+      "ineligible_pending": 2200000000
+    },
+    {
+      "entity_name": "Machakos County",
+      "entity_type": "county",
+      "category": "county",
+      "fiscal_year": "FY2024/25",
+      "total_pending": 6900000000,
+      "eligible_pending": 4800000000,
+      "ineligible_pending": 2100000000
+    },
+    {
+      "entity_name": "Uasin Gishu County",
+      "entity_type": "county",
+      "category": "county",
+      "fiscal_year": "FY2024/25",
+      "total_pending": 5700000000,
+      "eligible_pending": 4100000000,
+      "ineligible_pending": 1600000000
+    }
+  ],
+  "summary": {
+    "grand_total": 1058400000000,
+    "total_national": 397000000000,
+    "total_county": 261700000000,
+    "total_state_corporations": 74400000000,
+    "fiscal_year": "FY2024/25",
+    "as_at_date": "December 2024",
+    "report_title": "National Government Budget Implementation Review Report FY 2024/25"
+  },
+  "source_url": "https://cob.go.ke/reports/pending-bills/",
+  "source_title": "Controller of Budget — National Government Budget Implementation Review Report FY 2024/25"
+}

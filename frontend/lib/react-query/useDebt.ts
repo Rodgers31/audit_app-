@@ -3,14 +3,19 @@
  */
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import {
+  DebtTimelineResponse,
   getCountyDebtData,
+  getCountyDebtTimeline,
   getDebtBreakdown,
   getDebtComparison,
   getDebtRiskAssessment,
   getDebtSustainabilityIndicators,
   getDebtTimeline,
   getNationalDebtOverview,
+  getNationalLoans,
+  getPendingBills,
   getTopLoans,
+  PendingBillsResponse,
 } from '../api/debt';
 import { DebtDataResponse } from '../api/types';
 
@@ -21,8 +26,11 @@ const QUERY_KEYS = {
   nationalOverview: ['debt', 'national'] as const,
   breakdown: (countyId?: string) => ['debt', 'breakdown', countyId] as const,
   timeline: (countyId?: string, years?: number) => ['debt', 'timeline', countyId, years] as const,
+  nationalTimeline: ['debt', 'national-timeline'] as const,
   comparison: (countyIds: string[]) => ['debt', 'comparison', countyIds] as const,
   topLoans: (limit: number) => ['debt', 'top-loans', limit] as const,
+  nationalLoans: ['debt', 'national-loans'] as const,
+  pendingBills: ['debt', 'pending-bills'] as const,
   sustainability: (countyId?: string) => ['debt', 'sustainability', countyId] as const,
   riskAssessment: ['debt', 'risk-assessment'] as const,
 };
@@ -36,7 +44,7 @@ export const useCountyDebtData = (
     queryKey: QUERY_KEYS.countyDebt(countyId),
     queryFn: () => getCountyDebtData(countyId),
     enabled: !!countyId,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 30 * 60 * 1000, // 30 minutes
     ...options,
   });
 };
@@ -48,7 +56,7 @@ export const useNationalDebtOverview = (
   return useQuery({
     queryKey: QUERY_KEYS.nationalOverview,
     queryFn: getNationalDebtOverview,
-    staleTime: 15 * 60 * 1000, // 15 minutes
+    staleTime: 60 * 60 * 1000, // 1 hour — national debt overview rarely changes
     ...options,
   });
 };
@@ -61,21 +69,33 @@ export const useDebtBreakdown = (
   return useQuery({
     queryKey: QUERY_KEYS.breakdown(countyId),
     queryFn: () => getDebtBreakdown(countyId),
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 30 * 60 * 1000, // 30 minutes
     ...options,
   });
 };
 
-// Get debt timeline data
-export const useDebtTimeline = (
+// Get county debt timeline data
+export const useCountyDebtTimeline = (
   countyId?: string,
   years?: number,
   options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>
 ) => {
   return useQuery({
     queryKey: QUERY_KEYS.timeline(countyId, years),
-    queryFn: () => getDebtTimeline(countyId, years),
+    queryFn: () => getCountyDebtTimeline(countyId, years),
     staleTime: 15 * 60 * 1000, // 15 minutes
+    ...options,
+  });
+};
+
+// Get national debt timeline (historical year-by-year external/domestic breakdown)
+export const useDebtTimeline = (
+  options?: Omit<UseQueryOptions<DebtTimelineResponse>, 'queryKey' | 'queryFn'>
+) => {
+  return useQuery({
+    queryKey: QUERY_KEYS.nationalTimeline,
+    queryFn: getDebtTimeline,
+    staleTime: 60 * 60 * 1000, // 1 hour (historical data rarely changes)
     ...options,
   });
 };
@@ -102,7 +122,7 @@ export const useTopLoans = (
   return useQuery({
     queryKey: QUERY_KEYS.topLoans(limit),
     queryFn: () => getTopLoans(limit),
-    staleTime: 15 * 60 * 1000, // 15 minutes
+    staleTime: 60 * 60 * 1000, // 1 hour
     ...options,
   });
 };
@@ -128,6 +148,28 @@ export const useDebtRiskAssessment = (
     queryKey: QUERY_KEYS.riskAssessment,
     queryFn: getDebtRiskAssessment,
     staleTime: 20 * 60 * 1000, // 20 minutes
+    ...options,
+  });
+};
+
+// Get national government individual loans
+export const useNationalLoans = (options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) => {
+  return useQuery({
+    queryKey: QUERY_KEYS.nationalLoans,
+    queryFn: getNationalLoans,
+    staleTime: 60 * 60 * 1000, // 1 hour — loan records rarely change
+    ...options,
+  });
+};
+
+// Get government pending bills (from COB reports)
+export const usePendingBills = (
+  options?: Omit<UseQueryOptions<PendingBillsResponse>, 'queryKey' | 'queryFn'>
+) => {
+  return useQuery({
+    queryKey: QUERY_KEYS.pendingBills,
+    queryFn: getPendingBills,
+    staleTime: 60 * 60 * 1000, // 1 hour — pending bills data updated quarterly
     ...options,
   });
 };

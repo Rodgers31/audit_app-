@@ -1,21 +1,30 @@
 /**
- * InteractiveKenyaMap - Main map component with county selection and hover interactions
- * Displays Kenya counties with financial health color coding and interactive tooltips
+ * InteractiveKenyaMap – redesigned with header / legend bar,
+ * refined SVG styling (subtle inner-shadow, softer strokes),
+ * and polished hover / active interactions.
  */
 'use client';
 
 import { KENYA_COUNTIES_GEOJSON } from '@/data/kenya-counties.geojson';
 import { County } from '@/types';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useRef, useState } from 'react';
+import { Eye, Layers, MapPin } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps';
 import CountyMarker from './map/CountyMarker';
 import MapTooltip from './map/MapTooltip';
-import { getCountyByName, getCountyColor, getNextAnimationMode } from './map/MapUtilities';
+import {
+  getCountyByName,
+  getCountyColor,
+  getCountyHoverColor,
+  getNextAnimationMode,
+  LEGEND_ITEMS,
+} from './map/MapUtilities';
 
 interface InteractiveKenyaMapProps {
   counties: County[];
   onCountySelect: (county: County) => void;
+  onCountyHover?: (county: County | null) => void;
   selectedCounty: County | null;
   currentCountyIndex: number;
   onCountyIndexChange: (index: number) => void;
@@ -26,109 +35,87 @@ interface InteractiveKenyaMapProps {
 export default function InteractiveKenyaMap({
   counties,
   onCountySelect,
+  onCountyHover,
   selectedCounty,
   currentCountyIndex,
   onCountyIndexChange,
   isInteractingWithDetails = false,
   className = '',
 }: InteractiveKenyaMapProps) {
-  // Hover and tooltip state
+  /* ── state ── */
   const [hoveredCounty, setHoveredCounty] = useState<string | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const [animationMode, setAnimationMode] = useState<'slideshow' | 'pulse' | 'wave'>('slideshow');
-  const [visualMode, setVisualMode] = useState<'focus' | 'overview'>('focus');
+  const [visualMode, setVisualMode] = useState<'focus' | 'overview'>('overview');
   const [hideTimeoutId, setHideTimeoutId] = useState<NodeJS.Timeout | null>(null);
 
-  // Refs for tracking hover state during timeouts
+  const [isMapHovered, setIsMapHovered] = useState(false);
   const isOverlayHoveredRef = useRef(false);
   const isProcessingLeaveRef = useRef(false);
 
-  // Kenya Geo/TopoJSON sources (with fallback)
+  /* ── geo data loading (resilient 4-level fallback) ── */
   const externalTopoUrl =
     'https://raw.githubusercontent.com/deldersveld/topojson/master/countries/kenya/kenya-counties.json';
-  const localGeoUrl = '/kenya_counties_official.json'; // optional local full dataset if provided
-  const placeholderGeoUrl = '/kenya-counties.json'; // minimal placeholder (in repo)
+  const localGeoUrl = '/kenya_counties_official.json';
+  const placeholderGeoUrl = '/kenya-counties.json';
 
   const [geoData, setGeoData] = useState<any | null>(null);
 
-  // Load map data with resilient fallbacks
   useEffect(() => {
     let cancelled = false;
-
-    const load = async () => {
-      const tryFetch = async (url: string) => {
-        try {
-          const res = await fetch(url, { cache: 'force-cache' });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          return await res.json();
-        } catch (e) {
-          return null;
-        }
-      };
-
-      // 1) External TopoJSON
+    const tryFetch = async (url: string) => {
+      try {
+        const res = await fetch(url, { cache: 'force-cache' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+      } catch {
+        return null;
+      }
+    };
+    (async () => {
       const ext = await tryFetch(externalTopoUrl);
       if (!cancelled && ext) return setGeoData(ext);
-
-      // 2) Local official dataset (if present)
       const local = await tryFetch(localGeoUrl);
       if (!cancelled && local) return setGeoData(local);
-
-      // 3) Repo placeholder (simple boxes)
       const placeholder = await tryFetch(placeholderGeoUrl);
       if (!cancelled && placeholder) return setGeoData(placeholder);
-
-      // 4) Embedded minimal fallback (ensures something renders offline)
       if (!cancelled) setGeoData(KENYA_COUNTIES_GEOJSON as any);
-    };
-
-    load();
+    })();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // Handle visualization mode change
-  const handleVisualizationModeChange = (mode: 'focus' | 'overview') => {
-    setVisualMode(mode);
-  };
-
-  // Handle county hover start - show tooltip immediately
+  /* ── hover handlers ── */
   const handleCountyMouseEnter = (countyName: string, county: any) => {
     if (hideTimeoutId) {
       clearTimeout(hideTimeoutId);
       setHideTimeoutId(null);
     }
-
     isProcessingLeaveRef.current = false;
     setHoveredCounty(countyName);
     setShowTooltip(!!county);
+    if (county && onCountyHover) onCountyHover(county);
   };
 
-  // Handle county hover end - hide tooltip with delay
   const handleCountyMouseLeave = () => {
     if (isProcessingLeaveRef.current) return;
-
     isProcessingLeaveRef.current = true;
-
     if (hideTimeoutId) {
       clearTimeout(hideTimeoutId);
       setHideTimeoutId(null);
     }
-
-    // Hide after 1 second unless hovering overlay
-    const timeoutId = setTimeout(() => {
+    const tid = setTimeout(() => {
       if (!isOverlayHoveredRef.current) {
         setHoveredCounty(null);
         setShowTooltip(false);
+        if (onCountyHover) onCountyHover(null);
       }
       isProcessingLeaveRef.current = false;
-    }, 1000);
-
-    setHideTimeoutId(timeoutId);
+    }, 800);
+    setHideTimeoutId(tid);
   };
 
-  // Handle tooltip overlay hover - prevent hiding
   const handleOverlayMouseEnter = () => {
     isOverlayHoveredRef.current = true;
     if (hideTimeoutId) {
@@ -136,95 +123,186 @@ export default function InteractiveKenyaMap({
       setHideTimeoutId(null);
     }
   };
-
-  // Handle tooltip overlay leave - start hide timer
   const handleOverlayMouseLeave = () => {
     isOverlayHoveredRef.current = false;
-    const timeoutId = setTimeout(() => {
+    const tid = setTimeout(() => {
       setHoveredCounty(null);
       setShowTooltip(false);
-    }, 1500);
-    setHideTimeoutId(timeoutId);
+      if (onCountyHover) onCountyHover(null);
+    }, 1200);
+    setHideTimeoutId(tid);
   };
 
-  // Auto-rotate through counties when not manually selected
+  /* ── auto-rotate + animation mode cycle ── */
   useEffect(() => {
-    if (selectedCounty || isInteractingWithDetails || !counties || counties.length === 0) return;
+    if (selectedCounty || isInteractingWithDetails || isMapHovered || !counties?.length) return;
+    const id = setInterval(() => {
+      onCountyIndexChange(currentCountyIndex === 0 ? counties.length - 1 : currentCountyIndex - 1);
+    }, 8000);
+    return () => clearInterval(id);
+  }, [
+    selectedCounty,
+    isInteractingWithDetails,
+    isMapHovered,
+    currentCountyIndex,
+    onCountyIndexChange,
+    counties,
+  ]);
 
-    const interval = setInterval(() => {
-      const nextIndex = currentCountyIndex === 0 ? counties.length - 1 : currentCountyIndex - 1;
-      onCountyIndexChange(nextIndex);
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, [selectedCounty, isInteractingWithDetails, currentCountyIndex, onCountyIndexChange, counties]);
-
-  // Cycle animation modes every 15 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
-      setAnimationMode(getNextAnimationMode);
-    }, 15000);
-
-    return () => clearInterval(interval);
+    const id = setInterval(() => setAnimationMode(getNextAnimationMode), 15000);
+    return () => clearInterval(id);
   }, []);
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       if (hideTimeoutId) clearTimeout(hideTimeoutId);
-    };
-  }, [hideTimeoutId]);
+    },
+    [hideTimeoutId]
+  );
 
-  // Handle county selection
+  /* ── derived ── */
   const handleCountyClick = (county: County) => {
     onCountySelect(county);
-    if (counties) {
-      onCountyIndexChange(counties.findIndex((c) => c.id === county.id));
-    }
+    if (counties) onCountyIndexChange(counties.findIndex((c) => c.id === county.id));
   };
 
   const currentAutoCounty =
-    !selectedCounty && counties && counties.length > 0 ? counties[currentCountyIndex] : null;
+    !selectedCounty && counties?.length ? counties[currentCountyIndex] : null;
 
+  const activeLabel = selectedCounty?.name ?? currentAutoCounty?.name ?? null;
+
+  /* ── matched county count for header ── */
+  const matchedCount = useMemo(() => counties?.length ?? 0, [counties]);
+
+  /* ── render ── */
   return (
-    <div className={`relative w-full h-full ${className}`} style={{ minHeight: '620px' }}>
-      {/* Main Map Container - Full Width */}
-      <div
-        className='relative w-full rounded-xl overflow-hidden'
-        // Fixed height avoids content overlaps with elements that follow the map
-        style={{ height: 600 }}>
-        {/* Map Controls Header */}
-        {/* Removed MapControls from here for cleaner map appearance */}
+    <div
+      className={`relative w-full h-full flex flex-col ${className}`}
+      style={{ minHeight: '620px' }}
+      onMouseEnter={() => setIsMapHovered(true)}
+      onMouseLeave={() => setIsMapHovered(false)}>
+      {/* ═══════════ Header Bar ═══════════ */}
+      <div className='flex flex-wrap items-center justify-between gap-3 mb-3'>
+        {/* Title */}
+        <div className='flex items-center gap-2'>
+          <div className='w-8 h-8 rounded-lg bg-gov-forest/10 flex items-center justify-center'>
+            <MapPin className='w-4 h-4 text-gov-forest' />
+          </div>
+          <div>
+            <h3 className='text-sm font-semibold text-gov-dark leading-tight'>County Explorer</h3>
+            <p className='text-[11px] text-gray-500 leading-tight'>
+              {matchedCount} counties &middot; audit-status colour coded
+            </p>
+          </div>
+        </div>
 
-        {/* Interactive Map */}
+        {/* Legend pills */}
+        <div className='flex flex-wrap items-center gap-1.5'>
+          {LEGEND_ITEMS.map((item) => (
+            <span
+              key={item.label}
+              className='inline-flex items-center gap-1 text-[10px] font-medium text-gray-600 bg-white/70 rounded-full px-2 py-0.5 border border-gray-200/60'>
+              <span
+                className='w-2 h-2 rounded-full ring-1 ring-black/10'
+                style={{ backgroundColor: item.color }}
+              />
+              {item.label}
+            </span>
+          ))}
+        </div>
+
+        {/* View mode toggle */}
+        <div className='flex items-center bg-white/60 rounded-lg border border-gray-200/60 p-0.5'>
+          <button
+            onClick={() => setVisualMode('overview')}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+              visualMode === 'overview'
+                ? 'bg-gov-forest text-white shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}>
+            <Layers className='w-3 h-3' />
+            All
+          </button>
+          <button
+            onClick={() => setVisualMode('focus')}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+              visualMode === 'focus'
+                ? 'bg-gov-forest text-white shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}>
+            <Eye className='w-3 h-3' />
+            Focus
+          </button>
+        </div>
+      </div>
+
+      {/* ═══════════ Map Container ═══════════ */}
+      <div
+        className='relative w-full flex-1 rounded-xl overflow-hidden border border-white/30'
+        style={{ minHeight: 560 }}>
+        {/* Subtle radial vignette overlay */}
+        <div
+          className='absolute inset-0 pointer-events-none z-10 rounded-xl'
+          style={{
+            background:
+              'radial-gradient(ellipse at center, transparent 55%, rgba(15,26,18,0.06) 100%)',
+          }}
+        />
+
+        {/* Active county label pill */}
+        <AnimatePresence mode='wait'>
+          {activeLabel && (
+            <motion.div
+              key={activeLabel}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3 }}
+              className='absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-gov-dark/80 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg border border-white/10'>
+              <span className='w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse' />
+              {activeLabel}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* SVG Map */}
         <ComposableMap
           projection='geoMercator'
-          projectionConfig={{
-            // Scaled up to better occupy vertical space
-            scale: 5500,
-            center: [37.8, -0.2],
-          }}
+          projectionConfig={{ scale: 5500, center: [37.8, -0.2] }}
           width={1100}
           height={1100}
-          className='w-full h-full drop-shadow-lg'>
+          className='w-full h-full'
+          style={{ background: 'transparent' }}>
           <defs>
-            <linearGradient id='mapGradient' x1='0%' y1='0%' x2='100%' y2='100%'>
-              <stop offset='0%' stopColor='rgba(59, 130, 246, 0.03)' />
-              <stop offset='50%' stopColor='rgba(99, 102, 241, 0.05)' />
-              <stop offset='100%' stopColor='rgba(139, 92, 246, 0.03)' />
-            </linearGradient>
-            <filter id='glow' x='-50%' y='-50%' width='200%' height='200%'>
-              <feGaussianBlur stdDeviation='3' result='coloredBlur' />
+            {/* Soft outer glow for active/hover */}
+            <filter id='countyGlow' x='-30%' y='-30%' width='160%' height='160%'>
+              <feGaussianBlur stdDeviation='2.5' result='blur' />
               <feMerge>
-                <feMergeNode in='coloredBlur' />
+                <feMergeNode in='blur' />
                 <feMergeNode in='SourceGraphic' />
               </feMerge>
             </filter>
+            {/* Subtle inner shadow on each county for depth */}
+            <filter id='innerShadow' x='-10%' y='-10%' width='120%' height='120%'>
+              <feComponentTransfer in='SourceAlpha'>
+                <feFuncA type='table' tableValues='1 0' />
+              </feComponentTransfer>
+              <feGaussianBlur stdDeviation='1.5' />
+              <feOffset dx='0' dy='1' result='offsetblur' />
+              <feFlood floodColor='rgba(0,0,0,0.12)' result='color' />
+              <feComposite in2='offsetblur' operator='in' />
+              <feComposite in2='SourceAlpha' operator='in' />
+              <feMerge>
+                <feMergeNode in='SourceGraphic' />
+                <feMergeNode />
+              </feMerge>
+            </filter>
           </defs>
-          <rect width='100%' height='100%' fill='url(#mapGradient)' />
+
           <Geographies geography={geoData ?? externalTopoUrl}>
-            {({ geographies }) => {
-              return geographies.map((geo, index) => {
+            {({ geographies }) =>
+              geographies.map((geo, index) => {
                 const geoCountyName =
                   geo.properties?.COUNTY_NAM ||
                   geo.properties?.COUNTY ||
@@ -236,22 +314,31 @@ export default function InteractiveKenyaMap({
                 const isActive =
                   selectedCounty?.id === county?.id ||
                   (!selectedCounty && currentAutoCounty?.id === county?.id);
+                const isHovered = hoveredCounty === geoCountyName;
 
-                // Wave animation offset for visual effect
-                const waveDelay = animationMode === 'wave' ? index * 0.1 : 0;
+                const fillColor = getCountyColor(
+                  geoCountyName,
+                  counties || [],
+                  index,
+                  selectedCounty,
+                  currentCountyIndex,
+                  hoveredCounty,
+                  animationMode,
+                  visualMode
+                );
+
+                const hoverFill = county
+                  ? getCountyHoverColor(geoCountyName, counties || [])
+                  : '#c8cec9';
 
                 return (
                   <motion.g
                     key={geo.rsmKey}
                     initial={{ scale: 1 }}
                     animate={{
-                      scale: isActive ? 1.05 : 1,
-                      y:
-                        animationMode === 'wave' && isActive
-                          ? Math.sin(Date.now() / 1000 + waveDelay) * 2
-                          : 0,
+                      scale: isActive ? 1.02 : 1,
                     }}
-                    transition={{ duration: 0.3, delay: waveDelay }}>
+                    transition={{ type: 'spring', stiffness: 300, damping: 25 }}>
                     <Geography
                       geography={geo}
                       onMouseEnter={() => handleCountyMouseEnter(geoCountyName, county)}
@@ -259,54 +346,34 @@ export default function InteractiveKenyaMap({
                       onClick={() => county && handleCountyClick(county)}
                       style={{
                         default: {
-                          fill: getCountyColor(
-                            geoCountyName,
-                            counties || [],
-                            index,
-                            selectedCounty,
-                            currentCountyIndex,
-                            hoveredCounty,
-                            animationMode,
-                            visualMode
-                          ),
-                          stroke: '#1f2937',
-                          strokeWidth: isActive ? 2.5 : 1.2,
+                          fill: fillColor,
+                          stroke: isActive ? '#0F1A12' : '#a3b5a8',
+                          strokeWidth: isActive ? 2 : 0.6,
                           outline: 'none',
-                          filter: isActive
-                            ? 'url(#glow) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2))'
-                            : 'none',
+                          filter: isActive ? 'url(#countyGlow)' : 'url(#innerShadow)',
+                          transition: 'fill 300ms ease, stroke-width 200ms ease',
                         },
                         hover: {
-                          fill: getCountyColor(
-                            geoCountyName,
-                            counties || [],
-                            index,
-                            selectedCounty,
-                            currentCountyIndex,
-                            geoCountyName, // Set as hovered
-                            animationMode,
-                            visualMode
-                          ),
-                          stroke: '#1f2937',
-                          strokeWidth: 2,
+                          fill: hoverFill,
+                          stroke: '#1B3A2A',
+                          strokeWidth: 1.5,
                           outline: 'none',
-                          filter: 'url(#glow)',
+                          filter: 'url(#countyGlow)',
+                          cursor: county ? 'pointer' : 'default',
+                          transition: 'fill 200ms ease, stroke-width 150ms ease',
                         },
                         pressed: {
-                          fill: '#1d4ed8',
-                          stroke: '#374151',
+                          fill: '#1B3A2A',
+                          stroke: '#0F1A12',
                           strokeWidth: 2,
                           outline: 'none',
                         },
                       }}
-                      className={`cursor-pointer transition-all duration-300 ${
-                        county ? 'hover:opacity-90' : ''
-                      }`}
                     />
                   </motion.g>
                 );
-              });
-            }}
+              })
+            }
           </Geographies>
 
           {/* Active County Marker */}
@@ -329,6 +396,11 @@ export default function InteractiveKenyaMap({
               ) : null;
             })()}
         </AnimatePresence>
+
+        {/* Bottom-right hint */}
+        <div className='absolute bottom-3 right-3 z-20 text-[10px] text-gray-400 bg-white/60 backdrop-blur-sm rounded-md px-2 py-1 border border-gray-200/40'>
+          Hover to explore &middot; Click to select
+        </div>
       </div>
     </div>
   );

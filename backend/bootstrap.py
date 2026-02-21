@@ -36,6 +36,7 @@ FISCAL_END = datetime(2026, 6, 30)
 DATA_DIR = Path(__file__).resolve().parent.parent / "apis"
 COUNTY_DATA_PATH = DATA_DIR / "enhanced_county_data.json"
 AUDIT_DATA_PATH = DATA_DIR / "oag_audit_data.json"
+NATIONAL_AUDIT_PATH = DATA_DIR / "oag_national_audit_data.json"
 
 
 def _parse_decimal(value: Any) -> Decimal:
@@ -688,6 +689,125 @@ def _seed_national_data(
     logger.info("National-level data seeded (GDP, population, debt)")
 
 
+def _seed_federal_audits(
+    session: Session,
+    *,
+    country: Country,
+    period: FiscalPeriod,
+) -> None:
+    """Seed national/federal government audit findings from the OAG report."""
+    payload = _load_json(NATIONAL_AUDIT_PATH)
+    findings = payload.get("national_audit_findings", [])
+    if not findings:
+        logger.warning("No national audit findings to seed")
+        return
+
+    report_meta = payload.get("metadata", {})
+    opinion = payload.get("audit_opinion_summary", {})
+
+    # Create source document for the OAG national report
+    oag_doc = _ensure_source_document(
+        session,
+        country_id=country.id,
+        title=report_meta.get(
+            "report_title",
+            "Report of the Auditor General on National Government FY 2023/2024",
+        ),
+        publisher="Office of the Auditor General",
+        doc_type=DocumentType.AUDIT,
+        fetch_date=datetime(2024, 12, 15),
+        metadata={
+            "source": NATIONAL_AUDIT_PATH.name,
+            "scope": "national",
+            "auditor_general": report_meta.get("auditor_general", ""),
+            "fiscal_year": report_meta.get("fiscal_year", ""),
+            "opinion_type": opinion.get("opinion_type", ""),
+            "total_amount_questioned": opinion.get("total_amount_questioned", ""),
+            "key_statistics": opinion.get("key_statistics", {}),
+            "basis_for_qualification": opinion.get("basis_for_qualification", []),
+            "emphasis_of_matter": opinion.get("emphasis_of_matter", []),
+        },
+    )
+
+    seeded = 0
+    for entry in findings:
+        entity_name = entry.get("entity_name", "")
+
+        # Find matching entity — try MINISTRY first, then NATIONAL
+        entity = (
+            session.query(Entity)
+            .filter(
+                Entity.country_id == country.id,
+                Entity.canonical_name == entity_name,
+            )
+            .first()
+        )
+        if not entity:
+            # Try NATIONAL entity for "Republic of Kenya"
+            entity = (
+                session.query(Entity)
+                .filter(
+                    Entity.country_id == country.id,
+                    Entity.type == EntityType.NATIONAL,
+                )
+                .first()
+            )
+        if not entity:
+            logger.warning(
+                "Skipping national finding %s: no entity '%s'",
+                entry.get("id"),
+                entity_name,
+            )
+            continue
+
+        finding_text = entry.get("description", "Federal audit finding")
+        existing = (
+            session.query(Audit)
+            .filter(
+                Audit.entity_id == entity.id,
+                Audit.finding_text == finding_text,
+            )
+            .first()
+        )
+
+        severity = _map_severity(entry.get("severity", "medium"))
+        provenance = [
+            {
+                "source": NATIONAL_AUDIT_PATH.name,
+                "external_id": entry.get("id"),
+                "amount_involved": entry.get("amount_involved"),
+                "status": entry.get("status"),
+                "category": entry.get("category"),
+                "query_type": entry.get("query_type"),
+                "date_raised": entry.get("date_raised"),
+                "report_section": entry.get("report_section"),
+                "scope": "national",
+            }
+        ]
+
+        if existing:
+            existing.severity = severity
+            existing.recommended_action = entry.get("recommended_action")
+            existing.source_document_id = oag_doc.id
+            existing.provenance = provenance
+            session.add(existing)
+        else:
+            session.add(
+                Audit(
+                    entity_id=entity.id,
+                    period_id=period.id,
+                    finding_text=finding_text,
+                    severity=severity,
+                    recommended_action=entry.get("recommended_action"),
+                    source_document_id=oag_doc.id,
+                    provenance=provenance,
+                )
+            )
+            seeded += 1
+
+    logger.info("Federal audit findings seeded: %d new records", seeded)
+
+
 def initialize_reference_data(code_lookup: Optional[Dict[str, str]] = None) -> None:
     """Seed canonical county + audit data into the database if missing."""
     county_payload = _load_json(COUNTY_DATA_PATH)
@@ -857,6 +977,9 @@ def initialize_reference_data(code_lookup: Optional[Dict[str, str]] = None) -> N
 
         # --- National-level data (GDP + sovereign debt) ---
         _seed_national_data(session, country=country, period=period)
+
+        # --- Federal/National government audit findings ---
+        _seed_federal_audits(session, country=country, period=period)
 
         session.commit()
         logger.info(
