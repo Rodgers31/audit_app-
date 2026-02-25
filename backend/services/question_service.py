@@ -5,7 +5,7 @@ Handles CRUD operations for quick questions and user answers
 
 import logging
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from database import get_db
@@ -47,7 +47,7 @@ class QuestionService:
 
         # Exclude questions answered by user in the last 3 days (if user_id provided)
         if user_id:
-            recent_cutoff = datetime.utcnow() - timedelta(days=3)
+            recent_cutoff = datetime.now(timezone.utc) - timedelta(days=3)
             answered_question_ids = (
                 self.db.query(UserQuestionAnswer.question_id)
                 .filter(
@@ -92,7 +92,7 @@ class QuestionService:
             question_id=question_id,
             selected_answer=selected_answer.upper(),
             is_correct=is_correct,
-            answered_at=datetime.utcnow(),
+            answered_at=datetime.now(timezone.utc),
         )
 
         self.db.add(user_answer)
@@ -117,8 +117,8 @@ class QuestionService:
     def get_user_stats(self, user_id: int) -> Dict[str, Any]:
         """Get learning statistics for a user."""
 
-        today = datetime.utcnow().date()
-        week_ago = datetime.utcnow() - timedelta(days=7)
+        today = datetime.now(timezone.utc).date()
+        week_ago = datetime.now(timezone.utc) - timedelta(days=7)
 
         # Total questions answered
         total_answered = (
@@ -212,7 +212,7 @@ class QuestionService:
             return 0
 
         streak = 0
-        current_date = datetime.utcnow().date()
+        current_date = datetime.now(timezone.utc).date()
 
         for row in dates_with_correct:
             answer_date = row.answer_date

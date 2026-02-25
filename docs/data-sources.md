@@ -89,12 +89,12 @@ This document catalogs official data sources for the audit transparency platform
 
 Using fixture files for all domains:
 
-- ✅ Counties Budget: `backend/seeding/fixtures/counties_budget.json`
-- ✅ Audits: `backend/seeding/fixtures/audits.json`
-- ✅ Population: `backend/seeding/fixtures/population.json`
-- ✅ Economic Indicators: `backend/seeding/fixtures/economic_indicators.json`
-- ✅ National Debt: `backend/seeding/fixtures/national_debt.json`
-- ✅ Learning Hub: `backend/seeding/fixtures/learning_hub.json`
+- ✅ Counties Budget: `backend/seeding/real_data/budgets.json`
+- ✅ Audits: `backend/seeding/real_data/audits.json`
+- ✅ Population: `backend/seeding/real_data/population.json`
+- ✅ Economic Indicators: `backend/seeding/real_data/economic_indicators.json`
+- ✅ National Debt: `backend/seeding/real_data/national_debt.json`
+- ✅ Learning Hub: `backend/seeding/fixtures/learning_hub.json` _(educational content, no real data source)_
 
 ### Phase 2: Open Data API Integration (Recommended Next)
 

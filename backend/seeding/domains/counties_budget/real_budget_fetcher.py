@@ -141,10 +141,6 @@ class RealBudgetDataFetcher:
                     "end_date": end_date,
                     "category": sector,
                     "allocated_amount": round(amount, 2),
-                    "actual_spent": round(
-                        amount * 0.85, 2
-                    ),  # Assume 85% execution rate
-                    "committed_amount": round(amount * 0.92, 2),  # 92% committed
                     "source": "Estimated based on CRA Equitable Share FY 2023/24",
                     "source_url": "https://www.crakenya.org/county-allocations/",
                     "data_quality": "estimated",

@@ -140,6 +140,24 @@ def persist_audit_records(
         )
         existing = session.execute(stmt).scalar_one_or_none()
 
+        # Build rich provenance with all available metadata
+        prov_entry: dict = {}
+        if record.dataset_id:
+            prov_entry["dataset_id"] = record.dataset_id
+        if record.reference:
+            prov_entry["reference"] = record.reference
+        if record.amount is not None:
+            prov_entry["amount"] = record.amount
+        if record.query_type:
+            prov_entry["category"] = record.query_type
+        if record.status:
+            prov_entry["status"] = record.status
+        if record.audit_year:
+            prov_entry["audit_year"] = record.audit_year
+        if record.source_url:
+            prov_entry["source_url"] = record.source_url
+        provenance = [prov_entry] if prov_entry else []
+
         if existing is None:
             audit = Audit(
                 entity_id=entity.id,
@@ -148,11 +166,7 @@ def persist_audit_records(
                 severity=severity,
                 recommended_action=record.recommended_action,
                 source_document_id=source.id,
-                provenance=(
-                    [{"dataset_id": record.dataset_id, "reference": record.reference}]
-                    if record.dataset_id
-                    else []
-                ),
+                provenance=provenance,
             )
             session.add(audit)
             stats.created += 1
@@ -170,10 +184,15 @@ def persist_audit_records(
             if existing.source_document_id != source.id:
                 existing.source_document_id = source.id
                 updated = True
+            # Always refresh provenance with rich data
+            if provenance and existing.provenance != provenance:
+                existing.provenance = provenance
+                updated = True
             if updated:
                 stats.updated += 1
 
     return stats
 
 
+__all__ = ["PersistenceStats", "persist_audit_records"]
 __all__ = ["PersistenceStats", "persist_audit_records"]

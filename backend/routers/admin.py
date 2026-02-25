@@ -8,7 +8,7 @@ Provides endpoints for:
 """
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from database import get_db
@@ -129,7 +129,7 @@ async def list_ingestion_jobs(
             )
 
     if days:
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         query = query.filter(IngestionJob.created_at >= cutoff)
 
     # Get total count
@@ -243,7 +243,7 @@ async def get_ingestion_stats(
     # Build query with date filter
     query = db.query(IngestionJob)
     if days:
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         query = query.filter(IngestionJob.created_at >= cutoff)
 
     jobs = query.all()

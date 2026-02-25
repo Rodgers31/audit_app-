@@ -6,6 +6,7 @@ import hashlib
 import json
 import logging
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from models import DocumentType, Entity, EntityType, Loan, SourceDocument
@@ -154,14 +155,39 @@ def write_debt_records(
         }
 
         if existing_loan:
-            # Update if outstanding amount changed
-            if existing_loan.outstanding != record.outstanding:
+            # Update if outstanding amount changed or debt_category missing
+            needs_update = (
+                existing_loan.outstanding != record.outstanding
+                or existing_loan.debt_category is None
+            )
+            if needs_update:
                 logger.info(
                     f"Updating loan: {record.lender} for {record.entity_name} "
                     f"(outstanding: {existing_loan.outstanding} → {record.outstanding})"
                 )
                 existing_loan.outstanding = record.outstanding
+                existing_loan.principal = record.principal
                 existing_loan.maturity_date = record.maturity_date
+
+                # Update debt_category and interest_rate if provided
+                if record.debt_category:
+                    from models import DebtCategory as _DC
+
+                    _cat_map = {
+                        "external_multilateral": _DC.EXTERNAL_MULTILATERAL,
+                        "external_bilateral": _DC.EXTERNAL_BILATERAL,
+                        "external_commercial": _DC.EXTERNAL_COMMERCIAL,
+                        "domestic_bonds": _DC.DOMESTIC_BONDS,
+                        "domestic_bills": _DC.DOMESTIC_BILLS,
+                        "domestic_overdraft": _DC.DOMESTIC_OVERDRAFT,
+                        "pending_bills": _DC.PENDING_BILLS,
+                        "county_guaranteed": _DC.COUNTY_GUARANTEED,
+                    }
+                    existing_loan.debt_category = _cat_map.get(
+                        record.debt_category, _DC.OTHER
+                    )
+                if record.interest_rate is not None:
+                    existing_loan.interest_rate = record.interest_rate
 
                 # Append to provenance
                 provenance = existing_loan.provenance or []
@@ -176,11 +202,30 @@ def write_debt_records(
                 f"(principal: {record.principal}, outstanding: {record.outstanding})"
             )
 
+            # Map debt_category string to DebtCategory enum
+            debt_cat = None
+            if record.debt_category:
+                from models import DebtCategory
+
+                cat_map = {
+                    "external_multilateral": DebtCategory.EXTERNAL_MULTILATERAL,
+                    "external_bilateral": DebtCategory.EXTERNAL_BILATERAL,
+                    "external_commercial": DebtCategory.EXTERNAL_COMMERCIAL,
+                    "domestic_bonds": DebtCategory.DOMESTIC_BONDS,
+                    "domestic_bills": DebtCategory.DOMESTIC_BILLS,
+                    "domestic_overdraft": DebtCategory.DOMESTIC_OVERDRAFT,
+                    "pending_bills": DebtCategory.PENDING_BILLS,
+                    "county_guaranteed": DebtCategory.COUNTY_GUARANTEED,
+                }
+                debt_cat = cat_map.get(record.debt_category, DebtCategory.OTHER)
+
             loan = Loan(
                 entity_id=entity.id,
                 lender=record.lender,
+                debt_category=debt_cat,
                 principal=record.principal,
                 outstanding=record.outstanding,
+                interest_rate=record.interest_rate or Decimal("0"),
                 issue_date=record.issue_date,
                 maturity_date=record.maturity_date,
                 currency=record.currency,

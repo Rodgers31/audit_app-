@@ -57,11 +57,12 @@ Data Quality: official_census
 
 ### Updated `.env` File
 
-**Before** (Test Fixtures):
+**Before** (Test Fixtures — now removed):
 
 ```env
-SEED_POPULATION_DATASET_URL=file:///c:/Users/rodge/projects/audit_app/backend/seeding/fixtures/population.json
-SEED_ECONOMIC_INDICATORS_DATASET_URL=file:///c:/Users/rodge/projects/audit_app/backend/seeding/fixtures/economic_indicators.json
+# These fixture paths no longer exist; real data is now in real_data/
+SEED_POPULATION_DATASET_URL=file://backend/seeding/real_data/population.json
+SEED_ECONOMIC_INDICATORS_DATASET_URL=file://backend/seeding/real_data/economic_indicators.json
 ```
 
 **After** (Real Government Data):
@@ -79,20 +80,17 @@ SEED_ECONOMIC_INDICATORS_DATASET_URL=file:///c:/Users/rodge/projects/audit_app/b
 ### Files Created
 
 1. **`backend/seeding/domains/real_data_fetcher.py`** (261 lines)
-
    - Integrates with existing KNBS extractor
    - Generates structured JSON from official census data
    - Includes proper slugs matching database Entity format
    - Documents data sources and quality
 
 2. **`backend/seeding/real_data/population.json`** (566 lines)
-
    - 47 county records with official 2019 census populations
    - Proper entity_slug format: "nairobi-county", "mombasa-county", etc.
    - Metadata: source, source_url, data_quality, notes
 
 3. **`backend/seeding/real_data/economic_indicators.json`** (50 lines)
-
    - 4 official economic indicators from KNBS reports
    - Includes source URLs to verify data
 
@@ -104,7 +102,6 @@ SEED_ECONOMIC_INDICATORS_DATASET_URL=file:///c:/Users/rodge/projects/audit_app/b
 ### Code Changes
 
 1. **`backend/seeding/domains/population/parser.py`**
-
    - Updated to handle both fixture format and real data format
    - Supports direct JSON arrays (real data) and wrapped format (fixtures)
    - Maps "county" field from real data to entity names
@@ -146,19 +143,16 @@ Every record includes:
 ### Still Using Fixtures (TODO)
 
 1. **Counties Budget** - Using fixtures
-
    - **Target Source**: Controller of Budget (CoB) quarterly reports
    - **Approach**: Use `CoBQuarterlyReportParser` (already implemented, 23/23 tests passing)
    - **Status**: Need to discover CoB PDF URLs and parse
 
 2. **Audits** - Using fixtures
-
    - **Target Source**: Office of Auditor General (OAG) audit reports
    - **Approach**: Use `OAGAuditReportParser` (already implemented)
    - **Status**: Need to extract OAG PDFs
 
 3. **National Debt** - Using fixtures
-
    - **Target Source**: National Treasury debt bulletins
    - **Approach**: Use `TreasuryDebtBulletinParser` (already implemented)
    - **Status**: Need to locate Treasury PDF URLs

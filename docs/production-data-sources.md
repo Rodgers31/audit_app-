@@ -4,15 +4,19 @@ This guide explains how to transition from fixture-based seeding to production g
 
 ## Current Status (Development)
 
-All domains currently use local fixture files:
+Most domains use real government data from `backend/seeding/real_data/`:
 
 ```bash
-SEED_BUDGETS_DATASET_URL=file:///c:/Users/rodge/projects/audit_app/backend/seeding/fixtures/budgets.json
-SEED_AUDITS_DATASET_URL=file:///c:/Users/rodge/projects/audit_app/backend/seeding/fixtures/audits.json
-SEED_POPULATION_DATASET_URL=file:///c:/Users/rodge/projects/audit_app/backend/seeding/fixtures/population.json
-SEED_ECONOMIC_INDICATORS_DATASET_URL=file:///c:/Users/rodge/projects/audit_app/backend/seeding/fixtures/economic_indicators.json
-SEED_NATIONAL_DEBT_DATASET_URL=file:///c:/Users/rodge/projects/audit_app/backend/seeding/fixtures/national_debt.json
-SEED_LEARNING_HUB_DATASET_URL=file:///c:/Users/rodge/projects/audit_app/backend/seeding/fixtures/learning_hub.json
+SEED_POPULATION_DATASET_URL=file://backend/seeding/real_data/population.json
+SEED_BUDGETS_DATASET_URL=file://backend/seeding/real_data/budgets.json
+SEED_AUDITS_DATASET_URL=file://backend/seeding/real_data/audits.json
+SEED_ECONOMIC_INDICATORS_DATASET_URL=file://backend/seeding/real_data/economic_indicators.json
+SEED_NATIONAL_DEBT_DATASET_URL=file://backend/seeding/real_data/national_debt.json
+SEED_DEBT_TIMELINE_DATASET_URL=file://backend/seeding/real_data/debt_timeline.json
+SEED_FISCAL_SUMMARY_DATASET_URL=file://backend/seeding/real_data/fiscal_summary.json
+# Still on fixtures (no real data source yet):
+SEED_PENDING_BILLS_DATASET_URL=file://backend/seeding/fixtures/pending_bills.json
+SEED_LEARNING_HUB_DATASET_URL=file://backend/seeding/fixtures/learning_hub.json
 ```
 
 ## Transition Plan

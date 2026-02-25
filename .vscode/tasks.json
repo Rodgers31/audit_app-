@@ -4,8 +4,8 @@
     {
       "label": "Install Backend Dependencies",
       "type": "shell",
-      "command": "pip",
-      "args": ["install", "-r", "requirements.txt"],
+      "command": "${workspaceFolder}/venv/bin/python3",
+      "args": ["-m", "pip", "install", "-r", "requirements.txt"],
       "group": "build",
       "options": {
         "cwd": "${workspaceFolder}/backend"
@@ -38,8 +38,8 @@
     {
       "label": "Start Backend (Dev)",
       "type": "shell",
-      "command": "uvicorn",
-      "args": ["main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"],
+      "command": "${workspaceFolder}/venv/bin/python3",
+      "args": ["-m", "uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"],
       "group": "test",
       "options": {
         "cwd": "${workspaceFolder}/backend"
@@ -113,46 +113,41 @@
     {
       "label": "Start Backend (Dev via pip uvicorn)",
       "type": "shell",
-      "command": "pip",
-      "args": [
-        "install",
-        "-r",
-        "requirements.txt",
-        "&&",
-        "python",
-        "-m",
-        "uvicorn",
-        "main:app",
-        "--reload",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8000"
-      ],
+      "command": "${workspaceFolder}/venv/bin/python3",
+      "args": ["-m", "uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"],
       "isBackground": true,
       "problemMatcher": ["$python"],
-      "group": "test"
+      "group": "test",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      }
     },
     {
       "label": "Start Backend (Dev via python -m uvicorn)",
       "type": "shell",
-      "command": "C:/Users/rodge/projects/audit_app/venv/Scripts/python.exe",
+      "command": "${workspaceFolder}/venv/bin/python3",
       "args": ["-m", "uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"],
       "isBackground": true,
-      "group": "test"
+      "group": "test",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      }
     },
     {
       "label": "ETL Backfill (venv, headless)",
       "type": "shell",
-      "command": "C:/Users/rodge/projects/audit_app/venv/Scripts/python.exe",
+      "command": "${workspaceFolder}/venv/bin/python3",
       "args": ["-m", "etl.backfill"],
       "isBackground": false,
-      "group": "test"
+      "group": "test",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
     },
     {
       "label": "Headless Smoke (venv)",
       "type": "shell",
-      "command": "C:/Users/rodge/projects/audit_app/venv/Scripts/python.exe",
+      "command": "${workspaceFolder}/venv/bin/python3",
       "args": ["-m", "etl.cob_headless"],
       "options": {
         "cwd": "${workspaceFolder}",
@@ -165,17 +160,20 @@
       "group": "test"
     },
     {
-      "label": "Seed Database (Fixtures Dry Run)",
+      "label": "Seed Database (Dry Run)",
       "type": "shell",
-      "command": "C:/Users/rodge/projects/audit_app/venv/Scripts/python.exe",
+      "command": "${workspaceFolder}/venv/bin/python3",
       "args": ["-m", "seeding.cli", "seed", "--all", "--dry-run"],
       "options": {
-        "cwd": "${workspaceFolder}",
+        "cwd": "${workspaceFolder}/backend",
         "env": {
-          "SEED_POPULATION_DATASET_URL": "backend/seeding/fixtures/population.json",
-          "SEED_BUDGETS_DATASET_URL": "backend/seeding/fixtures/budgets.json",
-          "SEED_AUDITS_DATASET_URL": "backend/seeding/fixtures/audits.json",
-          "SEED_ECONOMIC_INDICATORS_DATASET_URL": "backend/seeding/fixtures/economic_indicators.json"
+          "SEED_POPULATION_DATASET_URL": "backend/seeding/real_data/population.json",
+          "SEED_BUDGETS_DATASET_URL": "backend/seeding/real_data/budgets.json",
+          "SEED_AUDITS_DATASET_URL": "backend/seeding/real_data/audits.json",
+          "SEED_ECONOMIC_INDICATORS_DATASET_URL": "backend/seeding/real_data/economic_indicators.json",
+          "SEED_NATIONAL_DEBT_DATASET_URL": "backend/seeding/real_data/national_debt.json",
+          "SEED_DEBT_TIMELINE_DATASET_URL": "backend/seeding/real_data/debt_timeline.json",
+          "SEED_FISCAL_SUMMARY_DATASET_URL": "backend/seeding/real_data/fiscal_summary.json"
         }
       },
       "presentation": {

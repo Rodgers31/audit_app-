@@ -25,6 +25,9 @@ class DebtRecord:
         currency: str,
         source_url: str | None = None,
         source_title: str | None = None,
+        debt_category: str | None = None,
+        interest_rate: Decimal | None = None,
+        notes: str | None = None,
     ):
         self.entity_name = entity_name
         self.entity_type = entity_type
@@ -36,6 +39,9 @@ class DebtRecord:
         self.currency = currency
         self.source_url = source_url
         self.source_title = source_title
+        self.debt_category = debt_category
+        self.interest_rate = interest_rate
+        self.notes = notes
 
 
 def parse_debt_payload(payload: dict[str, Any]) -> list[DebtRecord]:
@@ -85,6 +91,11 @@ def parse_debt_payload(payload: dict[str, Any]) -> list[DebtRecord]:
             principal = Decimal(str(loan_data["principal"]))
             outstanding = Decimal(str(loan_data["outstanding"]))
 
+            # Parse optional interest rate
+            interest_rate = None
+            if loan_data.get("interest_rate"):
+                interest_rate = Decimal(str(loan_data["interest_rate"]))
+
             record = DebtRecord(
                 entity_name=loan_data["entity_name"],
                 entity_type=loan_data["entity_type"],
@@ -96,6 +107,9 @@ def parse_debt_payload(payload: dict[str, Any]) -> list[DebtRecord]:
                 currency=loan_data.get("currency", "KES"),
                 source_url=source_url,
                 source_title=source_title,
+                debt_category=loan_data.get("debt_category"),
+                interest_rate=interest_rate,
+                notes=loan_data.get("notes"),
             )
 
             records.append(record)

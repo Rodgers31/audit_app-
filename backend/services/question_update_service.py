@@ -5,7 +5,7 @@ Handles scheduled tasks for fetching and updating questions
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from database import get_db
@@ -55,7 +55,7 @@ class QuestionUpdateService:
 
         # Check if enough time has passed since last update
         if self.last_update:
-            time_since_update = datetime.utcnow() - self.last_update
+            time_since_update = datetime.now(timezone.utc) - self.last_update
             if time_since_update.total_seconds() < (self.update_interval_hours * 3600):
                 logger.debug("Questions updated recently, skipping")
                 return
@@ -84,7 +84,7 @@ class QuestionUpdateService:
 
             if not categories_needing_questions:
                 logger.info("All categories have sufficient questions")
-                self.last_update = datetime.utcnow()
+                self.last_update = datetime.now(timezone.utc)
                 return
 
             # Fetch new questions for categories that need them
@@ -93,7 +93,7 @@ class QuestionUpdateService:
                     db, category_info["category"], category_info["needed"]
                 )
 
-            self.last_update = datetime.utcnow()
+            self.last_update = datetime.now(timezone.utc)
             logger.info("Question update completed successfully")
 
         except Exception as e:

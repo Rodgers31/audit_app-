@@ -3,7 +3,7 @@
 import hashlib
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -81,7 +81,7 @@ class DataValidator:
             confidence=max(0.0, min(1.0, confidence)),
             errors=errors,
             warnings=warnings,
-            metadata={"validated_at": datetime.utcnow().isoformat()},
+            metadata={"validated_at": datetime.now(timezone.utc).isoformat()},
         )
 
     def validate_audit_data(self, data: Dict[str, Any]) -> ValidationResult:
@@ -120,7 +120,7 @@ class DataValidator:
             confidence=max(0.0, min(1.0, confidence)),
             errors=errors,
             warnings=warnings,
-            metadata={"validated_at": datetime.utcnow().isoformat()},
+            metadata={"validated_at": datetime.now(timezone.utc).isoformat()},
         )
 
     def detect_duplicate(self, data: Dict[str, Any], doc_type: str) -> Optional[str]:
@@ -185,7 +185,7 @@ class ConfidenceFilter:
             "extraction_id": extraction.get("id"),
             "confidence": extraction.get("confidence"),
             "reason": "Low confidence score",
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "status": "pending_review",
             "data": extraction,
         }

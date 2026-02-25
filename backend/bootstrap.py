@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -514,52 +514,11 @@ NATIONAL_GDP_SERIES = [
     (2025, 15_400_000_000_000),  # Estimate
 ]
 
-NATIONAL_DEBT_BREAKDOWN = [
-    # (lender, category, principal KES, outstanding KES)
-    # CBK Apr 2025: Total 11.49T, Domestic 6.16T, External 5.33T
-    (
-        "Multilateral (World Bank / IMF / AfDB)",
-        DebtCategory.EXTERNAL_MULTILATERAL,
-        1_650_000_000_000,
-        1_620_000_000_000,
-    ),
-    (
-        "Bilateral (China / Japan / France)",
-        DebtCategory.EXTERNAL_BILATERAL,
-        1_000_000_000_000,
-        980_000_000_000,
-    ),
-    (
-        "Commercial Banks (Syndicated)",
-        DebtCategory.EXTERNAL_COMMERCIAL,
-        400_000_000_000,
-        400_000_000_000,
-    ),
-    (
-        "Eurobonds",
-        DebtCategory.EXTERNAL_COMMERCIAL,
-        2_276_000_000_000,
-        2_276_000_000_000,
-    ),
-    (
-        "Domestic Treasury Bonds",
-        DebtCategory.DOMESTIC_BONDS,
-        4_864_000_000_000,
-        4_864_000_000_000,
-    ),
-    (
-        "Domestic Treasury Bills",
-        DebtCategory.DOMESTIC_BILLS,
-        1_050_000_000_000,
-        1_050_000_000_000,
-    ),
-    (
-        "CBK Overdraft Facility",
-        DebtCategory.DOMESTIC_OVERDRAFT,
-        250_000_000_000,
-        250_000_000_000,
-    ),
-]
+# NATIONAL_DEBT_BREAKDOWN removed — debt data now comes from the seeding
+# pipeline via `python -m seeding.cli seed --domain national_debt`.
+# Real data in: backend/seeding/real_data/national_debt.json
+# Source: CBK Public Debt Statistical Bulletin, April 2025.
+
 NATIONAL_POPULATION = 47_564_296  # Census 2019 (KNBS)
 
 
@@ -644,49 +603,14 @@ def _seed_national_data(
         source_document_id=national_doc.id,
     )
 
-    # Sovereign debt breakdown — delete ALL existing national loans first
-    # to prevent duplicates from multiple code paths (bootstrap, auto_seeder, seeder)
-    all_national_loans = (
-        session.query(Loan).filter(Loan.entity_id == national_entity.id).all()
+    # National debt breakdown is now handled by the seeding pipeline:
+    #   python -m seeding.cli seed --domain national_debt
+    # Bootstrap no longer writes loan records to avoid conflicts.
+
+    logger.info(
+        "National-level data seeded (GDP, population). "
+        "Run 'python -m seeding.cli seed --domain national_debt' for debt records."
     )
-    for loan in all_national_loans:
-        session.delete(loan)
-    if all_national_loans:
-        logger.info(
-            f"Cleared {len(all_national_loans)} existing national loans before re-seeding"
-        )
-
-    for lender, cat, principal, outstanding in NATIONAL_DEBT_BREAKDOWN:
-        existing = (
-            session.query(Loan)
-            .filter(
-                Loan.entity_id == national_entity.id,
-                Loan.lender == lender,
-            )
-            .first()
-        )
-        if existing:
-            existing.principal = Decimal(str(principal))
-            existing.outstanding = Decimal(str(outstanding))
-            session.add(existing)
-        else:
-            session.add(
-                Loan(
-                    entity_id=national_entity.id,
-                    lender=lender,
-                    debt_category=cat,
-                    principal=Decimal(str(principal)),
-                    outstanding=Decimal(str(outstanding)),
-                    interest_rate=Decimal("0"),
-                    issue_date=FISCAL_START,
-                    maturity_date=None,
-                    currency="KES",
-                    source_document_id=national_doc.id,
-                    provenance=[{"source": "bootstrap", "scope": "national"}],
-                )
-            )
-
-    logger.info("National-level data seeded (GDP, population, debt)")
 
 
 def _seed_federal_audits(
@@ -809,7 +733,31 @@ def _seed_federal_audits(
 
 
 def initialize_reference_data(code_lookup: Optional[Dict[str, str]] = None) -> None:
-    """Seed canonical county + audit data into the database if missing."""
+    """Seed canonical county + audit data into the database if missing.
+
+    Performs a fast check first: if 47 county entities already exist we
+    skip the expensive per-county loop entirely.  This cuts restart time
+    from ~3 min to <1 s on subsequent boots.
+    """
+    # ── fast path: skip if data already present ──────────────────────
+    quick_session = SessionLocal()
+    try:
+        county_count = (
+            quick_session.query(Entity).filter(Entity.type == EntityType.COUNTY).count()
+        )
+        if county_count >= 47:
+            logger.info(
+                "Reference data already present (%d county entities) — skipping bootstrap",
+                county_count,
+            )
+            quick_session.close()
+            return
+    except Exception:
+        pass  # table might not exist yet; fall through to full seed
+    finally:
+        quick_session.close()
+
+    # ── full seed path ───────────────────────────────────────────────
     county_payload = _load_json(COUNTY_DATA_PATH)
     county_records = county_payload.get("county_data", {})
     if not county_records:
@@ -895,6 +843,8 @@ def initialize_reference_data(code_lookup: Optional[Dict[str, str]] = None) -> N
                 "revenue_potential": info.get("revenue_potential"),
                 "major_issues": info.get("major_issues", []),
             }
+            if info.get("governor"):
+                meta["governor"] = info["governor"]
             meta["last_updated"] = info.get("last_updated")
             if missing_by_county.get(county_name):
                 meta["missing_funds_cases"] = missing_by_county[county_name]
@@ -908,7 +858,7 @@ def initialize_reference_data(code_lookup: Optional[Dict[str, str]] = None) -> N
                 meta["audit_summary"] = {
                     "queries_count": len(county_audits),
                     "total_amount_involved": total_amount,
-                    "last_refreshed": datetime.utcnow().isoformat(),
+                    "last_refreshed": datetime.now(timezone.utc).isoformat(),
                 }
 
             entity.meta = meta
@@ -919,7 +869,7 @@ def initialize_reference_data(code_lookup: Optional[Dict[str, str]] = None) -> N
             fetch_dt = (
                 datetime.fromisoformat(last_updated)
                 if isinstance(last_updated, str)
-                else datetime.utcnow()
+                else datetime.now(timezone.utc)
             )
 
             budget_doc = _ensure_source_document(

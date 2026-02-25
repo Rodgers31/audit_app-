@@ -24,7 +24,7 @@ import json
 import logging
 import re
 import ssl
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -72,7 +72,7 @@ class CBKDebtFetcher:
             "breakdown": [],
             "source": "Central Bank of Kenya",
             "source_url": self.debt_url,
-            "fetched_at": datetime.utcnow().isoformat(),
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
             "fetch_success": False,
         }
 
@@ -406,7 +406,7 @@ class KNBSDataFetcher:
             "counties": [],
             "source": "Kenya National Bureau of Statistics",
             "source_url": self.base_url,
-            "fetched_at": datetime.utcnow().isoformat(),
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
             "fetch_success": False,
         }
 
@@ -539,7 +539,7 @@ class KNBSDataFetcher:
             "unemployment_rate": None,
             "indicators": [],
             "source": "Kenya National Bureau of Statistics",
-            "fetched_at": datetime.utcnow().isoformat(),
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
             "fetch_success": False,
         }
 
@@ -689,7 +689,7 @@ class TreasuryDataFetcher:
             "total_budget_kes": None,
             "county_allocations": [],
             "source": "National Treasury",
-            "fetched_at": datetime.utcnow().isoformat(),
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
             "fetch_success": False,
         }
 
@@ -867,7 +867,7 @@ class LiveDataAggregator:
                 "knbs": results[3][0] if not isinstance(results[3], Exception) else [],
                 "cob": results[3][1] if not isinstance(results[3], Exception) else [],
             },
-            "fetched_at": datetime.utcnow().isoformat(),
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
         }
 
 

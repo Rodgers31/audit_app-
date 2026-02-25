@@ -122,6 +122,7 @@ export interface CountyFilters {
   auditStatus?: string[];
   debtLevel?: 'low' | 'medium' | 'high';
   budgetRange?: [number, number];
+  fiscalYear?: string;
   page?: number;
   limit?: number;
 }

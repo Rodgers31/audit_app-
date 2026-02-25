@@ -42,7 +42,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.8
+      "economic_factor": 1.8,
+      "governor": "Abdulswamad Shariff Nassir"
     },
     "Kwale": {
       "population": 866820,
@@ -71,7 +72,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Fatuma Mohamed Achani"
     },
     "Kilifi": {
       "population": 1453787,
@@ -100,7 +102,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Gideon Maitha Mung'aro"
     },
     "Tana River": {
       "population": 315943,
@@ -129,7 +132,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Dhadho Gaddae Godhana"
     },
     "Lamu": {
       "population": 143920,
@@ -158,7 +162,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Issa Abdalla Timamy"
     },
     "Taita Taveta": {
       "population": 340671,
@@ -187,7 +192,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Andrew Mwadime"
     },
     "Garissa": {
       "population": 841353,
@@ -216,7 +222,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Nathif Adam Jama"
     },
     "Wajir": {
       "population": 781263,
@@ -245,7 +252,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Ahmed Abdullahi"
     },
     "Mandera": {
       "population": 1200890,
@@ -274,7 +282,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Mohamed Adan Khalif"
     },
     "Marsabit": {
       "population": 459785,
@@ -303,7 +312,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Mohamud Mohamed Ali"
     },
     "Isiolo": {
       "population": 268002,
@@ -332,7 +342,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Abdi Ibrahim Hassan"
     },
     "Meru": {
       "population": 1545714,
@@ -361,7 +372,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Isaac Mutuma M'ethingia"
     },
     "Tharaka Nithi": {
       "population": 393177,
@@ -390,7 +402,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Muthomi Njuki"
     },
     "Embu": {
       "population": 608599,
@@ -419,7 +432,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Cecily Mutitu Mbarire"
     },
     "Kitui": {
       "population": 1136187,
@@ -448,7 +462,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Julius Makau Malombe"
     },
     "Machakos": {
       "population": 1421932,
@@ -477,7 +492,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.1
+      "economic_factor": 1.1,
+      "governor": "Wavinya Ndeti"
     },
     "Makueni": {
       "population": 987653,
@@ -506,7 +522,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Mutula Kilonzo Jr."
     },
     "Nyandarua": {
       "population": 638289,
@@ -535,7 +552,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Moses Ndirangu Kiarie Badilisha"
     },
     "Nyeri": {
       "population": 759164,
@@ -564,7 +582,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Mutahi Kahiga"
     },
     "Kirinyaga": {
       "population": 610411,
@@ -593,7 +612,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Anne Mumbi Waiguru"
     },
     "Murang'a": {
       "population": 1056640,
@@ -622,7 +642,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Irungu Kangata"
     },
     "Kiambu": {
       "population": 2417735,
@@ -651,7 +672,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.3
+      "economic_factor": 1.3,
+      "governor": "Paul Kimani Wamatangi"
     },
     "Turkana": {
       "population": 926976,
@@ -680,7 +702,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Jeremiah Ekamais Lomorukai"
     },
     "West Pokot": {
       "population": 621241,
@@ -709,7 +732,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Simon Kachapin Kitalei"
     },
     "Samburu": {
       "population": 310327,
@@ -738,7 +762,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Jonathan Lelelit Lati"
     },
     "Trans Nzoia": {
       "population": 990341,
@@ -767,7 +792,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "George Natembeya"
     },
     "Uasin Gishu": {
       "population": 1163186,
@@ -796,7 +822,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Jonathan Bii"
     },
     "Elgeyo Marakwet": {
       "population": 454480,
@@ -825,7 +852,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Wisley Rotich"
     },
     "Nandi": {
       "population": 885711,
@@ -854,7 +882,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Stephen Kipyego Sang"
     },
     "Baringo": {
       "population": 666763,
@@ -883,7 +912,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Benjamin Chesire Cheboi"
     },
     "Laikipia": {
       "population": 518560,
@@ -912,7 +942,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Joshua Wakahora Irungu"
     },
     "Nakuru": {
       "population": 2162202,
@@ -941,7 +972,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.4
+      "economic_factor": 1.4,
+      "governor": "Susan Wakarura Kihika"
     },
     "Narok": {
       "population": 1157873,
@@ -970,7 +1002,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Patrick Keturet Ole Ntutu"
     },
     "Kajiado": {
       "population": 1117840,
@@ -999,7 +1032,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Joseph Jama Ole Lenku"
     },
     "Kericho": {
       "population": 901777,
@@ -1028,7 +1062,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Erick Kipkoech Mutai"
     },
     "Bomet": {
       "population": 875689,
@@ -1057,7 +1092,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Hillary K. Barchok"
     },
     "Kakamega": {
       "population": 1867579,
@@ -1086,7 +1122,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.1
+      "economic_factor": 1.1,
+      "governor": "Fernandes Barasa"
     },
     "Vihiga": {
       "population": 590013,
@@ -1115,7 +1152,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Wilber Khasilwa Ottichilo"
     },
     "Bungoma": {
       "population": 1670570,
@@ -1144,7 +1182,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Kenneth Makelo Lusaka"
     },
     "Busia": {
       "population": 893681,
@@ -1173,7 +1212,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Paul Nyongesa Otuoma"
     },
     "Siaya": {
       "population": 993183,
@@ -1202,7 +1242,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "James Orengo"
     },
     "Kisumu": {
       "population": 1155574,
@@ -1231,7 +1272,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.2
+      "economic_factor": 1.2,
+      "governor": "Peter Anyang' Nyong'o"
     },
     "Homa Bay": {
       "population": 1131950,
@@ -1260,7 +1302,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Gladys Atieno Nyasuna Wanga"
     },
     "Migori": {
       "population": 1116436,
@@ -1289,7 +1332,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "George Ochilo Ayacko"
     },
     "Kisii": {
       "population": 1266860,
@@ -1318,7 +1362,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Simba Arati"
     },
     "Nyamira": {
       "population": 605576,
@@ -1347,7 +1392,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 1.0
+      "economic_factor": 1.0,
+      "governor": "Amos Kimwomi Nyaribo"
     },
     "Nairobi": {
       "population": 4397073,
@@ -1376,7 +1422,8 @@
         "Infrastructure maintenance needs",
         "Service delivery gaps"
       ],
-      "economic_factor": 2.5
+      "economic_factor": 2.5,
+      "governor": "Sakaja Arthur Johnson"
     }
   }
 }

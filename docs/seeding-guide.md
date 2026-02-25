@@ -90,13 +90,13 @@ SEED_BUDGET_DEFAULT_CURRENCY=KES    # Fallback for missing currency
 
 ### Data Source URLs
 
-#### Development (Local Fixtures)
+#### Development (Real Data — run from project root)
 
 ```bash
-SEED_BUDGETS_DATASET_URL=file:///c:/Users/rodge/projects/audit_app/backend/seeding/fixtures/budgets.json
-SEED_AUDITS_DATASET_URL=file:///c:/Users/rodge/projects/audit_app/backend/seeding/fixtures/audits.json
-SEED_POPULATION_DATASET_URL=file:///c:/Users/rodge/projects/audit_app/backend/seeding/fixtures/population.json
-SEED_ECONOMIC_INDICATORS_DATASET_URL=file:///c:/Users/rodge/projects/audit_app/backend/seeding/fixtures/economic_indicators.json
+SEED_BUDGETS_DATASET_URL=file://backend/seeding/real_data/budgets.json
+SEED_AUDITS_DATASET_URL=file://backend/seeding/real_data/audits.json
+SEED_POPULATION_DATASET_URL=file://backend/seeding/real_data/population.json
+SEED_ECONOMIC_INDICATORS_DATASET_URL=file://backend/seeding/real_data/economic_indicators.json
 ```
 
 #### Production (Real Government APIs)
@@ -393,7 +393,6 @@ UPDATE ingestion_jobs SET status = 'FAILED' WHERE id = 42;
    ```
 
 2. Add required modules:
-
    - `fetcher.py` - Fetch raw data from source
    - `parser.py` - Normalize to domain models
    - `writer.py` - Persist to database

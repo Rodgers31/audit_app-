@@ -3,7 +3,7 @@
 import logging
 import time
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Callable, Dict, Optional
 
 import redis.asyncio as aioredis
@@ -194,7 +194,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
 
         # Log audit entry
         audit_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "user_id": user_id,
             "client_ip": client_ip,
             "method": request.method,

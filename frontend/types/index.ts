@@ -7,6 +7,111 @@ export interface AuditIssue {
   status: 'open' | 'resolved' | 'pending';
 }
 
+export interface StalledProject {
+  project_name: string;
+  sector: string;
+  contracted_amount: number;
+  amount_paid: number;
+  completion_pct: number;
+  start_year: number;
+  expected_completion: number;
+  status: 'stalled' | 'delayed';
+  reason: string;
+  oag_reference: string;
+}
+
+export interface AuditFinding {
+  id: number;
+  finding: string;
+  severity: 'info' | 'warning' | 'critical';
+  category: string;
+  status: string;
+  amount_involved: number;
+  amount_label: string;
+  audit_year?: string;
+  reference?: string;
+  recommendation?: string;
+}
+
+export interface CountyComprehensive {
+  id: string;
+  name: string;
+  slug: string;
+  coordinates: [number, number];
+  governor?: string;
+  demographics: {
+    population: number;
+    population_year?: number;
+    male_population?: number;
+    female_population?: number;
+    urban_population?: number;
+    rural_population?: number;
+    population_density?: number;
+  };
+  economic_profile: {
+    county_type: string;
+    economic_base: string;
+    infrastructure_level: string;
+    revenue_potential: string;
+    major_issues: string[];
+  };
+  budget: {
+    total_allocated: number;
+    total_spent: number;
+    utilization_rate: number;
+    development_budget: number;
+    recurrent_budget: number;
+    per_capita_budget: number;
+    sector_breakdown: Record<string, { allocated: number; spent: number }>;
+  };
+  revenue: {
+    total_revenue: number;
+    local_revenue: number;
+    equitable_share: number;
+  };
+  debt: {
+    total_debt: number;
+    pending_bills: number;
+    debt_to_budget_ratio: number;
+    per_capita_debt: number;
+    breakdown: Array<{
+      lender: string;
+      category: string;
+      principal: number;
+      outstanding: number;
+      interest_rate?: number;
+    }>;
+  };
+  audit: {
+    status: string;
+    grade: string;
+    health_score: number;
+    findings_count: number;
+    total_amount_involved: number;
+    by_severity: Record<string, number>;
+    findings: AuditFinding[];
+  };
+  missing_funds: {
+    total_amount: number;
+    cases_count: number;
+    cases: any[];
+  };
+  stalled_projects: {
+    count: number;
+    total_contracted_value: number;
+    total_amount_paid: number;
+    projects: StalledProject[];
+  };
+  financial_summary: {
+    health_score: number;
+    grade: string;
+    budget_execution_rate: number;
+    pending_bills_ratio: number;
+    debt_sustainability: string;
+  };
+  data_sources: Record<string, string>;
+}
+
 export interface County {
   id: string;
   name: string;

@@ -149,12 +149,12 @@ All 6 core domains fully operational with fixtures and live testing:
 - `backend/.env.example` - Template with production URL examples
 
 **Current Setup (Development):**
-All domains use local fixtures:
+Most domains use real data from `backend/seeding/real_data/`:
 
 ```bash
-SEED_BUDGETS_DATASET_URL=file:///c:/Users/rodge/projects/audit_app/backend/seeding/fixtures/budgets.json
-SEED_AUDITS_DATASET_URL=file:///c:/Users/rodge/projects/audit_app/backend/seeding/fixtures/audits.json
-# ... etc for all 6 domains
+SEED_BUDGETS_DATASET_URL=file://backend/seeding/real_data/budgets.json
+SEED_AUDITS_DATASET_URL=file://backend/seeding/real_data/audits.json
+# ... all domains except pending_bills & learning_hub (still in fixtures/)
 ```
 
 **Production Transition:**
@@ -215,7 +215,6 @@ env:
 Created comprehensive guides:
 
 1. **`docs/seeding-guide.md`** - Main developer guide
-
    - Architecture overview
    - Domain structure
    - Adding new domains
@@ -223,14 +222,12 @@ Created comprehensive guides:
    - Troubleshooting
 
 2. **`docs/data-sources.md`** - Government data catalog
-
    - Official portal URLs (CoB, OAG, KNBS, Treasury, Open Data)
    - Data formats and update frequencies
    - Contact information
    - License and attribution
 
 3. **`docs/production-data-sources.md`** - Transition guide
-
    - Kenya Open Data Portal integration
    - API authentication
    - PDF parsing implementation

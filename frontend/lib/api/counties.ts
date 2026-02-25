@@ -1,7 +1,7 @@
 /**
  * Counties API service
  */
-import { County } from '@/types';
+import { County, CountyComprehensive } from '@/types';
 import { apiClient } from './axios';
 import { COUNTIES_ENDPOINTS, buildUrlWithParams } from './endpoints';
 import { ApiResponse, CountyFilters, CountyResponse, PaginatedResponse } from './types';
@@ -194,4 +194,10 @@ export const getTopPerformingCounties = async (limit: number = 10): Promise<Coun
 export const getFlaggedCounties = async (): Promise<CountyResponse[]> => {
   const response = await apiClient.get<ApiResponse<CountyResponse[]>>(COUNTIES_ENDPOINTS.FLAGGED);
   return response.data.data;
+};
+
+// Get comprehensive county data (one-stop detail)
+export const getCountyComprehensive = async (id: string): Promise<CountyComprehensive> => {
+  const response = await apiClient.get<CountyComprehensive>(COUNTIES_ENDPOINTS.COMPREHENSIVE(id));
+  return response.data;
 };

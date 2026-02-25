@@ -1,5 +1,5 @@
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     Boolean,
@@ -11,6 +11,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import declarative_base
@@ -71,7 +72,7 @@ class Country(Base):
     timezone = Column(String(50), nullable=False)
     default_locale = Column(String(10), nullable=False)
     meta = Column("metadata", JSONB, default=dict)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     entities = relationship("Entity", back_populates="country")
@@ -89,7 +90,7 @@ class Entity(Base):
     slug = Column(String(200), unique=True, index=True, nullable=False)
     alt_names = Column(JSONB, default=list)
     meta = Column("metadata", JSONB, default=dict)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     country = relationship("Country", back_populates="entities")
@@ -106,7 +107,7 @@ class FiscalPeriod(Base):
     label = Column(String(50), nullable=False)  # e.g., "FY2024/25"
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     country = relationship("Country", back_populates="fiscal_periods")
@@ -129,9 +130,11 @@ class SourceDocument(Base):
     status = Column(
         Enum(DocumentStatus), nullable=False, default=DocumentStatus.AVAILABLE
     )
-    last_seen_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    last_seen_at = Column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
     meta = Column("metadata", JSONB, default=dict)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     country = relationship("Country", back_populates="source_documents")
@@ -152,7 +155,7 @@ class Extraction(Base):
     extracted_json = Column(JSONB, nullable=False)
     extractor = Column(String(50), nullable=False)  # camelot/tabula/pdfplumber
     confidence = Column(Numeric(3, 2), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     source_document = relationship("SourceDocument", back_populates="extractions")
@@ -177,7 +180,7 @@ class BudgetLine(Base):
     notes = Column(Text, nullable=True)
     provenance = Column(JSONB, default=list)  # List of source references
     source_hash = Column(String(64), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     entity = relationship("Entity", back_populates="budget_lines")
@@ -210,8 +213,12 @@ class Loan(Base):
         Integer, ForeignKey("source_documents.id"), nullable=False
     )
     provenance = Column(JSONB, default=list)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
     # Relationships
     entity = relationship("Entity", back_populates="loans")
@@ -231,7 +238,7 @@ class Audit(Base):
         Integer, ForeignKey("source_documents.id"), nullable=False
     )
     provenance = Column(JSONB, default=list)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     entity = relationship("Entity", back_populates="audits")
@@ -247,7 +254,7 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     roles = Column(JSONB, default=list)
     disabled = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     annotations = relationship("Annotation", back_populates="user")
@@ -263,7 +270,7 @@ class Annotation(Base):
     ref_id = Column(Integer, nullable=False)
     text = Column(Text, nullable=False)
     public = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     user = relationship("User", back_populates="annotations")
@@ -299,8 +306,12 @@ class QuickQuestion(Base):
     category = Column(Enum(QuestionCategory), nullable=False)
     difficulty_level = Column(Integer, nullable=False, default=1)  # 1-5 scale
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
     source_url = Column(String(500), nullable=True)
     tags = Column(JSONB, default=list)
 
@@ -316,7 +327,7 @@ class UserQuestionAnswer(Base):
     question_id = Column(Integer, ForeignKey("quick_questions.id"), nullable=False)
     selected_answer = Column(String(1), nullable=False)  # A, B, C, or D
     is_correct = Column(Boolean, nullable=False)
-    answered_at = Column(DateTime, default=datetime.utcnow)
+    answered_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     user = relationship("User", back_populates="question_answers")
@@ -348,7 +359,7 @@ class PopulationData(Base):
     source_page = Column(Integer, nullable=True)
     confidence = Column(Numeric(3, 2), nullable=True, default=1.0)
     meta = Column("metadata", JSONB, default=dict)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     entity = relationship("Entity")
@@ -375,7 +386,7 @@ class GDPData(Base):
     source_page = Column(Integer, nullable=True)
     confidence = Column(Numeric(3, 2), nullable=True, default=1.0)
     meta = Column("metadata", JSONB, default=dict)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     entity = relationship("Entity")
@@ -403,7 +414,7 @@ class EconomicIndicator(Base):
     source_page = Column(Integer, nullable=True)
     confidence = Column(Numeric(3, 2), nullable=True, default=1.0)
     meta = Column("metadata", JSONB, default=dict)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     entity = relationship("Entity")
@@ -429,14 +440,16 @@ class IngestionJob(Base):
         Enum(IngestionStatus), nullable=False, default=IngestionStatus.PENDING
     )
     dry_run = Column(Boolean, nullable=False, default=False)
-    started_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    started_at = Column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
     finished_at = Column(DateTime, nullable=True)
     items_processed = Column(Integer, nullable=False, default=0)
     items_created = Column(Integer, nullable=False, default=0)
     items_updated = Column(Integer, nullable=False, default=0)
     errors = Column(JSONB, default=list)
     meta = Column("metadata", JSONB, default=dict)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class PovertyIndex(Base):
@@ -458,7 +471,7 @@ class PovertyIndex(Base):
     source_page = Column(Integer, nullable=True)
     confidence = Column(Numeric(3, 2), nullable=True, default=1.0)
     meta = Column("metadata", JSONB, default=dict)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     entity = relationship("Entity")
@@ -484,8 +497,12 @@ class DebtTimeline(Base):
         Integer, ForeignKey("source_documents.id"), nullable=True
     )
     meta = Column("metadata", JSONB, default=dict)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
     # Relationships
     source_document = relationship("SourceDocument")
@@ -519,8 +536,54 @@ class FiscalSummary(Base):
         Integer, ForeignKey("source_documents.id"), nullable=True
     )
     meta = Column("metadata", JSONB, default=dict)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    # Relationships
+    source_document = relationship("SourceDocument")
+
+
+class RevenueBySource(Base):
+    """Revenue collection breakdown by tax type per fiscal year.
+
+    Source: Kenya Revenue Authority (KRA) Annual Revenue Performance Reports,
+    KNBS Economic Survey, National Treasury BPS.
+    """
+
+    __tablename__ = "revenue_by_source"
+    __table_args__ = (
+        UniqueConstraint("fiscal_year", "revenue_type", name="uq_revenue_fy_type"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    fiscal_year = Column(String(20), nullable=False, index=True)
+    revenue_type = Column(
+        String(60), nullable=False, index=True
+    )  # e.g. "Income Tax", "VAT"
+    category = Column(
+        String(30), nullable=False, default="tax"
+    )  # tax | non_tax | grants
+    amount_billion_kes = Column(
+        Numeric(15, 2), nullable=True
+    )  # Billions KES (null for projections)
+    target_billion_kes = Column(Numeric(15, 2), nullable=True)  # KRA target
+    performance_pct = Column(Numeric(5, 1), nullable=True)  # actual/target × 100
+    share_of_total_pct = Column(Numeric(5, 1), nullable=True)  # % of total revenue
+    yoy_growth_pct = Column(Numeric(6, 1), nullable=True)  # year-on-year growth
+    source_document_id = Column(
+        Integer, ForeignKey("source_documents.id"), nullable=True
+    )
+    meta = Column("metadata", JSONB, default=dict)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
     # Relationships
     source_document = relationship("SourceDocument")

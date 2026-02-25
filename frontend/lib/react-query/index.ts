@@ -10,6 +10,7 @@ export {
   useCountiesSearch,
   useCounty,
   useCountyByCode,
+  useCountyComprehensive,
   useCountyFinancialSummary,
   useFlaggedCounties,
   useTopPerformingCounties,
@@ -31,6 +32,8 @@ export {
 export {
   useBudgetAllocation,
   useBudgetComparison,
+  useBudgetEnhanced,
+  useBudgetOverview,
   useBudgetTrends,
   useBudgetUtilizationSummary,
   useNationalBudgetSummary,

@@ -5,7 +5,7 @@ Focuses on Kenya-specific government finance, audit, and transparency questions
 
 import logging
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -378,7 +378,7 @@ class QuestionAggregatorService:
                 "questions_updated": len(questions),
                 "sources_updated": [self.kenya_source.source_name],
                 "errors": 0,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "note": "Kenya-specific questions are maintained locally and updated through this service",
             }
 
@@ -389,6 +389,6 @@ class QuestionAggregatorService:
                 "questions_updated": 0,
                 "sources_updated": [],
                 "errors": 1,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "error_detail": str(e),
             }

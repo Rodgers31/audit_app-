@@ -5,6 +5,8 @@ import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import {
   getBudgetAllocation,
   getBudgetComparison,
+  getBudgetEnhanced,
+  getBudgetOverview,
   getBudgetTrends,
   getBudgetUtilizationSummary,
   getNationalBudgetSummary,
@@ -24,6 +26,8 @@ const QUERY_KEYS = {
   sectorAllocation: (sector: string, fiscalYear?: string) =>
     ['budget', 'sector', sector, fiscalYear] as const,
   utilizationSummary: (fiscalYear?: string) => ['budget', 'utilization', fiscalYear] as const,
+  overview: ['budget', 'overview'] as const,
+  enhanced: ['budget', 'enhanced'] as const,
 };
 
 // Get budget allocation for a county
@@ -95,6 +99,26 @@ export const useSectorBudgetAllocation = (
     queryFn: () => getSectorBudgetAllocation(sector, fiscalYear),
     enabled: !!sector,
     staleTime: 15 * 60 * 1000, // 15 minutes
+    ...options,
+  });
+};
+
+// Get consolidated budget overview (sectors + fiscal history + county utilization)
+export const useBudgetOverview = (options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) => {
+  return useQuery({
+    queryKey: QUERY_KEYS.overview,
+    queryFn: getBudgetOverview,
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    ...options,
+  });
+};
+
+// Get enhanced budget data (revenue by source, economic context, commitment pipeline)
+export const useBudgetEnhanced = (options?: Omit<UseQueryOptions<any>, 'queryKey' | 'queryFn'>) => {
+  return useQuery({
+    queryKey: QUERY_KEYS.enhanced,
+    queryFn: getBudgetEnhanced,
+    staleTime: 30 * 60 * 1000, // 30 minutes
     ...options,
   });
 };

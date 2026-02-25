@@ -5,7 +5,7 @@ This approach stores questions in the database and provides CRUD operations
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from database import get_db
@@ -47,7 +47,7 @@ class DatabaseQuestionService:
 
         # Exclude questions answered by user recently (if user_id provided)
         if user_id:
-            recent_cutoff = datetime.utcnow() - timedelta(days=3)
+            recent_cutoff = datetime.now(timezone.utc) - timedelta(days=3)
             answered_question_ids = (
                 self.db.query(UserQuestionAnswer.question_id)
                 .filter(
@@ -132,7 +132,7 @@ class DatabaseQuestionService:
                     value = QuestionCategory(value)
                 setattr(question, field, value)
 
-        question.updated_at = datetime.utcnow()
+        question.updated_at = datetime.now(timezone.utc)
         self.db.commit()
 
         return {"message": "Question updated successfully"}

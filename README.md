@@ -61,11 +61,11 @@ audit_app/
 ```bash
 # 1. Start Backend (Terminal 1)
 cd audit_app
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r backend/requirements.txt
 cd backend
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+python3 -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 # 2. Start Frontend (Terminal 2)
 cd frontend
@@ -102,16 +102,16 @@ cd backend
 alembic upgrade head
 
 # Bootstrap reference data (Kenya country + counties)
-python bootstrap_data.py
+python3 bootstrap_data.py
 
 # Test with dry-run (no database writes)
-python -m seeding.cli seed --domain counties_budget --dry-run
+python3 -m seeding.cli seed --domain counties_budget --dry-run
 
 # Seed counties budget data
-python -m seeding.cli seed --domain counties_budget
+python3 -m seeding.cli seed --domain counties_budget
 
 # Seed all domains
-python -m seeding.cli seed --all
+python3 -m seeding.cli seed --all
 ```
 
 #### Available Domains
@@ -128,8 +128,8 @@ python -m seeding.cli seed --all
 Configure data sources in `backend/.env`:
 
 ```bash
-# Development: Use local fixtures
-SEED_BUDGETS_DATASET_URL=file:///path/to/backend/seeding/fixtures/budgets.json
+# Development: Use local real data (run from project root)
+SEED_BUDGETS_DATASET_URL=file://backend/seeding/real_data/budgets.json
 
 # Production: Use real government APIs
 SEED_BUDGETS_DATASET_URL=https://opendata.go.ke/api/views/xyz/rows.json
@@ -159,14 +159,14 @@ GET /api/v1/admin/ingestion-jobs/{job_id}
 GET /api/v1/admin/ingestion-jobs/stats/summary
 
 # Test endpoints
-python test_admin_api.py
+python3 test_admin_api.py
 ```
 
 See [`docs/seeding-guide.md#monitoring`](./docs/seeding-guide.md#monitoring) for complete API documentation.
 
 ### Seeding Data with Local Fixtures
 
-Need to validate the seeding pipeline without hitting upstream services? Use the VS Code task **"Seed Database (Fixtures Dry Run)"**. It runs `python -m seeding.cli seed --all --dry-run` while pointing each domain to the sample payloads under `backend/seeding/fixtures/`.
+Need to validate the seeding pipeline without hitting upstream services? Use the VS Code task **"Seed Database (Dry Run)"**. It runs `python3 -m seeding.cli seed --all --dry-run` while pointing each domain to the real data under `backend/seeding/real_data/`.
 
 To execute the same flow manually from the project root:
 
@@ -208,7 +208,7 @@ npm run build
 npm run test:e2e
 
 # ETL
-cd etl && python -m pytest --cov=. -v
+cd etl && python3 -m pytest --cov=. -v
 ```
 
 Deployments are automatically blocked if any tests fail.
@@ -229,7 +229,7 @@ Deployments are automatically blocked if any tests fail.
 cd audit_app
 
 # Create virtual environment
-python -m venv venv
+python3 -m venv venv
 
 # Activate virtual environment
 source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -264,9 +264,10 @@ alembic upgrade head
 #### 4. Start Backend Server
 
 ```bash
-# Development mode (from project root)
+# Development mode (with venv activated)
+source venv/bin/activate  # if not already activated
 cd backend
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+python3 -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 # Alternative: Use the VS Code task "Start Backend (Dev)"
 
@@ -330,8 +331,8 @@ npm start
 ```bash
 cd etl
 pip install -r requirements.txt
-python -m etl.downloader
-python -m etl.extractor
+python3 -m etl.downloader
+python3 -m etl.extractor
 ```
 
 ## Features
@@ -434,13 +435,13 @@ All endpoints return data with complete provenance information:
 
 ```bash
 # Backend tests
-cd backend && python -m pytest
+cd backend && python3 -m pytest
 
 # Frontend tests
 cd frontend && npm test
 
 # ETL tests
-cd etl && python -m pytest
+cd etl && python3 -m pytest
 ```
 
 ### Database Migrations
@@ -457,10 +458,10 @@ alembic upgrade head
 
 ```bash
 # Check Python version (requires 3.9+)
-python --version
+python3 --version
 
 # Verify virtual environment is activated
-which python  # Should point to venv/bin/python
+which python3  # Should point to venv/bin/python3
 
 # Install missing dependencies
 pip install -r backend/requirements.txt

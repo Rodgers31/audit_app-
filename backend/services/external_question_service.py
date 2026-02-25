@@ -6,7 +6,7 @@ Focuses on Kenya-specific government finance, audit, and transparency questions
 import json
 import logging
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -599,7 +599,7 @@ class QuestionAggregatorService:
                 questions = source.fetch_questions(category, limit_for_source)
                 for q in questions:
                     q["source"] = source.source_name
-                    q["fetched_at"] = datetime.utcnow().isoformat()
+                    q["fetched_at"] = datetime.now(timezone.utc).isoformat()
                 all_questions.extend(questions)
 
             except Exception as e:

@@ -74,3 +74,15 @@ export const getBudgetUtilizationSummary = async (fiscalYear?: string): Promise<
   const response = await apiClient.get<ApiResponse<any>>(url);
   return response.data.data;
 };
+
+// Get consolidated budget overview (merged sectors + fiscal history)
+export const getBudgetOverview = async (): Promise<any> => {
+  const response = await apiClient.get(BUDGET_ENDPOINTS.OVERVIEW);
+  return response.data;
+};
+
+// Get enhanced budget data (revenue sources, economic context, commitment pipeline)
+export const getBudgetEnhanced = async (): Promise<any> => {
+  const response = await apiClient.get(BUDGET_ENDPOINTS.ENHANCED);
+  return response.data;
+};

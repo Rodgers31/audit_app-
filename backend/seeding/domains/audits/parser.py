@@ -20,6 +20,11 @@ class AuditRecord:
     reference: Optional[str]
     dataset_id: Optional[str]
     source_url: Optional[str]
+    # Rich fields from OAG data
+    query_type: Optional[str] = None
+    amount: Optional[float] = None
+    status: Optional[str] = None
+    audit_year: Optional[str] = None
 
 
 def _iter_records(
@@ -84,6 +89,15 @@ def parse_audit_payload(
         if not start_date or not end_date:
             continue
 
+        # Parse amount as float
+        raw_amount = raw.get("amount")
+        amount: Optional[float] = None
+        if raw_amount is not None:
+            try:
+                amount = float(raw_amount)
+            except (ValueError, TypeError):
+                pass
+
         record = AuditRecord(
             entity_slug=str(slug).lower(),
             entity_name=str(entity_name),
@@ -97,6 +111,10 @@ def parse_audit_payload(
             reference=raw.get("reference") or raw.get("source_reference"),
             dataset_id=raw.get("dataset_id"),
             source_url=raw.get("source_url") or raw.get("url"),
+            query_type=raw.get("query_type") or raw.get("category"),
+            amount=amount,
+            status=raw.get("status"),
+            audit_year=raw.get("audit_year"),
         )
         normalized.append(record)
 

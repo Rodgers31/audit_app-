@@ -191,12 +191,12 @@ Can be manually curated or extracted from government learning resources.
 
 ## Configuration Changes Needed
 
-### Current (Fixtures):
+### Current (Real Data):
 
 ```env
-SEED_BUDGETS_DATASET_URL=file:///c:/Users/rodge/projects/audit_app/backend/seeding/fixtures/budgets.json
-SEED_AUDITS_DATASET_URL=file:///c:/Users/rodge/projects/audit_app/backend/seeding/fixtures/audits.json
-...
+SEED_BUDGETS_DATASET_URL=file://backend/seeding/real_data/budgets.json
+SEED_AUDITS_DATASET_URL=file://backend/seeding/real_data/audits.json
+# ... all domains now use real_data/ (except pending_bills & learning_hub)
 ```
 
 ### Target (Real Data):

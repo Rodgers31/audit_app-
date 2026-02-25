@@ -6,7 +6,7 @@ Combines local JSON storage with external API sources for new questions
 import json
 import logging
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -46,7 +46,7 @@ class HybridQuestionService:
             # Update metadata
             self.local_questions["metadata"][
                 "last_updated"
-            ] = datetime.utcnow().isoformat()
+            ] = datetime.now(timezone.utc).isoformat()
             self.local_questions["metadata"]["total_questions"] = len(
                 self.local_questions["questions"]
             )
@@ -241,7 +241,7 @@ class HybridQuestionService:
 
         # Prepare question
         question_data["id"] = new_id
-        question_data["created_at"] = datetime.utcnow().isoformat()
+        question_data["created_at"] = datetime.now(timezone.utc).isoformat()
         question_data["is_active"] = question_data.get("is_active", True)
 
         # Add to local storage
@@ -272,7 +272,7 @@ class HybridQuestionService:
                 # Update fields
                 for key, value in update_data.items():
                     question[key] = value
-                question["updated_at"] = datetime.utcnow().isoformat()
+                question["updated_at"] = datetime.now(timezone.utc).isoformat()
 
                 # Save to file
                 if self._save_local_questions():
@@ -351,5 +351,5 @@ class HybridQuestionService:
             "success": len(errors) == 0,
             "new_questions_added": new_questions_count,
             "errors": errors,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }

@@ -1081,8 +1081,13 @@ async def get_country_summary(country_id: int):
 # Consolidated County Endpoints - Using Enhanced County Analytics API
 @app.get("/api/v1/counties")
 @cached(key_prefix="counties:all", ttl=3600)  # Cache for 1 hour
-async def get_counties():
-    """Get all counties from database with full financial breakdown."""
+async def get_counties(fiscal_year: Optional[str] = None):
+    """Get all counties from database with full financial breakdown.
+
+    Args:
+        fiscal_year: Optional fiscal year filter, e.g. '2024/25' or '2023/24'.
+                     Matches against fiscal_period start_date year.
+    """
     if not DATABASE_AVAILABLE:
         raise HTTPException(
             status_code=503,
@@ -1116,6 +1121,28 @@ async def get_counties():
                     },
                 )
 
+            # Resolve fiscal period IDs for the requested year
+            period_ids = None
+            if fiscal_year:
+                from models import FiscalPeriod as _FP
+
+                # Parse requested year: accept '2024/25', '2023/24', etc.
+                # Match against period start_date year
+                try:
+                    start_yr = int(fiscal_year.split("/")[0])
+                    # Also try matching the label directly (flexible)
+                    all_periods = db.query(_FP).all()
+                    matched = []
+                    for fp in all_periods:
+                        lbl = fp.label.replace("FY", "").replace("FY ", "").strip()
+                        if lbl == fiscal_year or lbl == f"{start_yr}/{start_yr+1}":
+                            matched.append(fp.id)
+                        elif fp.start_date and fp.start_date.year == start_yr:
+                            matched.append(fp.id)
+                    period_ids = list(set(matched)) if matched else None
+                except (ValueError, IndexError):
+                    pass  # Ignore bad fiscal_year format, return unfiltered
+
             results = []
             for e in entities:
                 # Get population from PopulationData table
@@ -1126,10 +1153,11 @@ async def get_counties():
                     .first()
                 )
 
-                # Get ALL budget lines for this entity to compute sector breakdown
-                budget_lines = (
-                    db.query(DBBudgetLine).filter(DBBudgetLine.entity_id == e.id).all()
-                )
+                # Get budget lines for this entity, optionally filtered by fiscal period
+                bl_query = db.query(DBBudgetLine).filter(DBBudgetLine.entity_id == e.id)
+                if period_ids:
+                    bl_query = bl_query.filter(DBBudgetLine.period_id.in_(period_ids))
+                budget_lines = bl_query.all()
 
                 total_allocated = sum(
                     float(b.allocated_amount or 0) for b in budget_lines
@@ -1171,7 +1199,11 @@ async def get_counties():
                     and total_allocated > 0
                 ):
                     meta = e.meta or {}
-                    metrics = (meta.get("metrics") or {}).get("FY2024/25") or {}
+                    # Try requested fiscal year key first, then fall back
+                    _fy_key = f"FY{fiscal_year}" if fiscal_year else "FY2024/25"
+                    metrics = (meta.get("metrics") or {}).get(_fy_key) or {}
+                    if not metrics:
+                        metrics = (meta.get("metrics") or {}).get("FY2024/25") or {}
                     development_total = float(metrics.get("development_budget", 0))
                     recurrent_total = float(metrics.get("recurrent_budget", 0))
 
@@ -1189,16 +1221,17 @@ async def get_counties():
                 )
                 if pending_bills == 0:
                     meta = e.meta or {}
-                    metrics = (meta.get("metrics") or {}).get("FY2024/25") or {}
+                    _fy_key = f"FY{fiscal_year}" if fiscal_year else "FY2024/25"
+                    metrics = (meta.get("metrics") or {}).get(_fy_key) or {}
+                    if not metrics:
+                        metrics = (meta.get("metrics") or {}).get("FY2024/25") or {}
                     pending_bills = float(metrics.get("pending_bills", 0))
 
-                # Get ALL audit findings for this entity
-                audits = (
-                    db.query(DBAudit)
-                    .filter(DBAudit.entity_id == e.id)
-                    .order_by(DBAudit.created_at.desc())
-                    .all()
-                )
+                # Get audit findings for this entity, optionally filtered by period
+                audit_q = db.query(DBAudit).filter(DBAudit.entity_id == e.id)
+                if period_ids:
+                    audit_q = audit_q.filter(DBAudit.period_id.in_(period_ids))
+                audits = audit_q.order_by(DBAudit.created_at.desc()).all()
                 latest_audit = audits[0] if audits else None
 
                 # Build audit issues list from real findings
@@ -1243,7 +1276,10 @@ async def get_counties():
 
                 # Get revenue collection from metadata or economic indicators
                 meta = e.meta or {}
-                metrics = (meta.get("metrics") or {}).get("FY2024/25") or {}
+                _fy_key = f"FY{fiscal_year}" if fiscal_year else "FY2024/25"
+                metrics = (meta.get("metrics") or {}).get(_fy_key) or {}
+                if not metrics:
+                    metrics = (meta.get("metrics") or {}).get("FY2024/25") or {}
                 revenue_collection = float(metrics.get("local_revenue", 0))
                 money_received = float(
                     metrics.get("transfers_received", total_allocated)
@@ -1548,6 +1584,435 @@ async def get_county_details(county_id: str):
     except Exception as e:
         logging.error(f"Error fetching county {county_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.get("/api/v1/counties/{county_id}/comprehensive")
+@cached(key_prefix="county:comprehensive", ttl=1800)
+async def get_county_comprehensive(county_id: str):
+    """Comprehensive county detail — one-stop aggregation of every data dimension.
+
+    Returns budget breakdown (by sector), audit findings, debt/loans,
+    pending bills, stalled projects, economic profile, demographics,
+    missing funds cases, and financial health grades — all from DB.
+    """
+    if not DATABASE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    county_name = COUNTY_MAPPING.get(county_id)
+    if not county_name:
+        raise HTTPException(status_code=404, detail="County not found")
+
+    try:
+        with next(get_db()) as db:
+            entity = (
+                db.query(DBEntity)
+                .filter(DBEntity.type == EntityType.COUNTY)
+                .filter(DBEntity.canonical_name == f"{county_name} County")
+                .first()
+            )
+            if not entity:
+                slug = county_name.lower().replace(" ", "-") + "-county"
+                entity = db.query(DBEntity).filter(DBEntity.slug == slug).first()
+            if not entity:
+                raise HTTPException(
+                    status_code=404, detail="County entity not found in database"
+                )
+
+            meta = entity.meta or {}
+            metrics = (meta.get("metrics") or {}).get("FY2024/25") or {}
+            financial_metrics_meta = meta.get("financial_metrics") or {}
+            economic_profile = meta.get("economic_profile") or {}
+            audit_summary_meta = meta.get("audit_summary") or {}
+
+            # --- Population ---
+            pop = (
+                db.query(DBPopulationData)
+                .filter(DBPopulationData.entity_id == entity.id)
+                .order_by(DBPopulationData.year.desc())
+                .first()
+            )
+
+            # --- Budget lines ---
+            budget_lines = (
+                db.query(DBBudgetLine).filter(DBBudgetLine.entity_id == entity.id).all()
+            )
+            total_allocated = sum(float(b.allocated_amount or 0) for b in budget_lines)
+            total_spent = sum(float(b.actual_spent or 0) for b in budget_lines)
+
+            # Sector breakdown from real budget line categories
+            sector_breakdown = {}
+            for bl in budget_lines:
+                cat = (bl.category or "Other").strip()
+                if cat == "Total Budget":
+                    continue
+                amt = float(bl.allocated_amount or 0)
+                spent = float(bl.actual_spent or 0)
+                sector_breakdown.setdefault(cat, {"allocated": 0.0, "spent": 0.0})
+                sector_breakdown[cat]["allocated"] += amt
+                sector_breakdown[cat]["spent"] += spent
+
+            # Compute development vs recurrent split
+            development_total = 0.0
+            recurrent_total = 0.0
+            for bl in budget_lines:
+                cat_lower = (bl.category or "").lower()
+                amt = float(bl.allocated_amount or 0)
+                if any(
+                    kw in cat_lower
+                    for kw in [
+                        "development",
+                        "capital",
+                        "infrastructure",
+                        "construction",
+                        "project",
+                    ]
+                ):
+                    development_total += amt
+                elif cat_lower != "total budget":
+                    recurrent_total += amt
+            if development_total == 0 and recurrent_total == 0 and total_allocated > 0:
+                development_total = float(metrics.get("development_budget", 0))
+                recurrent_total = float(metrics.get("recurrent_budget", 0))
+
+            # --- Loans / Debt ---
+            loans = db.query(DBLoan).filter(DBLoan.entity_id == entity.id).all()
+            total_debt = sum(float(l.outstanding or l.principal or 0) for l in loans)
+
+            debt_breakdown = []
+            for loan in loans:
+                debt_breakdown.append(
+                    {
+                        "lender": loan.lender,
+                        "category": (
+                            loan.debt_category.value if loan.debt_category else "other"
+                        ),
+                        "principal": float(loan.principal or 0),
+                        "outstanding": float(loan.outstanding or 0),
+                        "interest_rate": (
+                            float(loan.interest_rate) if loan.interest_rate else None
+                        ),
+                    }
+                )
+
+            # Pending bills from Loan table (PENDING_BILLS category) or meta
+            pending_bills_from_loans = sum(
+                float(l.outstanding or l.principal or 0)
+                for l in loans
+                if l.debt_category and l.debt_category.value == "pending_bills"
+            )
+            pending_bills = (
+                pending_bills_from_loans
+                or float(financial_metrics_meta.get("pending_bills", 0))
+                or float(metrics.get("pending_bills", 0))
+            )
+
+            # --- Audits ---
+            audits = (
+                db.query(DBAudit)
+                .filter(DBAudit.entity_id == entity.id)
+                .order_by(DBAudit.created_at.desc())
+                .all()
+            )
+
+            audit_findings = []
+            by_severity = {"info": 0, "warning": 0, "critical": 0}
+            total_audit_amount = 0.0
+            for a in audits:
+                sev = a.severity.value if a.severity else "info"
+                by_severity[sev] = by_severity.get(sev, 0) + 1
+
+                prov = a.provenance or []
+                first_prov = prov[0] if prov and isinstance(prov, list) else {}
+                if isinstance(first_prov, dict):
+                    amount_str = first_prov.get(
+                        "amount", first_prov.get("amount_involved", "0")
+                    )
+                    category = first_prov.get("category", "other")
+                    status = first_prov.get("status", "open")
+                    audit_year = first_prov.get("audit_year")
+                    reference = first_prov.get(
+                        "reference", first_prov.get("external_id", "")
+                    )
+                else:
+                    amount_str = "0"
+                    category = "other"
+                    status = "open"
+                    audit_year = None
+                    reference = ""
+
+                # Parse amount
+                amount = 0.0
+                if isinstance(amount_str, (int, float)):
+                    amount = float(amount_str)
+                elif isinstance(amount_str, str):
+                    import re as _re
+
+                    cleaned = (
+                        amount_str.upper().replace("KES", "").replace(",", "").strip()
+                    )
+                    if cleaned.endswith("B"):
+                        try:
+                            amount = float(cleaned[:-1]) * 1e9
+                        except ValueError:
+                            pass
+                    elif cleaned.endswith("M"):
+                        try:
+                            amount = float(cleaned[:-1]) * 1e6
+                        except ValueError:
+                            pass
+                    else:
+                        try:
+                            amount = float(cleaned)
+                        except ValueError:
+                            pass
+                total_audit_amount += amount
+
+                audit_findings.append(
+                    {
+                        "id": a.id,
+                        "finding": a.finding_text,
+                        "severity": sev,
+                        "category": category,
+                        "status": status,
+                        "amount_involved": amount,
+                        "amount_label": str(amount_str),
+                        "audit_year": audit_year,
+                        "reference": reference,
+                        "recommendation": a.recommended_action,
+                    }
+                )
+
+            # Audit status determination
+            latest_audit = audits[0] if audits else None
+            audit_status = "pending"
+            if latest_audit and latest_audit.severity:
+                sev = latest_audit.severity.value
+                if sev == "info":
+                    audit_status = "clean"
+                elif sev == "warning":
+                    audit_status = "qualified"
+                elif sev == "critical":
+                    audit_status = "adverse"
+
+            # Financial health score
+            health_score = float(
+                financial_metrics_meta.get("financial_health_score", 0)
+            )
+            if health_score == 0 and total_allocated > 0:
+                utilization = (
+                    (total_spent / total_allocated * 100) if total_spent > 0 else 0
+                )
+                health_score = (
+                    min(utilization, 95)
+                    if utilization <= 95
+                    else max(0, 80 - (utilization - 100))
+                )
+
+            # Letter grade from health score
+            grade = "C"
+            if health_score >= 85:
+                grade = "A"
+            elif health_score >= 70:
+                grade = "B+"
+            elif health_score >= 55:
+                grade = "B"
+            elif health_score >= 40:
+                grade = "B-"
+
+            # --- Missing funds ---
+            missing_funds_cases = meta.get("missing_funds_cases") or []
+            missing_funds_total = float(financial_metrics_meta.get("missing_funds", 0))
+
+            # --- Stalled projects ---
+            stalled_projects = meta.get("stalled_projects") or []
+
+            # --- Revenue ---
+            revenue_2024 = float(
+                financial_metrics_meta.get("revenue_2024", 0)
+            ) or float(metrics.get("revenue_2024", 0))
+            local_revenue = float(metrics.get("local_revenue", 0))
+
+            # --- Coordinates ---
+            coords = COUNTY_COORDINATES.get(county_id, [36.8219, -1.2921])
+
+            # --- Per-capita stats ---
+            population = (
+                pop.total_population if pop else int(metrics.get("population", 0))
+            )
+            per_capita_budget = (
+                round(total_allocated / population, 2) if population > 0 else 0
+            )
+            per_capita_debt = round(total_debt / population, 2) if population > 0 else 0
+
+            response = {
+                "id": county_id,
+                "name": county_name,
+                "slug": entity.slug,
+                "coordinates": coords,
+                # Demographics
+                "demographics": {
+                    "population": population,
+                    "population_year": pop.year if pop else None,
+                    "male_population": pop.male_population if pop else None,
+                    "female_population": pop.female_population if pop else None,
+                    "urban_population": pop.urban_population if pop else None,
+                    "rural_population": pop.rural_population if pop else None,
+                    "population_density": (
+                        float(pop.population_density)
+                        if pop and pop.population_density
+                        else None
+                    ),
+                },
+                # Governor
+                "governor": meta.get("governor", ""),
+                # Economic profile
+                "economic_profile": {
+                    "county_type": economic_profile.get(
+                        "county_type", "standard_county"
+                    ),
+                    "economic_base": economic_profile.get("economic_base", "mixed"),
+                    "infrastructure_level": economic_profile.get(
+                        "infrastructure_level", "medium"
+                    ),
+                    "revenue_potential": economic_profile.get(
+                        "revenue_potential", "medium"
+                    ),
+                    "major_issues": economic_profile.get("major_issues", []),
+                },
+                # Budget
+                "budget": {
+                    "total_allocated": total_allocated,
+                    "total_spent": total_spent,
+                    "utilization_rate": round(
+                        (
+                            (total_spent / total_allocated * 100)
+                            if total_allocated > 0
+                            else 0
+                        ),
+                        1,
+                    ),
+                    "development_budget": development_total,
+                    "recurrent_budget": recurrent_total,
+                    "per_capita_budget": per_capita_budget,
+                    "sector_breakdown": sector_breakdown,
+                },
+                # Revenue
+                "revenue": {
+                    "total_revenue": revenue_2024,
+                    "local_revenue": local_revenue,
+                    "equitable_share": (
+                        total_allocated - local_revenue
+                        if local_revenue
+                        else total_allocated
+                    ),
+                },
+                # Debt
+                "debt": {
+                    "total_debt": total_debt,
+                    "pending_bills": pending_bills,
+                    "debt_to_budget_ratio": round(
+                        (
+                            (total_debt / total_allocated * 100)
+                            if total_allocated > 0
+                            else 0
+                        ),
+                        1,
+                    ),
+                    "per_capita_debt": per_capita_debt,
+                    "breakdown": debt_breakdown,
+                },
+                # Audit
+                "audit": {
+                    "status": audit_status,
+                    "grade": grade,
+                    "health_score": round(health_score, 1),
+                    "findings_count": len(audits),
+                    "total_amount_involved": total_audit_amount,
+                    "by_severity": by_severity,
+                    "findings": audit_findings,
+                },
+                # Missing funds
+                "missing_funds": {
+                    "total_amount": missing_funds_total,
+                    "cases_count": (
+                        len(missing_funds_cases)
+                        if isinstance(missing_funds_cases, list)
+                        else 0
+                    ),
+                    "cases": (
+                        missing_funds_cases
+                        if isinstance(missing_funds_cases, list)
+                        else []
+                    ),
+                },
+                # Stalled projects
+                "stalled_projects": {
+                    "count": len(stalled_projects),
+                    "total_contracted_value": sum(
+                        p.get("contracted_amount", 0) for p in stalled_projects
+                    ),
+                    "total_amount_paid": sum(
+                        p.get("amount_paid", 0) for p in stalled_projects
+                    ),
+                    "projects": stalled_projects,
+                },
+                # Financial summary
+                "financial_summary": {
+                    "health_score": round(health_score, 1),
+                    "grade": grade,
+                    "budget_execution_rate": round(
+                        (
+                            (total_spent / total_allocated * 100)
+                            if total_allocated > 0
+                            else 0
+                        ),
+                        1,
+                    ),
+                    "pending_bills_ratio": round(
+                        (
+                            (pending_bills / total_allocated * 100)
+                            if total_allocated > 0
+                            else 0
+                        ),
+                        1,
+                    ),
+                    "debt_sustainability": (
+                        "sustainable"
+                        if (
+                            total_debt / total_allocated * 100
+                            if total_allocated > 0
+                            else 0
+                        )
+                        < 20
+                        else (
+                            "moderate"
+                            if (
+                                total_debt / total_allocated * 100
+                                if total_allocated > 0
+                                else 0
+                            )
+                            < 40
+                            else "at_risk"
+                        )
+                    ),
+                },
+                # Data provenance
+                "data_sources": {
+                    "budget": "Controller of Budget - County Budget Implementation Review Reports",
+                    "audit": "Office of the Auditor General - County Government Audit Reports",
+                    "debt": "National Treasury - County Debt Register",
+                    "stalled_projects": "OAG Audit Reports & County Assembly Committees",
+                    "population": "Kenya National Bureau of Statistics (KNBS) Census 2019",
+                },
+            }
+
+            return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error in comprehensive county endpoint for {county_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @app.get("/api/v1/counties/{county_id}/financial")
@@ -1938,7 +2403,9 @@ async def get_audit_statistics():
                 "recent_critical": recent_items,
                 "report_title": "Office of the Auditor General — County Audit Findings",
                 "fiscal_year": "FY 2024/25",
-                "last_updated": datetime.datetime.utcnow().isoformat(),
+                "last_updated": datetime.datetime.now(
+                    datetime.timezone.utc
+                ).isoformat(),
             }
     except HTTPException:
         raise
@@ -2091,7 +2558,9 @@ async def get_federal_audits():
                     {"ministry": name, "finding_count": count}
                     for name, count in top_ministries
                 ],
-                "last_updated": datetime.datetime.utcnow().isoformat(),
+                "last_updated": datetime.datetime.now(
+                    datetime.timezone.utc
+                ).isoformat(),
             }
     except HTTPException:
         raise
@@ -3410,6 +3879,408 @@ async def get_budget_utilization_summary(fiscal_year: str = None):
     )
 
 
+# ── Consolidated budget overview (sectors merged, multi-year ready) ──
+SECTOR_NORMALIZE = {
+    "health services": "Health",
+    "health": "Health",
+    "education": "Education",
+    "education & training": "Education",
+    "roads and public works": "Infrastructure",
+    "roads & transport": "Infrastructure",
+    "infrastructure & transport": "Infrastructure",
+    "water and sanitation": "Water & Sanitation",
+    "water & sanitation": "Water & Sanitation",
+    "agriculture": "Agriculture",
+    "agriculture & livestock": "Agriculture",
+    "public administration": "Administration",
+    "administration": "Administration",
+    "governance & administration": "Administration",
+    "county assembly": "Administration",
+    "trade and industry": "Trade & Enterprise",
+    "trade & enterprise": "Trade & Enterprise",
+    "environment": "Environment",
+    "environment & natural resources": "Environment",
+    "lands & urban planning": "Environment",
+    "social services": "Social Protection",
+    "social protection": "Social Protection",
+    "defense": "Defense & Security",
+    "public order & safety": "Defense & Security",
+    "energy": "Energy",
+    "other": "Other",
+}
+
+SECTOR_ORDER = [
+    "Education",
+    "Infrastructure",
+    "Administration",
+    "Defense & Security",
+    "Health",
+    "Energy",
+    "Social Protection",
+    "Agriculture",
+    "Water & Sanitation",
+    "Environment",
+    "Trade & Enterprise",
+    "Other",
+]
+
+
+@app.get("/api/v1/budget/overview")
+@cached(key_prefix="budget:overview", ttl=1800)
+async def get_budget_overview():
+    """Consolidated budget overview: merged sectors + fiscal history for year comparison."""
+    if not DATABASE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Database not available")
+    try:
+        from sqlalchemy import func
+
+        with next(get_db()) as db:
+            # ── Sector allocations (merged) ─────────────────────
+            sector_rows = (
+                db.query(
+                    DBBudgetLine.category,
+                    func.sum(DBBudgetLine.allocated_amount).label("allocated"),
+                    func.sum(DBBudgetLine.actual_spent).label("spent"),
+                )
+                .group_by(DBBudgetLine.category)
+                .all()
+            )
+            merged: dict = {}
+            for cat, alloc, spent in sector_rows:
+                key = SECTOR_NORMALIZE.get(str(cat or "").strip().lower(), "Other")
+                if key == "Other" and str(cat or "").strip().lower() == "total budget":
+                    continue  # skip the aggregate row
+                entry = merged.setdefault(key, {"allocated": 0.0, "spent": 0.0})
+                entry["allocated"] += float(alloc or 0)
+                entry["spent"] += float(spent or 0)
+
+            total_allocated = sum(v["allocated"] for v in merged.values())
+            total_spent = sum(v["spent"] for v in merged.values())
+
+            sectors = []
+            for name in SECTOR_ORDER:
+                if name not in merged:
+                    continue
+                v = merged[name]
+                sectors.append(
+                    {
+                        "sector": name,
+                        "allocated": v["allocated"],
+                        "spent": v["spent"],
+                        "percentage": (
+                            round(v["allocated"] / total_allocated * 100, 1)
+                            if total_allocated > 0
+                            else 0
+                        ),
+                        "utilization": (
+                            round(v["spent"] / v["allocated"] * 100, 1)
+                            if v["allocated"] > 0
+                            else 0
+                        ),
+                    }
+                )
+
+            # ── Fiscal history (for year-over-year comparison) ─────
+            from models import FiscalSummary as FSModel
+
+            fiscal_rows = db.query(FSModel).order_by(FSModel.fiscal_year.asc()).all()
+            fiscal_years = []
+            for r in fiscal_rows:
+                fiscal_years.append(
+                    {
+                        "fiscal_year": r.fiscal_year,
+                        "appropriated_budget": float(r.appropriated_budget or 0),
+                        "total_revenue": float(r.total_revenue or 0),
+                        "tax_revenue": float(r.tax_revenue or 0),
+                        "non_tax_revenue": float(r.non_tax_revenue or 0),
+                        "total_borrowing": float(r.total_borrowing or 0),
+                        "borrowing_pct_of_budget": float(
+                            r.borrowing_pct_of_budget or 0
+                        ),
+                        "debt_service_cost": float(r.debt_service_cost or 0),
+                        "development_spending": float(r.development_spending or 0),
+                        "recurrent_spending": float(r.recurrent_spending or 0),
+                        "county_allocation": float(r.county_allocation or 0),
+                    }
+                )
+
+            latest = fiscal_years[-1] if fiscal_years else {}
+
+            # ── Top / bottom utilization counties ──────────────────
+            util_rows = (
+                db.query(
+                    DBEntity.canonical_name,
+                    func.sum(DBBudgetLine.allocated_amount).label("a"),
+                    func.sum(DBBudgetLine.actual_spent).label("s"),
+                )
+                .join(DBBudgetLine, DBBudgetLine.entity_id == DBEntity.id)
+                .group_by(DBEntity.canonical_name)
+                .all()
+            )
+            county_utils = []
+            for name, a, s in util_rows:
+                a_f = float(a or 0)
+                s_f = float(s or 0)
+                if a_f > 0:
+                    county_utils.append(
+                        {
+                            "county": str(name).replace(" County", ""),
+                            "allocated": a_f,
+                            "spent": s_f,
+                            "utilization": round(s_f / a_f * 100, 1),
+                        }
+                    )
+            county_utils.sort(key=lambda x: x["utilization"], reverse=True)
+
+            return {
+                "status": "success",
+                "data_source": "database",
+                "last_updated": datetime.datetime.now().isoformat(),
+                "summary": {
+                    "total_budget": total_allocated,
+                    "total_spent": total_spent,
+                    "execution_rate": (
+                        round(total_spent / total_allocated * 100, 1)
+                        if total_allocated > 0
+                        else 0
+                    ),
+                    "development_budget": float(latest.get("development_spending", 0)),
+                    "recurrent_budget": float(latest.get("recurrent_spending", 0)),
+                    "county_allocation": float(latest.get("county_allocation", 0)),
+                    "total_revenue": float(latest.get("total_revenue", 0)),
+                    "total_borrowing": float(latest.get("total_borrowing", 0)),
+                    "currency": "KES",
+                },
+                "sectors": sectors,
+                "fiscal_history": fiscal_years,
+                "county_utilization": {
+                    "top_5": county_utils[:5],
+                    "bottom_5": (
+                        county_utils[-5:][::-1] if len(county_utils) >= 5 else []
+                    ),
+                    "average": (
+                        round(
+                            sum(c["utilization"] for c in county_utils)
+                            / len(county_utils),
+                            1,
+                        )
+                        if county_utils
+                        else 0
+                    ),
+                },
+            }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logging.error(f"Budget overview failed: {exc}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+# ── Enhanced budget data: revenue sources, economic context, committed amounts ──
+
+
+@app.get("/api/v1/budget/enhanced")
+@cached(key_prefix="budget:enhanced", ttl=1800)
+async def get_budget_enhanced(db: Session = Depends(get_db)):
+    """Extended budget data not in the base overview.
+
+    Returns:
+      - revenue_by_source: Tax-type breakdown per FY (PAYE, Corp Tax, VAT, Excise, Customs, Other)
+      - economic_context: Budget as % of GDP, per-capita budget, key economic indicators
+      - execution_by_sector: Allocated → Spent pipeline per sector from CoB NG-BIRR reports
+    """
+    from models import (
+        BudgetLine,
+        EconomicIndicator,
+        Entity,
+        FiscalSummary,
+        PopulationData,
+        RevenueBySource,
+    )
+    from sqlalchemy import func
+
+    try:
+        # ── 1. Revenue by source ──
+        rev_rows = (
+            db.query(RevenueBySource)
+            .order_by(RevenueBySource.fiscal_year, RevenueBySource.revenue_type)
+            .all()
+        )
+
+        # Group by fiscal year
+        rev_by_fy: dict = {}
+        for r in rev_rows:
+            fy = r.fiscal_year
+            if fy not in rev_by_fy:
+                rev_by_fy[fy] = []
+            rev_by_fy[fy].append(
+                {
+                    "revenue_type": r.revenue_type,
+                    "category": r.category,
+                    "amount": (
+                        float(r.amount_billion_kes) if r.amount_billion_kes else None
+                    ),
+                    "target": (
+                        float(r.target_billion_kes) if r.target_billion_kes else None
+                    ),
+                    "performance_pct": (
+                        float(r.performance_pct) if r.performance_pct else None
+                    ),
+                    "share_pct": (
+                        float(r.share_of_total_pct) if r.share_of_total_pct else None
+                    ),
+                    "yoy_growth_pct": (
+                        float(r.yoy_growth_pct) if r.yoy_growth_pct else None
+                    ),
+                }
+            )
+
+        revenue_by_source = [
+            {"fiscal_year": fy, "sources": sources}
+            for fy, sources in sorted(rev_by_fy.items())
+        ]
+
+        # ── 2. Economic context ──
+        # Get GDP (in million KES)
+        gdp_row = (
+            db.query(EconomicIndicator)
+            .filter(EconomicIndicator.indicator_type == "total_national_gdp")
+            .order_by(EconomicIndicator.indicator_date.desc())
+            .first()
+        )
+        gdp_million = float(gdp_row.value) if gdp_row else None
+        gdp_billion = gdp_million / 1000 if gdp_million else None  # Convert to billions
+
+        # Get other economic indicators
+        econ_rows = db.query(EconomicIndicator).all()
+        econ_map = {}
+        for e in econ_rows:
+            econ_map[e.indicator_type] = float(e.value) if e.value else None
+
+        # Get total population (sum of all counties)
+        total_pop = db.query(func.sum(PopulationData.total_population)).scalar()
+        total_pop = int(total_pop) if total_pop else None
+
+        # Get latest fiscal summary for budget context
+        latest_fiscal = (
+            db.query(FiscalSummary).order_by(FiscalSummary.fiscal_year.desc()).first()
+        )
+
+        budget_billion = (
+            float(latest_fiscal.appropriated_budget)
+            if latest_fiscal and latest_fiscal.appropriated_budget
+            else None
+        )
+        revenue_billion = (
+            float(latest_fiscal.total_revenue)
+            if latest_fiscal and latest_fiscal.total_revenue
+            else None
+        )
+
+        economic_context = {
+            "gdp_billion_kes": gdp_billion,
+            "gdp_growth_pct": econ_map.get("gdp_growth_rate"),
+            "inflation_pct": econ_map.get("inflation_rate_cpi"),
+            "unemployment_pct": econ_map.get("unemployment_rate"),
+            "total_population": total_pop,
+            "budget_to_gdp_pct": (
+                round((budget_billion / gdp_billion) * 100, 1)
+                if budget_billion and gdp_billion
+                else None
+            ),
+            "revenue_to_gdp_pct": (
+                round((revenue_billion / gdp_billion) * 100, 1)
+                if revenue_billion and gdp_billion
+                else None
+            ),
+            "per_capita_budget_kes": (
+                round((budget_billion * 1e9) / total_pop)
+                if budget_billion and total_pop
+                else None
+            ),
+            "per_capita_revenue_kes": (
+                round((revenue_billion * 1e9) / total_pop)
+                if revenue_billion and total_pop
+                else None
+            ),
+            "fiscal_year": latest_fiscal.fiscal_year if latest_fiscal else None,
+        }
+
+        # ── 3. Budget execution by sector ──
+        # Query national-government budget execution data from the
+        # CoB Annual NG-BIRR reports.  These rows are identified by
+        # having an entity with slug 'national-government' AND
+        # committed_amount populated.
+        # County-level rows (from counties_budget seeder) don't have
+        # committed_amount and are for allocation-only display.
+
+        national_entity = (
+            db.query(Entity.id).filter(Entity.slug == "national-government").scalar()
+        )
+
+        if national_entity:
+            sector_pipeline = (
+                db.query(
+                    BudgetLine.category,
+                    func.sum(BudgetLine.allocated_amount).label("allocated"),
+                    func.sum(BudgetLine.actual_spent).label("spent"),
+                )
+                .filter(BudgetLine.entity_id == national_entity)
+                .filter(BudgetLine.committed_amount.isnot(None))
+                .filter(BudgetLine.allocated_amount > 0)
+                .group_by(BudgetLine.category)
+                .all()
+            )
+        else:
+            sector_pipeline = []
+
+        # Normalize sector names (reuse the mapping from overview)
+        execution_by_sector_raw: dict = {}
+        for row in sector_pipeline:
+            raw = str(row.category or "").strip().lower()
+            clean = SECTOR_NORMALIZE.get(raw, "Other")
+            if raw == "total budget":
+                continue
+            if clean not in execution_by_sector_raw:
+                execution_by_sector_raw[clean] = {
+                    "allocated": 0,
+                    "spent": 0,
+                }
+            execution_by_sector_raw[clean]["allocated"] += float(row.allocated or 0)
+            execution_by_sector_raw[clean]["spent"] += float(row.spent or 0)
+
+        execution_by_sector = []
+        for sector in SECTOR_ORDER:
+            if sector in execution_by_sector_raw:
+                d = execution_by_sector_raw[sector]
+                alloc = d["allocated"]
+                spent = d["spent"]
+                unspent = alloc - spent
+                execution_by_sector.append(
+                    {
+                        "sector": sector,
+                        "allocated": alloc,
+                        "spent": spent,
+                        "unspent": unspent,
+                        "execution_rate": (
+                            round((spent / alloc) * 100, 1) if alloc else 0
+                        ),
+                    }
+                )
+
+        return {
+            "revenue_by_source": revenue_by_source,
+            "economic_context": economic_context,
+            "execution_by_sector": execution_by_sector,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logging.error(f"Budget enhanced failed: {exc}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
 @app.get("/api/v1/debt/timeline")
 @cached(key_prefix="debt:timeline", ttl=86400)
 async def get_debt_timeline(db: Session = Depends(get_db)):
@@ -3645,7 +4516,11 @@ async def get_top_loans(limit: int = 10, db: Session = Depends(get_db)):
                     "currency": loan.currency,
                     "status": (
                         "active"
-                        if loan.maturity_date and loan.maturity_date > datetime.utcnow()
+                        if loan.maturity_date
+                        and loan.maturity_date
+                        > datetime.datetime.now(datetime.timezone.utc).replace(
+                            tzinfo=None
+                        )
                         else "matured"
                     ),
                     "annual_service_cost": round(outstanding * rate, 2),
@@ -3761,7 +4636,11 @@ async def get_national_loans(db: Session = Depends(get_db)):
                     "currency": loan.currency,
                     "status": (
                         "active"
-                        if loan.maturity_date and loan.maturity_date > datetime.utcnow()
+                        if loan.maturity_date
+                        and loan.maturity_date
+                        > datetime.datetime.now(datetime.timezone.utc).replace(
+                            tzinfo=None
+                        )
                         else "matured"
                     ),
                     "annual_service_cost": annual_cost,
@@ -3836,7 +4715,7 @@ async def get_national_debt():
                     gdp_value = (
                         float(latest_gdp_row.gdp_value or 0)
                         if latest_gdp_row and latest_gdp_row.gdp_value
-                        else 15_400_000_000_000  # last-resort fallback
+                        else 0  # No hardcoded fallback; will show 0 until seeded
                     )
                     gdp_year = latest_gdp_row.year if latest_gdp_row else None
 
@@ -4065,15 +4944,19 @@ async def get_national_debt():
                                     "High"
                                     if gdp_value > 0
                                     and total_outstanding / gdp_value > 0.65
-                                    else "Moderate"
+                                    else ("Moderate" if gdp_value > 0 else "Unknown")
                                 ),
                                 "debt_to_gdp": (
                                     round(total_outstanding / gdp_value * 100, 1)
                                     if gdp_value > 0
                                     else 0
                                 ),
-                                "debt_service_ratio": 32.0,
-                                "assessment": "Kenya's debt remains elevated. The IMF classifies Kenya at high risk of debt distress.",
+                                "assessment": (
+                                    "Kenya's debt remains elevated. The IMF classifies Kenya at high risk of debt distress."
+                                    if gdp_value > 0
+                                    and total_outstanding / gdp_value > 0.65
+                                    else "Seed GDP data for full sustainability assessment."
+                                ),
                             },
                         },
                         "currency": "KES",
@@ -4082,59 +4965,29 @@ async def get_national_debt():
         except Exception as e:
             logging.error(f"DB debt query failed: {e}")
 
-    # Fallback to external API
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{ENHANCED_COUNTY_API_BASE}/national/debt")
-            if response.status_code == 200:
-                data = response.json()
-                data["data_source"] = "external_api"
-                return data
-            else:
-                # Fallback to basic national debt data
-                return {
-                    "status": "success",
-                    "data_source": "fallback",
-                    "data": {
-                        "total_debt": 11490370520000,
-                        "debt_to_gdp_ratio": 74.6,
-                        "debt_breakdown": {
-                            "external_debt": 5326268770000,
-                            "domestic_debt": 6164101750000,
-                            "external_percentage": 46.4,
-                            "domestic_percentage": 53.6,
-                        },
-                        "debt_sustainability": {
-                            "risk_level": "High",
-                            "debt_service_ratio": 32.0,
-                        },
-                    },
-                    "currency": "KES",
-                    "note": "CBK Public Debt data as at April 2025",
-                }
-
-    except Exception as e:
-        logging.error(f"Error fetching national debt data: {e}")
-        # Return fallback data in case of error
-        return {
-            "status": "success",
-            "data": {
-                "total_debt": 11490370520000,
-                "debt_to_gdp_ratio": 74.6,
-                "debt_breakdown": {
-                    "external_debt": 5326268770000,
-                    "domestic_debt": 6164101750000,
-                    "external_percentage": 46.4,
-                    "domestic_percentage": 53.6,
-                },
-                "debt_sustainability": {
-                    "risk_level": "High",
-                    "debt_service_ratio": 32.0,
-                },
-            },
-            "currency": "KES",
-            "data_source": "Fallback - CBK Public Debt data as at April 2025",
-        }
+    # No hardcoded fallback — data must come from the database.
+    # Guide user to populate via the seeding pipeline.
+    return {
+        "status": "no_data",
+        "data_source": "database_empty",
+        "last_updated": None,
+        "message": (
+            "No national debt data in database. "
+            "Run: python -m seeding.cli seed --domain national_debt"
+        ),
+        "data": {
+            "total_debt": 0,
+            "total_outstanding": 0,
+            "loan_count": 0,
+            "gdp": 0,
+            "debt_to_gdp_ratio": 0,
+            "summary": {},
+            "categories": {},
+            "debt_sustainability": {},
+        },
+        "currency": "KES",
+        "source": "Central Bank of Kenya / National Treasury",
+    }
 
 
 @app.get("/api/v1/pending-bills")
@@ -4942,15 +5795,19 @@ async def dashboard_debt_mix():
         except Exception as e:
             logging.error(f"DB debt-mix query failed: {e}")
 
-    # Fallback — CBK Public Debt Report Apr 2025
+    # No hardcoded fallback — data must come from the database.
     return {
-        "external": 46.4,
-        "domestic": 53.6,
-        "external_amount": 5_326_268_770_000,
-        "domestic_amount": 6_164_101_750_000,
-        "total": 11_490_370_520_000,
+        "external": 0,
+        "domestic": 0,
+        "external_amount": 0,
+        "domestic_amount": 0,
+        "total": 0,
         "currency": "KES",
-        "data_source": "fallback - CBK Apr 2025",
+        "data_source": "database_empty",
+        "message": (
+            "No debt data in database. "
+            "Run: python -m seeding.cli seed --domain national_debt"
+        ),
     }
 
 

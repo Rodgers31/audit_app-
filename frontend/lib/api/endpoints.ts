@@ -31,6 +31,7 @@ export const COUNTIES_ENDPOINTS = {
   FLAGGED: '/counties/flagged',
 
   // County-specific data
+  COMPREHENSIVE: (id: string) => `/counties/${id}/comprehensive`,
   FINANCIAL_SUMMARY: (id: string) => `/counties/${id}/financial-summary`,
   AUDITS: (id: string) => `/counties/${id}/audits`,
   AUDITS_LIST: (id: string) => `/counties/${id}/audits/list`,
@@ -67,6 +68,8 @@ export const BUDGET_ENDPOINTS = {
   COMPARISON: '/budget/comparison',
   NATIONAL: '/budget/national',
   UTILIZATION: '/budget/utilization',
+  OVERVIEW: '/budget/overview',
+  ENHANCED: '/budget/enhanced',
 
   // Sector analysis
   SECTORS: (sector: string) => `/budget/sectors/${sector}`,

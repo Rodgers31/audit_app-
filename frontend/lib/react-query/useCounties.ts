@@ -1,12 +1,14 @@
 /**
  * Custom React Query hooks for counties data
  */
+import { CountyComprehensive } from '@/types';
 import { useInfiniteQuery, useQuery, UseQueryOptions } from '@tanstack/react-query';
 import {
   getCounties,
   getCountiesPaginated,
   getCounty,
   getCountyByCode,
+  getCountyComprehensive,
   getCountyFinancialSummary,
   getFlaggedCounties,
   getTopPerformingCounties,
@@ -133,6 +135,20 @@ export const useCountyFinancialSummary = (
   return useQuery({
     queryKey: QUERY_KEYS.financialSummary(id),
     queryFn: () => getCountyFinancialSummary(id),
+    enabled: !!id,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    ...options,
+  });
+};
+
+// Get comprehensive county data (one-stop detail)
+export const useCountyComprehensive = (
+  id: string,
+  options?: Omit<UseQueryOptions<CountyComprehensive>, 'queryKey' | 'queryFn'>
+) => {
+  return useQuery({
+    queryKey: ['counties', id, 'comprehensive'] as const,
+    queryFn: () => getCountyComprehensive(id),
     enabled: !!id,
     staleTime: 10 * 60 * 1000, // 10 minutes
     ...options,

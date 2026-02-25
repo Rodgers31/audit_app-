@@ -53,33 +53,23 @@ export default function InteractiveKenyaMap({
   const isOverlayHoveredRef = useRef(false);
   const isProcessingLeaveRef = useRef(false);
 
-  /* ── geo data loading (resilient 4-level fallback) ── */
-  const externalTopoUrl =
-    'https://raw.githubusercontent.com/deldersveld/topojson/master/countries/kenya/kenya-counties.json';
-  const localGeoUrl = '/kenya_counties_official.json';
-  const placeholderGeoUrl = '/kenya-counties.json';
+  /* ── geo data loading – single local file, inline fallback ── */
+  const geoUrl = '/kenya-counties.json';
 
   const [geoData, setGeoData] = useState<any | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    const tryFetch = async (url: string) => {
-      try {
-        const res = await fetch(url, { cache: 'force-cache' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return await res.json();
-      } catch {
-        return null;
-      }
-    };
     (async () => {
-      const ext = await tryFetch(externalTopoUrl);
-      if (!cancelled && ext) return setGeoData(ext);
-      const local = await tryFetch(localGeoUrl);
-      if (!cancelled && local) return setGeoData(local);
-      const placeholder = await tryFetch(placeholderGeoUrl);
-      if (!cancelled && placeholder) return setGeoData(placeholder);
-      if (!cancelled) setGeoData(KENYA_COUNTIES_GEOJSON as any);
+      try {
+        const res = await fetch(geoUrl, { cache: 'force-cache' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) setGeoData(data);
+      } catch {
+        // local file missing – fall back to compiled-in GeoJSON
+        if (!cancelled) setGeoData(KENYA_COUNTIES_GEOJSON as any);
+      }
     })();
     return () => {
       cancelled = true;
@@ -300,7 +290,7 @@ export default function InteractiveKenyaMap({
             </filter>
           </defs>
 
-          <Geographies geography={geoData ?? externalTopoUrl}>
+          <Geographies geography={geoData ?? geoUrl}>
             {({ geographies }) =>
               geographies.map((geo, index) => {
                 const geoCountyName =

@@ -1,6 +1,6 @@
 """Comprehensive health check endpoints for monitoring."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 from cache.redis_cache import cache
@@ -16,7 +16,7 @@ async def health_check():
     """Basic health check endpoint."""
     return {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -26,7 +26,7 @@ async def detailed_health_check(db: Session = Depends(get_db)):
 
     health_status = {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": "1.0.0",
         "environment": "production",
         "components": {},
