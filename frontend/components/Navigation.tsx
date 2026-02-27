@@ -1,15 +1,21 @@
 'use client';
 
+import { useAuth } from '@/lib/auth/AuthProvider';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Grid, Menu, User, X } from 'lucide-react';
+import { Bell, Bookmark, Grid, LogIn, LogOut, Menu, Settings, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import AuthModal from './AuthModal';
 
 export default function Navigation() {
   const pathname = usePathname();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Handle scroll effect for glassmorphism intensity
   useEffect(() => {
@@ -18,6 +24,24 @@ export default function Navigation() {
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Close user menu on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    if (userMenuOpen) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [userMenuOpen]);
+
+  // Listen for global "open-auth-modal" events (dispatched by WatchButton etc.)
+  useEffect(() => {
+    const openModal = () => setAuthModalOpen(true);
+    window.addEventListener('open-auth-modal', openModal);
+    return () => window.removeEventListener('open-auth-modal', openModal);
   }, []);
 
   const navItems = [
@@ -77,19 +101,91 @@ export default function Navigation() {
             })}
           </nav>
 
-          {/* Right: Profile & Menu */}
+          {/* Right: Auth / Profile & Menu */}
           <div className='flex items-center space-x-3 md:space-x-4 relative z-50'>
             <button className='p-2 rounded-full bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors border border-white/10 backdrop-blur-sm hidden sm:flex items-center justify-center group'>
               <Grid className='w-5 h-5 group-hover:rotate-90 transition-transform duration-300' />
             </button>
 
-            <div className='relative group cursor-pointer'>
-              <div className='w-10 h-10 rounded-full bg-gradient-to-br from-gov-forest to-gov-dark border-2 border-white/20 flex items-center justify-center shadow-lg overflow-hidden relative transition-transform hover:scale-105 active:scale-95'>
-                <User className='w-5 h-5 text-white/90' />
+            {/* Auth-aware user button */}
+            {isLoading ? (
+              <div className='w-10 h-10 rounded-full bg-white/10 animate-pulse' />
+            ) : isAuthenticated && user ? (
+              <div className='relative' ref={userMenuRef}>
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className='w-10 h-10 rounded-full bg-gradient-to-br from-gov-sage to-gov-forest border-2 border-white/20 flex items-center justify-center shadow-lg overflow-hidden relative transition-transform hover:scale-105 active:scale-95'>
+                  <span className='text-white font-bold text-sm'>
+                    {(user.display_name || user.email)[0].toUpperCase()}
+                  </span>
+                </button>
+                {/* green active dot */}
+                <div className='absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-gov-dark' />
+
+                {/* Dropdown */}
+                <AnimatePresence>
+                  {userMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className='absolute right-0 top-14 w-64 bg-gov-dark/95 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl overflow-hidden'>
+                      {/* User info */}
+                      <div className='p-4 border-b border-white/10'>
+                        <p className='text-white font-semibold text-sm truncate'>
+                          {user.display_name || 'Citizen'}
+                        </p>
+                        <p className='text-white/50 text-xs truncate'>{user.email}</p>
+                      </div>
+                      {/* Links */}
+                      <div className='py-1'>
+                        <Link
+                          href='/account'
+                          onClick={() => setUserMenuOpen(false)}
+                          className='flex items-center gap-3 px-4 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors'>
+                          <Settings className='w-4 h-4' />
+                          Account & Settings
+                        </Link>
+                        <Link
+                          href='/account?tab=watchlist'
+                          onClick={() => setUserMenuOpen(false)}
+                          className='flex items-center gap-3 px-4 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors'>
+                          <Bookmark className='w-4 h-4' />
+                          My Watchlist
+                        </Link>
+                        <Link
+                          href='/account?tab=alerts'
+                          onClick={() => setUserMenuOpen(false)}
+                          className='flex items-center gap-3 px-4 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors'>
+                          <Bell className='w-4 h-4' />
+                          Alerts
+                        </Link>
+                      </div>
+                      {/* Logout */}
+                      <div className='p-2 border-t border-white/10'>
+                        <button
+                          onClick={() => {
+                            logout();
+                            setUserMenuOpen(false);
+                          }}
+                          className='flex items-center gap-3 w-full px-3 py-2.5 text-sm text-gov-copper hover:bg-gov-copper/10 rounded-xl transition-colors'>
+                          <LogOut className='w-4 h-4' />
+                          Sign Out
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-              {/* Status Dot */}
-              <div className='absolute bottom-0 right-0 w-3 h-3 bg-gov-warning rounded-full border-2 border-gov-dark animate-pulse'></div>
-            </div>
+            ) : (
+              <button
+                onClick={() => setAuthModalOpen(true)}
+                className='flex items-center gap-2 px-4 py-2 rounded-full bg-gov-sage/80 hover:bg-gov-sage text-white text-sm font-medium transition-all border border-gov-sage/40 shadow-md hover:shadow-lg active:scale-95'>
+                <LogIn className='w-4 h-4' />
+                <span className='hidden sm:inline'>Sign In</span>
+              </button>
+            )}
 
             <button
               className='md:hidden p-2 text-white/90 hover:text-white bg-white/10 rounded-full backdrop-blur-md'
@@ -118,12 +214,45 @@ export default function Navigation() {
               </Link>
             ))}
             <div className='w-16 h-1 bg-white/10 rounded-full mt-8' />
+
+            {/* Mobile auth links */}
+            {isAuthenticated ? (
+              <>
+                <Link
+                  href='/account'
+                  className='text-lg font-semibold text-gov-sage hover:text-gov-gold transition-colors'
+                  onClick={() => setMobileMenuOpen(false)}>
+                  My Account
+                </Link>
+                <button
+                  onClick={() => {
+                    logout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className='text-lg font-semibold text-gov-copper hover:text-gov-copper/80 transition-colors'>
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setAuthModalOpen(true);
+                }}
+                className='text-lg font-semibold text-gov-sage hover:text-gov-gold transition-colors'>
+                Sign In / Register
+              </button>
+            )}
+
             <div className='text-white/40 text-sm font-medium uppercase tracking-widest'>
               Republic of Kenya
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Auth Modal */}
+      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
     </>
   );
 }

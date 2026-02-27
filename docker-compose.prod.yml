@@ -129,6 +129,8 @@ services:
     image: ${FRONTEND_IMAGE:-${DOCKERHUB_NAMESPACE:-yourhubname}/audit-app-frontend:latest}
     environment:
       NEXT_PUBLIC_API_URL: https://${BACKEND_HOST}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
       NODE_ENV: production
     labels:
       - traefik.enable=true

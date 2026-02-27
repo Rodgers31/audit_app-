@@ -120,6 +120,9 @@ jobs:
       - name: Build Next.js (REQUIRED)
         working-directory: frontend
         run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Install Playwright Browsers
         working-directory: frontend
@@ -238,6 +241,9 @@ jobs:
           file: ./frontend/Dockerfile.prod
           push: true
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           tags: |
             ${{ env.DOCKERHUB_NAMESPACE }}/audit-app-frontend:${{ steps.vars.outputs.version }}
             ${{ env.DOCKERHUB_NAMESPACE }}/audit-app-frontend:${{ steps.vars.outputs.sha }}

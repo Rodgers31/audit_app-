@@ -24,6 +24,7 @@ import {
 } from '@/components/dashboard';
 import InteractiveKenyaMap from '@/components/InteractiveKenyaMap';
 import { ScenicBackgroundLayout } from '@/components/layout';
+import NewsletterBanner from '@/components/NewsletterBanner';
 import { useCounties } from '@/lib/react-query';
 import { County } from '@/types';
 import { motion } from 'framer-motion';
@@ -114,6 +115,9 @@ export default function HomeDashboardClient() {
 
           {/* ── Learning Hub CTA ── */}
           <LearningHubCTA />
+
+          {/* ── Newsletter ── */}
+          <NewsletterBanner />
         </motion.div>
       </div>
 

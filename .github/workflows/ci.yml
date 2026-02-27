@@ -141,6 +141,8 @@ jobs:
           npm run build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8000
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       # ── E2E Tests (disabled) ──────────────────────────────────
       # Playwright E2E tests require a running backend server which

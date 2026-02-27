@@ -1,4 +1,5 @@
 import Navigation from '@/components/Navigation';
+import { AuthProvider } from '@/lib/auth/AuthProvider';
 import { QueryProvider } from '@/lib/react-query/QueryProvider';
 import type { Metadata } from 'next';
 import './globals.css';
@@ -23,8 +24,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang='en' suppressHydrationWarning>
       <body className='bg-gov-sand antialiased' suppressHydrationWarning>
         <QueryProvider>
-          <Navigation />
-          <div className='relative z-[1]'>{children}</div>
+          <AuthProvider>
+            <Navigation />
+            <div className='relative z-[1]'>{children}</div>
+          </AuthProvider>
         </QueryProvider>
       </body>
     </html>

@@ -698,6 +698,22 @@ try:
 except Exception as e:
     logger.warning(f"Could not register admin router: {e}")
 
+# Auth & user-feature routers removed — handled by Supabase (frontend → Supabase direct).
+# Backend auth.py and user_features.py kept on disk for reference but are no longer mounted.
+# try:
+#     from routers.auth import router as auth_router
+#     app.include_router(auth_router)
+#     logger.info("Auth router registered at /api/v1/auth")
+# except Exception as e:
+#     logger.warning(f"Could not register auth router: {e}")
+#
+# try:
+#     from routers.user_features import router as user_features_router
+#     app.include_router(user_features_router)
+#     logger.info("User features router registered (watchlist, alerts, newsletter)")
+# except Exception as e:
+#     logger.warning(f"Could not register user features router: {e}")
+
 
 # Request logging middleware
 @app.middleware("http")
