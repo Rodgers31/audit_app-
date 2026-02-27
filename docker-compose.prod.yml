@@ -25,7 +25,7 @@ volumes:
 
 services:
   reverse-proxy:
-    image: traefik:v2.11
+    image: traefik:v3.3
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
@@ -48,7 +48,7 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:15
+    image: postgres:17
     environment:
       POSTGRES_DB: audit_app
       POSTGRES_USER: postgres
