@@ -88,7 +88,7 @@ jobs:
       - name: Upload coverage reports
         uses: codecov/codecov-action@v5
         with:
-          file: backend/coverage.xml
+          files: backend/coverage.xml
           fail_ci_if_error: false
 
       - name: Validate API Health Check
