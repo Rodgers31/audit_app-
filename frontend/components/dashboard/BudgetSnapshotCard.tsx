@@ -35,8 +35,10 @@ const SECTOR_MERGE: Record<string, string> = {
   'education & training': 'Education',
   'roads and public works': 'Roads & Infrastructure',
   'roads & transport': 'Roads & Infrastructure',
+  'infrastructure & transport': 'Roads & Infrastructure',
   'public administration': 'Public Administration',
   administration: 'Public Administration',
+  'governance & administration': 'Public Administration',
   'water and sanitation': 'Water & Sanitation',
   'water & sanitation': 'Water & Sanitation',
   agriculture: 'Agriculture',
@@ -44,11 +46,16 @@ const SECTOR_MERGE: Record<string, string> = {
   'trade and industry': 'Trade & Industry',
   'trade & enterprise': 'Trade & Industry',
   'social services': 'Social Services',
+  'social protection': 'Social Protection',
   environment: 'Environment',
+  'environment & natural resources': 'Environment',
   'county assembly': 'County Assembly',
   'lands & urban planning': 'Lands & Planning',
   other: 'Other',
 };
+
+/** Max visible rows — kept in sync with NationalLoansCard.VISIBLE */
+const VISIBLE_ROWS = 16;
 
 function sectorIcon(name: string): string {
   return SECTOR_ICONS[name] || '📋';
@@ -101,7 +108,8 @@ export default function BudgetSnapshotCard() {
       });
     }
   }
-  const sectors = Array.from(merged.values()).sort((a, b) => b.amount - a.amount);
+  const allSectors = Array.from(merged.values()).sort((a, b) => b.amount - a.amount);
+  const sectors = allSectors.slice(0, VISIBLE_ROWS);
 
   const maxAmt = sectors.length > 0 ? sectors[0].amount : 1;
 
@@ -197,9 +205,15 @@ export default function BudgetSnapshotCard() {
           })}
         </div>
 
+        {allSectors.length > VISIBLE_ROWS && (
+          <p className='text-[10px] text-neutral-muted text-center pt-2'>
+            +{allSectors.length - VISIBLE_ROWS} more sectors
+          </p>
+        )}
+
         <Link
           href='/budget'
-          className='group mt-auto pt-5 flex items-center justify-center gap-1.5 w-full rounded-lg bg-white/60 border border-neutral-border/40 hover:border-gov-sage/40 hover:bg-gov-sage/[0.04] px-4 py-2.5 transition-all text-xs font-medium text-gov-dark'>
+          className='group mt-auto pt-4 flex items-center justify-center gap-1.5 w-full rounded-lg bg-white/60 border border-neutral-border/40 hover:border-gov-sage/40 hover:bg-gov-sage/[0.04] px-4 py-2.5 transition-all text-xs font-medium text-gov-dark'>
           View Full Budget Breakdown →
         </Link>
       </div>
