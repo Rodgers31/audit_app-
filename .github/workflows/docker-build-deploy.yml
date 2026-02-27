@@ -83,6 +83,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/audit_app_test
           REDIS_URL: redis://localhost:6379
           TESTING: true
+          PYTHONPATH: .
 
   # CRITICAL: Frontend tests must pass
   test-frontend:

@@ -7,19 +7,20 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 # Ensure package imports work whether tests are run from repo root or backend/
-ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
-if ROOT_DIR not in sys.path:
-    sys.path.append(ROOT_DIR)
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(BACKEND_DIR)
+for p in (ROOT_DIR, BACKEND_DIR):
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
 try:
-    from backend.database import get_db
-    from backend.main import app
-    from backend.models import Base
-except Exception:
-    # Fallback when running pytest from within backend directory
     from database import get_db
     from main import app
     from models import Base
+except ModuleNotFoundError:
+    from backend.database import get_db
+    from backend.main import app
+    from backend.models import Base
 
 # Attempt to set up a lightweight SQLite test DB; if models use PostgreSQL-only
 # types (e.g., JSONB), gracefully fall back to a DB-less override that returns 503.
