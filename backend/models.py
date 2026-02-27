@@ -101,6 +101,13 @@ class Entity(Base):
 
 class FiscalPeriod(Base):
     __tablename__ = "fiscal_periods"
+    __table_args__ = (
+        UniqueConstraint(
+            "country_id",
+            "label",
+            name="uq_fiscal_period_country_label",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     country_id = Column(Integer, ForeignKey("countries.id"), nullable=False)
@@ -163,6 +170,15 @@ class Extraction(Base):
 
 class BudgetLine(Base):
     __tablename__ = "budget_lines"
+    __table_args__ = (
+        UniqueConstraint(
+            "entity_id",
+            "period_id",
+            "category",
+            "subcategory",
+            name="uq_budget_entity_period_cat_subcat",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     entity_id = Column(Integer, ForeignKey("entities.id"), nullable=False)
@@ -196,6 +212,14 @@ class BudgetLine(Base):
 
 class Loan(Base):
     __tablename__ = "loans"
+    __table_args__ = (
+        UniqueConstraint(
+            "entity_id",
+            "lender",
+            "issue_date",
+            name="uq_loans_entity_lender_date",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     entity_id = Column(Integer, ForeignKey("entities.id"), nullable=False)
@@ -341,6 +365,13 @@ class PopulationData(Base):
     """Population data from KNBS (Kenya National Bureau of Statistics)."""
 
     __tablename__ = "population_data"
+    __table_args__ = (
+        UniqueConstraint(
+            "entity_id",
+            "year",
+            name="uq_population_entity_year",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     entity_id = Column(
@@ -370,6 +401,14 @@ class GDPData(Base):
     """GDP and Gross County Product data from KNBS."""
 
     __tablename__ = "gdp_data"
+    __table_args__ = (
+        UniqueConstraint(
+            "entity_id",
+            "year",
+            "quarter",
+            name="uq_gdp_entity_year_quarter",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     entity_id = Column(
@@ -397,6 +436,14 @@ class EconomicIndicator(Base):
     """Economic indicators from KNBS (CPI, PPI, inflation, unemployment, etc.)."""
 
     __tablename__ = "economic_indicators"
+    __table_args__ = (
+        UniqueConstraint(
+            "indicator_type",
+            "indicator_date",
+            "entity_id",
+            name="uq_econ_type_date_entity",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     indicator_type = Column(
@@ -456,6 +503,13 @@ class PovertyIndex(Base):
     """Poverty indices from KNBS."""
 
     __tablename__ = "poverty_indices"
+    __table_args__ = (
+        UniqueConstraint(
+            "entity_id",
+            "year",
+            name="uq_poverty_entity_year",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     entity_id = Column(

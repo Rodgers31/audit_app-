@@ -606,6 +606,25 @@ def _seed_national_data(
     # National debt breakdown is now handled by the seeding pipeline:
     #   python -m seeding.cli seed --domain national_debt
     # Bootstrap no longer writes loan records to avoid conflicts.
+    # Clean up any stale bootstrap category-summary rows that may linger
+    # from earlier versions of this code.
+    stale_bootstrap_loans = [
+        loan
+        for loan in session.query(Loan)
+        .filter(Loan.entity_id == national_entity.id)
+        .all()
+        if any(
+            isinstance(p, dict) and p.get("source") == "bootstrap"
+            for p in (loan.provenance or [])
+        )
+    ]
+    if stale_bootstrap_loans:
+        for loan in stale_bootstrap_loans:
+            session.delete(loan)
+        logger.info(
+            f"Deleted {len(stale_bootstrap_loans)} stale bootstrap loan rows "
+            f"(debt data now comes from seeding pipeline)"
+        )
 
     logger.info(
         "National-level data seeded (GDP, population). "

@@ -4,6 +4,7 @@ import { useDebtTimeline, useNationalDebtOverview } from '@/lib/react-query/useD
 import { useFiscalSummary } from '@/lib/react-query/useFiscal';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
+import DebtExplainerModal from './DebtExplainerModal';
 
 /* ── Formatting helpers ── */
 function fmtB(val: number): string {
@@ -95,7 +96,10 @@ export function SummaryStrip() {
 
       {/* Labels row */}
       <div className='w-full flex gap-8 mt-0.5'>
-        <span className='text-xs text-gov-dark/60 font-medium'>Total Debt as of {year}</span>
+        <span className='text-xs text-gov-dark/60 font-medium inline-flex items-center gap-1'>
+          Total Debt as of {year}
+          <DebtExplainerModal context='hero' />
+        </span>
         <span className='text-xs text-gov-dark/60 font-medium'>
           Risk Level{' '}
           <span className='inline-flex gap-0.5 ml-1'>

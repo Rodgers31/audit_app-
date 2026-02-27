@@ -5,6 +5,7 @@ import { useNationalLoans } from '@/lib/react-query/useDebt';
 import { motion } from 'framer-motion';
 import { ExternalLink, Landmark, Loader2, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
+import DebtExplainerModal from './DebtExplainerModal';
 
 function fmtB(val: number): string {
   if (val >= 1_000_000_000_000) return `${(val / 1_000_000_000_000).toFixed(1)}T`;
@@ -85,7 +86,7 @@ export default function NationalLoansCard() {
   // Sort ascending (smallest first) and match budget sector count for alignment
   const sorted = [...data.loans].sort((a, b) => a.outstanding_numeric - b.outstanding_numeric);
   /** Max visible rows — kept in sync with BudgetSnapshotCard.VISIBLE_ROWS */
-  const VISIBLE = 16;
+  const VISIBLE = 21;
   const topLoans = sorted.slice(0, VISIBLE);
 
   return (
@@ -125,6 +126,7 @@ export default function NationalLoansCard() {
               <span className='text-[10px] text-neutral-muted font-medium uppercase tracking-wider'>
                 Outstanding Debt
               </span>
+              <DebtExplainerModal context='loans' />
             </div>
             <span className='text-lg font-bold text-gov-copper tabular-nums leading-none'>
               KES {fmtB(data.total_outstanding)}
