@@ -115,9 +115,11 @@ def client(db_session):
     async def _passthrough_dispatch(self, request, call_next):
         return await call_next(request)
 
-    with patch("main.get_db", _override_get_db), \
-         patch("middleware.security.RateLimitMiddleware.dispatch", _passthrough_dispatch), \
-         patch("middleware.security.RedisRateLimitMiddleware.dispatch", _passthrough_dispatch):
+    with patch("main.get_db", _override_get_db), patch(
+        "middleware.security.RateLimitMiddleware.dispatch", _passthrough_dispatch
+    ), patch(
+        "middleware.security.RedisRateLimitMiddleware.dispatch", _passthrough_dispatch
+    ):
         yield TestClient(app, raise_server_exceptions=False)
 
     # Restore handlers so subsequent test parametrisations still work

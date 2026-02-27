@@ -1,9 +1,8 @@
 name: Build and Deploy (Docker Hub)
 
+# Disabled automatic triggers until Docker Hub secrets and SSH deploy
+# targets are configured.  Trigger manually from the Actions tab.
 on:
-  push:
-    branches: [main]
-    tags: ['v*.*.*']
   workflow_dispatch:
     inputs:
       tag:
