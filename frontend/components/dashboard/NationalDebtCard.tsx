@@ -47,7 +47,6 @@ function fmtKES(val: number): string {
   return `KES ${val.toLocaleString()}`;
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
@@ -82,7 +81,6 @@ function CustomTooltip({ active, payload, label }: any) {
     </div>
   );
 }
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 export default function NationalDebtCard() {
   const { data: resp, isLoading } = useNationalDebtOverview();
