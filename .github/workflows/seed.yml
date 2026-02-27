@@ -18,6 +18,10 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   seed:
     name: Seed Database
