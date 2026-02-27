@@ -89,7 +89,7 @@ def verify_data():
         "economic_indicators": econ,
         "budgets": budgets,
         "audits": audits,
-        "debt": debt,
+        "debt": loans,
         "total": total,
     }
 

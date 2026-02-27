@@ -392,6 +392,10 @@ class KenyaGovernmentQuestionSource(ExternalQuestionSource):
         return mapping.get(difficulty, 3)
 
 
+# Alias: KenyaGovernmentQuestionSource also fetches from Open Trivia Database
+OpenTriviaSource = KenyaGovernmentQuestionSource
+
+
 class WorldBankSource(ExternalQuestionSource):
     """Generate questions based on World Bank open data."""
 
