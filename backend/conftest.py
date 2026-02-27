@@ -96,7 +96,33 @@ def client(db_session):
             pass  # session cleanup handled by db_session fixture
 
     app.dependency_overrides[get_db] = _override_get_db
-    yield TestClient(app, raise_server_exceptions=False)
+
+    # Prevent startup events (bootstrap_reference_data, auto-seeder) from
+    # hitting the real PostgreSQL database – they are irrelevant for unit
+    # tests and will fail in CI where PG tables haven't been migrated.
+    _saved_startup = list(app.router.on_startup)
+    _saved_shutdown = list(app.router.on_shutdown)
+    app.router.on_startup.clear()
+    app.router.on_shutdown.clear()
+
+    # Many routes call `next(get_db())` directly instead of using FastAPI
+    # Depends – this bypasses dependency_overrides.  Monkey-patch the
+    # module-level `get_db` in **main** so those code paths also use the
+    # test SQLite session.
+    #
+    # Also bypass the rate-limiter middleware so the 120 req/60 s window
+    # doesn't trip during the full test suite.
+    async def _passthrough_dispatch(self, request, call_next):
+        return await call_next(request)
+
+    with patch("main.get_db", _override_get_db), \
+         patch("middleware.security.RateLimitMiddleware.dispatch", _passthrough_dispatch), \
+         patch("middleware.security.RedisRateLimitMiddleware.dispatch", _passthrough_dispatch):
+        yield TestClient(app, raise_server_exceptions=False)
+
+    # Restore handlers so subsequent test parametrisations still work
+    app.router.on_startup = _saved_startup
+    app.router.on_shutdown = _saved_shutdown
     app.dependency_overrides.clear()
 
 

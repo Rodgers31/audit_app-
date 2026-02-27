@@ -55,7 +55,7 @@ def _get_routes_parametrized():
 def test_get_route_does_not_crash(client, path):
     """Every GET route should respond without a 500 Internal Server Error.
 
-    We accept 200, 404, 422, 503 as valid — the important thing is
+    We accept 200, 404, 422, 429, 503 as valid — the important thing is
     that the server doesn't crash.
     """
     response = client.get(path)
