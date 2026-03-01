@@ -423,7 +423,7 @@ class AutoSeeder:
             records_created = 0
             records_updated = 0
 
-            census_year = population_data.get("census_year", datetime.now().year)
+            census_year = population_data.get("census_year") or datetime.now().year
 
             # Update county populations
             for county_pop in population_data.get("counties", []):

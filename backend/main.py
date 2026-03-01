@@ -786,7 +786,7 @@ async def startup_event():
     logger.info("Main Backend API startup complete!")
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 async def root(request: Request):
     client_ip = request.client.host
     logger.info(f"Main backend root endpoint accessed from {client_ip}")
