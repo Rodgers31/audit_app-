@@ -14,10 +14,5 @@
       ]
     }
   ],
-  "rewrites": [
-    {
-      "source": "/api/v1/:path*",
-      "destination": "${NEXT_PUBLIC_API_URL}/api/v1/:path*"
-    }
-  ]
+  "rewrites": []
 }
