@@ -14,12 +14,11 @@ import axios from 'axios';
 
 const API_VERSION = process.env.NEXT_PUBLIC_API_VERSION || 'v1';
 
-// Use relative URL so requests route through Next.js rewrites (same-origin)
-// In production, set NEXT_PUBLIC_API_URL to the actual backend if not proxied
-const isServer = typeof window === 'undefined';
-const baseURL = isServer
-  ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/${API_VERSION}`
-  : `/api/${API_VERSION}`;
+// In production, NEXT_PUBLIC_API_URL points to the Render backend directly.
+// In development, it falls back to localhost:8000.
+// We always use the full URL so we don't depend on Next.js rewrites/proxy.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const baseURL = `${API_BASE}/api/${API_VERSION}`;
 
 // Create axios instance with default configuration
 export const apiClient = axios.create({
