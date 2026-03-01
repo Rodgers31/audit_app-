@@ -2,15 +2,13 @@
 
 import {
   getAlerts,
-  getWatchlist,
   markAlertRead,
   markAllAlertsRead,
-  removeWatchlistItem,
   updateProfile,
   type DataAlert,
-  type WatchlistItem,
 } from '@/lib/api/auth';
 import { useAuth } from '@/lib/auth/AuthProvider';
+import { useWatchlist } from '@/lib/auth/WatchlistProvider';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Bell,
@@ -30,6 +28,7 @@ type Tab = 'profile' | 'watchlist' | 'alerts';
 
 export default function AccountDashboard() {
   const { user, refreshUser } = useAuth();
+  const { items: watchlist, isLoading: watchlistLoading, remove: removeWatch } = useWatchlist();
   const searchParams = useSearchParams();
   const initialTab = (searchParams.get('tab') as Tab) || 'profile';
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
@@ -39,23 +38,12 @@ export default function AccountDashboard() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
 
-  // Watchlist state
-  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
-  const [watchlistLoading, setWatchlistLoading] = useState(false);
-
   // Alerts state
   const [alerts, setAlerts] = useState<DataAlert[]>([]);
   const [alertsLoading, setAlertsLoading] = useState(false);
 
-  // Load data when tab changes
+  // Load alerts when tab changes
   useEffect(() => {
-    if (activeTab === 'watchlist') {
-      setWatchlistLoading(true);
-      getWatchlist()
-        .then(setWatchlist)
-        .catch(() => {})
-        .finally(() => setWatchlistLoading(false));
-    }
     if (activeTab === 'alerts') {
       setAlertsLoading(true);
       getAlerts()
@@ -81,13 +69,15 @@ export default function AccountDashboard() {
     }
   }, [displayName, refreshUser]);
 
-  // Remove watchlist item
-  const handleRemoveWatch = useCallback(async (id: number) => {
-    try {
-      await removeWatchlistItem(id);
-      setWatchlist((prev) => prev.filter((w) => w.id !== id));
-    } catch {}
-  }, []);
+  // Remove watchlist item (via context)
+  const handleRemoveWatch = useCallback(
+    async (id: number) => {
+      try {
+        await removeWatch(id);
+      } catch {}
+    },
+    [removeWatch]
+  );
 
   // Mark alert read
   const handleMarkRead = useCallback(async (id: number) => {

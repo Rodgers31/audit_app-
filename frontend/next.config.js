@@ -6,6 +6,15 @@ const nextConfig = {
         protocol: 'http',
         hostname: 'localhost',
       },
+      // Production API domain — add your backend hostname here
+      ...(process.env.NEXT_PUBLIC_API_URL
+        ? [
+            {
+              protocol: new URL(process.env.NEXT_PUBLIC_API_URL).protocol.replace(':', ''),
+              hostname: new URL(process.env.NEXT_PUBLIC_API_URL).hostname,
+            },
+          ]
+        : []),
     ],
   },
   env: {

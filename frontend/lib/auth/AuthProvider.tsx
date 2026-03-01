@@ -107,13 +107,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       if (error) throw error;
       if (!data.user) throw new Error('Registration failed');
-      // The trigger creates the profile — fetch it
-      // (small delay might be needed; retry once)
-      let profile = await fetchProfile(data.user.id);
-      if (!profile) {
-        await new Promise((r) => setTimeout(r, 500));
+      // The DB trigger creates the profile — poll with exponential backoff
+      const delays = [300, 600, 1200];
+      let profile: UserProfile | null = null;
+      for (const ms of delays) {
         profile = await fetchProfile(data.user.id);
+        if (profile) break;
+        await new Promise((r) => setTimeout(r, ms));
       }
+      // One final attempt after the last delay
+      if (!profile) profile = await fetchProfile(data.user.id);
       if (!profile) throw new Error('Profile creation pending — please sign in.');
       return profile;
     },

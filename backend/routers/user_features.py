@@ -1,4 +1,6 @@
-"""User features router — watchlist, alerts, newsletter.
+"""DEPRECATED — User features are handled by Supabase (frontend direct). This file is kept for reference only.
+
+User features router — watchlist, alerts, newsletter.
 
 Endpoints:
   GET/POST/DELETE  /api/v1/user/watchlist     — Manage pinned items

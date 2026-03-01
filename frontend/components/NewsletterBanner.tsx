@@ -29,7 +29,7 @@ export default function NewsletterBanner() {
         setEmail('');
       } catch (err: any) {
         setStatus('error');
-        setErrorMsg(err?.response?.data?.detail || 'Something went wrong. Please try again.');
+        setErrorMsg(err?.message || 'Something went wrong. Please try again.');
       }
     },
     [email]

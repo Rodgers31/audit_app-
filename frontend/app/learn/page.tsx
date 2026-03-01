@@ -1,286 +1,290 @@
+/**
+ * Learning Hub — Single-page with sticky section navigator.
+ *
+ * The "Your Learning Journey" stepper stays pinned below the header.
+ * Clicking a step switches the content shown below it inline — no
+ * page navigation, feels like one continuous page.
+ */
 'use client';
 
-import EngagementQuiz from '@/components/EngagementQuiz';
-import ExplainerVideos from '@/components/ExplainerVideos';
+// TODO: Re-enable when real video content is ready
+// import ExplainerVideos from '@/components/ExplainerVideos';
 import InteractiveGlossary from '@/components/InteractiveGlossary';
 import PageShell from '@/components/layout/PageShell';
+import GovernmentExplorer from '@/components/learn/GovernmentExplorer';
+import QuizGame from '@/components/learn/QuizGame';
 import WhyThisMatters from '@/components/WhyThisMatters';
-import { motion } from 'framer-motion';
-import { BookOpen, Brain, Lightbulb, Play, Search, Star } from 'lucide-react';
-import { useState } from 'react';
+import { TOTAL_QUESTIONS } from '@/data/quizData';
+import { AnimatePresence, motion, useInView } from 'framer-motion';
+import {
+  ArrowRight,
+  BookOpen,
+  Brain,
+  Gamepad2,
+  GraduationCap,
+  Landmark,
+  Lightbulb,
+  // Play,  // TODO: Re-enable for videos step
+  Sparkles,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useCallback, useRef, useState } from 'react';
 
+/* ── Animated counter ── */
+function AnimatedNumber({ value }: { value: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-40px' });
+  const [display, setDisplay] = useState(0);
+
+  const started = useRef(false);
+  if (inView && !started.current) {
+    started.current = true;
+    let frame = 0;
+    const totalFrames = 40;
+    const step = value / totalFrames;
+    const tick = () => {
+      frame++;
+      setDisplay(Math.min(Math.round(step * frame), value));
+      if (frame < totalFrames) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  return <span ref={ref}>{display}</span>;
+}
+
+/* ── Step config ── */
+// TODO: Re-enable 'videos' when real content is ready
+// type SectionId = 'quiz' | 'government' | 'glossary' | 'videos' | 'why';
+type SectionId = 'quiz' | 'government' | 'glossary' | 'why';
+
+interface Step {
+  id: SectionId;
+  n: number;
+  title: string;
+  desc: string;
+  icon: React.ElementType;
+  gradient: string;
+}
+
+const steps: Step[] = [
+  {
+    id: 'quiz',
+    n: 1,
+    title: 'Play',
+    desc: 'Quiz games',
+    icon: Gamepad2,
+    gradient: 'from-emerald-500 to-teal-600',
+  },
+  {
+    id: 'government',
+    n: 2,
+    title: 'Explore',
+    desc: 'Government',
+    icon: Landmark,
+    gradient: 'from-sky-500 to-indigo-600',
+  },
+  {
+    id: 'glossary',
+    n: 3,
+    title: 'Study',
+    desc: 'Key terms',
+    icon: BookOpen,
+    gradient: 'from-violet-500 to-purple-600',
+  },
+  // TODO: Re-enable when real video content is ready
+  // {
+  //   id: 'videos',
+  //   n: 4,
+  //   title: 'Watch',
+  //   desc: 'Videos',
+  //   icon: Play,
+  //   gradient: 'from-rose-500 to-red-600',
+  // },
+  {
+    id: 'why',
+    n: 4,
+    title: 'Apply',
+    desc: 'Real impact',
+    icon: Lightbulb,
+    gradient: 'from-amber-500 to-orange-600',
+  },
+];
+
+/* ═══════════════════════════════════════
+   PAGE
+   ═══════════════════════════════════════ */
 export default function LearningHubPage() {
-  const [activeSection, setActiveSection] = useState<
-    'glossary' | 'videos' | 'quiz' | 'why-matters'
-  >('glossary');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [active, setActive] = useState<SectionId>('quiz');
+  const [glossarySearch, setGlossarySearch] = useState('');
+  const scrollAnchorRef = useRef<HTMLDivElement>(null);
 
-  const sections = [
-    {
-      id: 'glossary' as const,
-      title: 'Interactive Glossary',
-      description: 'Learn key terms with animations and examples',
-      icon: BookOpen,
-      color: 'green',
-    },
-    {
-      id: 'videos' as const,
-      title: 'Explainer Videos',
-      description: '2-minute animated explanations',
-      icon: Play,
-      color: 'purple',
-    },
-    {
-      id: 'quiz' as const,
-      title: 'Test Your Knowledge',
-      description: 'Interactive quizzes and fun facts',
-      icon: Brain,
-      color: 'green',
-    },
-    {
-      id: 'why-matters' as const,
-      title: 'Why This Matters',
-      description: 'How government finances affect your daily life',
-      icon: Lightbulb,
-      color: 'orange',
-    },
-  ];
-
-  const getSectionClasses = (color: string, isActive: boolean) => {
-    const baseClasses = 'p-4 rounded-2xl border transition-all duration-300 cursor-pointer';
-
-    if (isActive) {
-      switch (color) {
-        case 'blue':
-          return `${baseClasses} bg-green-100 border-green-300 text-green-800 shadow-lg scale-105`;
-        case 'purple':
-          return `${baseClasses} bg-purple-100 border-purple-300 text-purple-800 shadow-lg scale-105`;
-        case 'green':
-          return `${baseClasses} bg-green-100 border-green-300 text-green-800 shadow-lg scale-105`;
-        case 'orange':
-          return `${baseClasses} bg-orange-100 border-orange-300 text-orange-800 shadow-lg scale-105`;
-        default:
-          return `${baseClasses} bg-gray-100 border-gray-300 text-gray-800 shadow-lg scale-105`;
-      }
-    } else {
-      switch (color) {
-        case 'blue':
-          return `${baseClasses} bg-white border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300`;
-        case 'purple':
-          return `${baseClasses} bg-white border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-300`;
-        case 'green':
-          return `${baseClasses} bg-white border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300`;
-        case 'orange':
-          return `${baseClasses} bg-white border-orange-200 text-orange-700 hover:bg-orange-50 hover:border-orange-300`;
-        default:
-          return `${baseClasses} bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300`;
-      }
-    }
-  };
+  const switchSection = useCallback((id: SectionId) => {
+    setActive(id);
+    // Scroll the non-sticky anchor into view so the stepper appears at the top
+    scrollAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   return (
     <PageShell
       title='Learning Hub'
-      subtitle='Master government finance concepts with interactive lessons, videos, and real-world examples'>
-      {/* Quick Stats */}
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.6 }}
-        className='mb-12'>
-        <div className='bg-white rounded-3xl p-6 shadow-xl border border-gray-200'>
-          <div className='grid grid-cols-1 md:grid-cols-4 gap-6 text-center'>
-            <div>
-              <div className='text-3xl font-bold text-brand-700 mb-2'>50+</div>
-              <div className='text-sm text-gray-600'>Terms Explained</div>
-            </div>
-            <div>
-              <div className='text-3xl font-bold text-purple-600 mb-2'>12</div>
-              <div className='text-sm text-gray-600'>Video Lessons</div>
-            </div>
-            <div>
-              <div className='text-3xl font-bold text-green-600 mb-2'>25</div>
-              <div className='text-sm text-gray-600'>Quiz Questions</div>
-            </div>
-            <div>
-              <div className='text-3xl font-bold text-orange-600 mb-2'>100%</div>
-              <div className='text-sm text-gray-600'>Free Learning</div>
-            </div>
-          </div>
-        </div>
-      </motion.section>
-
-      {/* Search Bar */}
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3, duration: 0.6 }}
-        className='mb-12'>
-        <div className='bg-white rounded-3xl p-6 shadow-xl border border-gray-200'>
-          <div className='relative max-w-2xl mx-auto'>
-            <Search
-              className='absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400'
-              size={20}
-            />
-            <input
-              type='text'
-              placeholder='Search for terms like "budget", "debt", "audit"...'
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className='w-full pl-12 pr-4 py-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors text-lg'
-            />
-          </div>
-        </div>
-      </motion.section>
-
-      {/* Section Navigation */}
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.6 }}
-        className='mb-12'>
-        <div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
-          {sections.map((section, index) => {
-            const Icon = section.icon;
-            const isActive = activeSection === section.id;
-
-            return (
-              <motion.button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                className={getSectionClasses(section.color, isActive)}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 + index * 0.1, duration: 0.5 }}
-                whileHover={{ scale: isActive ? 1.05 : 1.02 }}
-                whileTap={{ scale: 0.98 }}>
-                <div className='flex items-center gap-3 mb-3'>
-                  <div
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                      isActive ? 'bg-white/30' : `bg-${section.color}-100`
-                    }`}>
-                    <Icon
-                      size={24}
-                      className={isActive ? 'text-white' : `text-${section.color}-600`}
-                    />
-                  </div>
-                  <div className='text-left'>
-                    <h3 className='font-semibold text-lg'>{section.title}</h3>
-                    <p className={`text-sm ${isActive ? 'opacity-90' : 'opacity-75'}`}>
-                      {section.description}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Selection Indicator */}
-                {isActive && (
-                  <motion.div
-                    layoutId='activeSection'
-                    className='absolute inset-0 border-2 border-white/40 rounded-2xl pointer-events-none'
-                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                  />
-                )}
-              </motion.button>
-            );
-          })}
-        </div>
-      </motion.section>
-
-      {/* Active Section Content */}
-      <motion.section
-        key={activeSection}
-        initial={{ opacity: 0, y: 20 }}
+      subtitle="Understand how Kenya's government works, where your taxes go, and how to hold leaders accountable">
+      {/* ── Quick Stats ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className='mb-12'>
-        {activeSection === 'glossary' && <InteractiveGlossary searchTerm={searchTerm} />}
-
-        {activeSection === 'videos' && <ExplainerVideos searchTerm={searchTerm} />}
-
-        {activeSection === 'quiz' && <EngagementQuiz searchTerm={searchTerm} />}
-
-        {activeSection === 'why-matters' && <WhyThisMatters searchTerm={searchTerm} />}
-      </motion.section>
-
-      {/* Featured Content */}
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8, duration: 0.6 }}
-        className='mb-12'>
-        <div className='bg-gradient-to-r from-brand-700 to-brand-900 rounded-2xl p-8 text-white'>
-          <div className='text-center'>
-            <Star size={48} className='mx-auto mb-4 text-yellow-300' />
-            <h2 className='text-3xl font-bold mb-4'>Did You Know?</h2>
-            <p className='text-xl mb-6 opacity-90'>
-              Every Kenyan contributes about KES 65,000 per year in taxes. Understanding how this
-              money is used helps you hold government accountable.
-            </p>
-            <div className='grid grid-cols-1 md:grid-cols-3 gap-6 mt-8'>
-              <div className='bg-white/10 rounded-2xl p-6 backdrop-blur-sm'>
-                <div className='text-2xl font-bold mb-2'>KES 3.7T</div>
-                <div className='text-sm opacity-80'>Annual National Budget</div>
+        className='grid grid-cols-3 gap-4'>
+        {[
+          { value: 6, label: 'Quiz Categories', icon: Gamepad2, color: 'text-gov-forest' },
+          { value: TOTAL_QUESTIONS, label: 'Quiz Questions', icon: Brain, color: 'text-gov-gold' },
+          { value: 8, label: 'Glossary Terms', icon: BookOpen, color: 'text-sky-600' },
+          // TODO: Re-enable when real video content is ready
+          // { value: 6, label: 'Video Lessons', icon: Play, color: 'text-gov-copper' },
+        ].map((s) => {
+          const Icon = s.icon;
+          return (
+            <motion.div
+              key={s.label}
+              whileHover={{ y: -3 }}
+              className='rounded-xl bg-white/60 backdrop-blur border border-white/50 p-4 text-center shadow-surface'>
+              <Icon size={18} className={`mx-auto mb-2 ${s.color}`} />
+              <div className={`text-2xl font-bold ${s.color}`}>
+                <AnimatedNumber value={s.value} />
               </div>
-              <div className='bg-white/10 rounded-2xl p-6 backdrop-blur-sm'>
-                <div className='text-2xl font-bold mb-2'>47</div>
-                <div className='text-sm opacity-80'>Counties to Track</div>
-              </div>
-              <div className='bg-white/10 rounded-2xl p-6 backdrop-blur-sm'>
-                <div className='text-2xl font-bold mb-2'>21%</div>
-                <div className='text-sm opacity-80'>Goes to Education</div>
-              </div>
-            </div>
+              <div className='text-xs text-neutral-muted mt-1'>{s.label}</div>
+            </motion.div>
+          );
+        })}
+      </motion.div>
+
+      {/* ══════════════════════════════════
+         STICKY LEARNING JOURNEY STEPPER
+         ══════════════════════════════════ */}
+      {/* Non-sticky scroll anchor — scrollIntoView targets this */}
+      <div ref={scrollAnchorRef} className='scroll-mt-[72px]' aria-hidden />
+      <div className='sticky top-[72px] z-20'>
+        <div className='rounded-2xl bg-gradient-to-r from-gov-forest to-gov-dark p-4 sm:p-5 text-white relative overflow-hidden shadow-elevated'>
+          {/* Decorative circles */}
+          <div className='absolute -right-10 -top-10 h-32 w-32 rounded-full border border-white/10 pointer-events-none' />
+          <div className='absolute -right-4 -bottom-4 h-20 w-20 rounded-full border border-white/5 pointer-events-none' />
+
+          <div className='flex items-center gap-2 mb-3'>
+            <GraduationCap size={18} className='text-gov-gold' />
+            <h3 className='font-bold text-sm sm:text-base'>Your Learning Journey</h3>
+          </div>
+
+          {/* Steps row */}
+          <div className='flex gap-1 sm:gap-2'>
+            {steps.map((step) => {
+              const isActive = active === step.id;
+              const Icon = step.icon;
+
+              return (
+                <button
+                  key={step.id}
+                  onClick={() => switchSection(step.id)}
+                  className={`relative flex-1 rounded-xl px-2 py-2.5 sm:px-3 sm:py-3 text-left transition-all duration-300 ${
+                    isActive
+                      ? 'bg-white/20 ring-2 ring-gov-gold shadow-lg scale-[1.02]'
+                      : 'bg-white/5 hover:bg-white/10'
+                  }`}>
+                  {/* Active indicator bar */}
+                  {isActive && (
+                    <motion.div
+                      layoutId='activeStep'
+                      className={`absolute inset-x-0 top-0 h-1 rounded-t-xl bg-gradient-to-r ${step.gradient}`}
+                      transition={{ type: 'spring', bounce: 0.2, duration: 0.5 }}
+                    />
+                  )}
+
+                  <div className='flex items-center gap-1.5 sm:gap-2 mb-1'>
+                    <span
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+                        isActive ? 'bg-gov-gold text-gov-dark' : 'bg-white/15 text-white/70'
+                      }`}>
+                      {isActive ? <Icon size={14} /> : step.n}
+                    </span>
+                    <span
+                      className={`font-semibold text-xs sm:text-sm truncate transition-colors ${
+                        isActive ? 'text-gov-gold' : 'text-white/70'
+                      }`}>
+                      {step.title}
+                    </span>
+                  </div>
+                  <p
+                    className={`text-[10px] sm:text-xs leading-tight truncate transition-colors ${
+                      isActive ? 'text-white/90' : 'text-white/40'
+                    }`}>
+                    {step.desc}
+                  </p>
+                </button>
+              );
+            })}
           </div>
         </div>
-      </motion.section>
+      </div>
 
-      {/* Learning Path */}
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.0, duration: 0.6 }}>
-        <div className='bg-white rounded-3xl p-8 shadow-xl border border-gray-200'>
-          <h2 className='text-2xl font-bold text-gray-900 mb-6 text-center'>
-            Recommended Learning Path
-          </h2>
+      {/* ══════════════════════════════════
+         SECTION CONTENT
+         ══════════════════════════════════ */}
+      <AnimatePresence mode='wait'>
+        <motion.div
+          key={active}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
+          {active === 'quiz' && <QuizGame />}
 
-          <div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
-            <div className='text-center'>
-              <div className='w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4'>
-                <span className='text-2xl font-bold text-brand-700'>1</span>
+          {active === 'government' && <GovernmentExplorer />}
+
+          {active === 'glossary' && (
+            <div className='space-y-4'>
+              <div className='max-w-md'>
+                <input
+                  type='text'
+                  placeholder='Search terms…'
+                  value={glossarySearch}
+                  onChange={(e) => setGlossarySearch(e.target.value)}
+                  className='w-full rounded-xl border border-neutral-border bg-white/60 backdrop-blur px-4 py-2.5 text-sm placeholder:text-neutral-muted focus:outline-none focus:ring-2 focus:ring-gov-sage/40 transition-shadow'
+                />
               </div>
-              <h3 className='font-semibold text-gray-900 mb-2'>Start with Basics</h3>
-              <p className='text-sm text-gray-600'>Learn key terms in the Interactive Glossary</p>
+              <InteractiveGlossary searchTerm={glossarySearch} />
             </div>
+          )}
 
-            <div className='text-center'>
-              <div className='w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4'>
-                <span className='text-2xl font-bold text-purple-600'>2</span>
-              </div>
-              <h3 className='font-semibold text-gray-900 mb-2'>Watch & Learn</h3>
-              <p className='text-sm text-gray-600'>
-                View short explainer videos for complex topics
-              </p>
-            </div>
+          {/* TODO: Re-enable when real video content is ready */}
+          {/* {active === 'videos' && <ExplainerVideos searchTerm='' />} */}
 
-            <div className='text-center'>
-              <div className='w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4'>
-                <span className='text-2xl font-bold text-green-600'>3</span>
-              </div>
-              <h3 className='font-semibold text-gray-900 mb-2'>Test Knowledge</h3>
-              <p className='text-sm text-gray-600'>Take quizzes to reinforce what you've learned</p>
-            </div>
+          {active === 'why' && <WhyThisMatters searchTerm='' />}
+        </motion.div>
+      </AnimatePresence>
 
-            <div className='text-center'>
-              <div className='w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4'>
-                <span className='text-2xl font-bold text-orange-600'>4</span>
-              </div>
-              <h3 className='font-semibold text-gray-900 mb-2'>Apply Knowledge</h3>
-              <p className='text-sm text-gray-600'>Explore real data in our dashboard tools</p>
-            </div>
-          </div>
-        </div>
-      </motion.section>
+      {/* ── CTA ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
+        className='rounded-2xl bg-gradient-to-br from-gov-forest via-gov-dark to-gov-forest p-8 sm:p-10 text-center text-white relative overflow-hidden'>
+        <div className='absolute -left-10 -top-10 h-32 w-32 rounded-full bg-gov-gold/10' />
+        <div className='absolute -right-8 -bottom-8 h-24 w-24 rounded-full bg-white/5' />
+        <Sparkles size={28} className='mx-auto mb-4 text-gov-gold' />
+        <h2 className='font-display text-2xl sm:text-3xl mb-3'>
+          Ready to put your knowledge to use?
+        </h2>
+        <p className='text-white/70 max-w-lg mx-auto mb-6'>
+          Explore live government data on our dashboard — track budgets, audit reports, and county
+          spending in real time.
+        </p>
+        <Link
+          href='/'
+          className='inline-flex items-center gap-2 rounded-xl bg-gov-gold px-6 py-3 font-semibold text-gov-dark hover:bg-gov-gold/90 transition-colors shadow-elevated'>
+          Go to Dashboard
+          <ArrowRight size={16} />
+        </Link>
+      </motion.div>
     </PageShell>
   );
 }

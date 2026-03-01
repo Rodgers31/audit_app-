@@ -54,8 +54,8 @@ const SECTOR_MERGE: Record<string, string> = {
   other: 'Other',
 };
 
-/** Max visible rows — kept in sync with NationalLoansCard.VISIBLE */
-const VISIBLE_ROWS = 16;
+/** Max visible rows — tuned so card height ≈ NationalLoansCard */
+const VISIBLE_ROWS = 10;
 
 function sectorIcon(name: string): string {
   return SECTOR_ICONS[name] || '📋';
@@ -131,7 +131,7 @@ export default function BudgetSnapshotCard() {
 
       <div className='px-6 sm:px-8 py-5 flex flex-col flex-1'>
         {/* Headline metrics */}
-        <div className='flex gap-4 sm:gap-6 mb-5'>
+        <div className='flex gap-4 sm:gap-6 mb-4'>
           <div className='flex-1 rounded-xl bg-gov-forest/[0.04] border border-neutral-border/30 px-4 py-3'>
             <div className='flex items-center gap-1.5 mb-1'>
               <Banknote className='w-3.5 h-3.5 text-gov-forest opacity-70' />
@@ -157,7 +157,7 @@ export default function BudgetSnapshotCard() {
         </div>
 
         {/* Sector bars */}
-        <div className='space-y-3'>
+        <div className='space-y-2'>
           {sectors.map((s: any, i: number) => {
             const pct = maxAmt > 0 ? (s.amount / maxAmt) * 100 : 0;
             const utilization = s.utilization || 0;
@@ -177,7 +177,7 @@ export default function BudgetSnapshotCard() {
                     </span>
                   </div>
                 </div>
-                <div className='h-2 rounded-full bg-neutral-border/25 overflow-hidden'>
+                <div className='h-1.5 rounded-full bg-neutral-border/25 overflow-hidden'>
                   <motion.div
                     initial={{ width: 0 }}
                     whileInView={{ width: `${pct}%` }}

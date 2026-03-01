@@ -85,8 +85,8 @@ export default function NationalLoansCard() {
 
   // Sort ascending (smallest first) and match budget sector count for alignment
   const sorted = [...data.loans].sort((a, b) => a.outstanding_numeric - b.outstanding_numeric);
-  /** Max visible rows — kept in sync with BudgetSnapshotCard.VISIBLE_ROWS */
-  const VISIBLE = 21;
+  /** Max visible rows — tuned so card height ≈ BudgetSnapshotCard */
+  const VISIBLE = 14;
   const topLoans = sorted.slice(0, VISIBLE);
 
   return (

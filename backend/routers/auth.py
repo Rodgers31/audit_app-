@@ -1,4 +1,6 @@
-"""Authentication & user management router.
+"""DEPRECATED — Auth is handled by Supabase (frontend direct). This file is kept for reference only.
+
+Authentication & user management router.
 
 Endpoints:
   POST /api/v1/auth/register   — Create account

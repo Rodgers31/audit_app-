@@ -1,15 +1,11 @@
 'use client';
 
-import {
-  addWatchlistItem,
-  getWatchlist,
-  removeWatchlistItem,
-  type WatchlistItem,
-} from '@/lib/api/auth';
+import type { WatchlistItem } from '@/lib/api/auth';
 import { useAuth } from '@/lib/auth/AuthProvider';
+import { useWatchlist } from '@/lib/auth/WatchlistProvider';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bookmark, BookmarkCheck, Loader2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 interface WatchButtonProps {
   itemType: WatchlistItem['item_type'];
@@ -23,7 +19,9 @@ interface WatchButtonProps {
 /**
  * Reusable "Watch / Unwatch" toggle.
  *
- * Place on any county card, budget category, or national item.
+ * Reads from the shared WatchlistProvider context instead of
+ * fetching per-instance (no N+1 queries).
+ *
  * When the user is NOT logged in, clicking opens the auth modal
  * (handled via a custom event so AuthModal can listen).
  */
@@ -35,47 +33,30 @@ export default function WatchButton({
   className = '',
 }: WatchButtonProps) {
   const { isAuthenticated } = useAuth();
-  const [watching, setWatching] = useState(false);
-  const [watchId, setWatchId] = useState<number | null>(null);
+  const { isWatching, watchId: getWatchId, add, remove } = useWatchlist();
   const [loading, setLoading] = useState(false);
 
-  // Check if already watching (only when authenticated)
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    getWatchlist()
-      .then((items) => {
-        const match = items.find((w) => w.item_type === itemType && w.item_id === itemId);
-        if (match) {
-          setWatching(true);
-          setWatchId(match.id);
-        }
-      })
-      .catch(() => {});
-  }, [isAuthenticated, itemType, itemId]);
+  const watching = isWatching(itemType, itemId);
+  const currentWatchId = getWatchId(itemType, itemId);
 
   const handleToggle = useCallback(async () => {
     if (!isAuthenticated) {
-      // Dispatch event for AuthModal to open
       window.dispatchEvent(new CustomEvent('open-auth-modal'));
       return;
     }
     setLoading(true);
     try {
-      if (watching && watchId) {
-        await removeWatchlistItem(watchId);
-        setWatching(false);
-        setWatchId(null);
+      if (watching && currentWatchId) {
+        await remove(currentWatchId);
       } else {
-        const item = await addWatchlistItem({ item_type: itemType, item_id: itemId, label });
-        setWatching(true);
-        setWatchId(item.id);
+        await add({ item_type: itemType, item_id: itemId, label });
       }
     } catch {
       // 409 = already watching
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, watching, watchId, itemType, itemId, label]);
+  }, [isAuthenticated, watching, currentWatchId, itemType, itemId, label, add, remove]);
 
   if (compact) {
     return (

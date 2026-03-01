@@ -104,3 +104,8 @@ frontend/.env.*
 # Docker overrides
 docker-compose.override.yml
 nul
+
+# Playwright test artifacts
+frontend/test-results/
+frontend/playwright-report/
+
