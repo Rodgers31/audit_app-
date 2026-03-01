@@ -26,6 +26,8 @@ const nextConfig = {
   // Browser → Next.js (:3000/api/v1/*) → FastAPI (:8000/api/v1/*)
   async rewrites() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    // eslint-disable-next-line no-console
+    console.log(`[next.config] API rewrite target: ${apiUrl}`);
     return [
       {
         source: '/api/v1/:path*',
