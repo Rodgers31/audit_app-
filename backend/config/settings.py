@@ -56,19 +56,38 @@ class Settings(BaseSettings):
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v: object) -> list[str]:
+        origins: list[str] = []
         if isinstance(v, list):
-            return v
-        if isinstance(v, str):
+            origins = v
+        elif isinstance(v, str):
             # Try JSON first, fallback to comma-separated
             import json
+
             try:
                 parsed = json.loads(v)
                 if isinstance(parsed, list):
-                    return [s.strip() for s in parsed if s.strip()]
+                    origins = [s.strip() for s in parsed if s.strip()]
             except (json.JSONDecodeError, TypeError):
-                pass
-            return [s.strip() for s in v.split(",") if s.strip()]
-        return v  # type: ignore
+                origins = [s.strip() for s in v.split(",") if s.strip()]
+        else:
+            return v  # type: ignore
+
+        # Auto-expand www / non-www variants so CORS never silently fails
+        expanded: set[str] = set()
+        for o in origins:
+            expanded.add(o)
+            from urllib.parse import urlparse
+
+            parsed_url = urlparse(o)
+            host = parsed_url.hostname or ""
+            if host.startswith("www."):
+                # Add non-www variant
+                bare = o.replace("://www.", "://", 1)
+                expanded.add(bare)
+            elif host and "localhost" not in host:
+                # Add www variant
+                expanded.add(o.replace("://", "://www.", 1))
+        return list(expanded)
 
     # Database connection parameters (optional - can use individual params or DATABASE_URL)
     DB_USER: Optional[str] = None
