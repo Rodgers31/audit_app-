@@ -1,6 +1,4 @@
-"""DEPRECATED — User features are handled by Supabase (frontend direct). This file is kept for reference only.
-
-User features router — watchlist, alerts, newsletter.
+"""User features router — watchlist, alerts, newsletter.
 
 Endpoints:
   GET/POST/DELETE  /api/v1/user/watchlist     — Manage pinned items
@@ -8,6 +6,8 @@ Endpoints:
   PATCH            /api/v1/user/alerts/:id    — Mark alert as read
   POST             /api/v1/newsletter/subscribe   — Subscribe (no auth)
   POST             /api/v1/newsletter/unsubscribe — Unsubscribe
+  POST             /api/v1/newsletter/send-welcome — Trigger welcome email
+  GET              /api/v1/newsletter/unsubscribe-verify — Verify token & unsubscribe
 """
 
 from __future__ import annotations
@@ -250,6 +250,55 @@ def unsubscribe_newsletter(body: NewsletterRequest, db: Session = Depends(get_db
     if not existing:
         return NewsletterResponse(
             status="not_found", message="Email not found in subscriber list."
+        )
+    existing.unsubscribed_at = datetime.now(timezone.utc)
+    db.commit()
+    return NewsletterResponse(
+        status="unsubscribed", message="You've been unsubscribed. Sorry to see you go!"
+    )
+
+
+# ── Welcome email & token-verified unsubscribe ─────────────────────
+
+
+@router.post("/api/v1/newsletter/send-welcome", response_model=NewsletterResponse)
+def send_welcome(body: NewsletterRequest):
+    """Trigger a welcome email for a new subscriber (best-effort, never blocks)."""
+    import threading
+
+    from services.email_service import send_welcome_email
+
+    # Fire-and-forget so the frontend is never blocked by SMTP latency
+    threading.Thread(target=send_welcome_email, args=(body.email,), daemon=True).start()
+
+    return NewsletterResponse(status="ok", message="Welcome email queued.")
+
+
+class UnsubscribeVerifyRequest(BaseModel):
+    email: EmailStr
+    token: str
+
+
+@router.post("/api/v1/newsletter/unsubscribe-verify", response_model=NewsletterResponse)
+def unsubscribe_verify(body: UnsubscribeVerifyRequest, db: Session = Depends(get_db)):
+    """Token-verified unsubscribe — called from the email unsubscribe link."""
+    from datetime import datetime, timezone
+
+    from services.email_service import verify_unsubscribe_token
+
+    if not verify_unsubscribe_token(body.email, body.token):
+        raise HTTPException(
+            status_code=403, detail="Invalid or expired unsubscribe link."
+        )
+
+    existing = db.query(NewsletterSubscriber).filter_by(email=body.email).first()
+    if not existing:
+        return NewsletterResponse(
+            status="not_found", message="Email not found in subscriber list."
+        )
+    if existing.unsubscribed_at:
+        return NewsletterResponse(
+            status="already_unsubscribed", message="You're already unsubscribed."
         )
     existing.unsubscribed_at = datetime.now(timezone.utc)
     db.commit()

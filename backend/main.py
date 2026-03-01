@@ -698,8 +698,15 @@ try:
 except Exception as e:
     logger.warning(f"Could not register admin router: {e}")
 
-# Auth & user-features are handled entirely by Supabase (frontend → Supabase direct).
-# See: routers/auth.py and routers/user_features.py (DEPRECATED — kept for reference only).
+# Newsletter endpoints (welcome email, token-verified unsubscribe) are active.
+# Auth & watchlist are still handled by Supabase (frontend → Supabase direct).
+try:
+    from routers.user_features import router as user_features_router
+
+    app.include_router(user_features_router)
+    logger.info("User features router registered (newsletter endpoints)")
+except Exception as e:
+    logger.warning(f"Could not register user features router: {e}")
 
 
 # Request logging middleware

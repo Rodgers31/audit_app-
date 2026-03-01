@@ -2,10 +2,35 @@
 
 import { subscribeNewsletter } from '@/lib/api/auth';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Loader2, Mail, Send } from 'lucide-react';
+import { CheckCircle2, Info, Loader2, Mail, Send } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
-type Status = 'idle' | 'submitting' | 'success' | 'error';
+type Status =
+  | 'idle'
+  | 'submitting'
+  | 'subscribed'
+  | 'resubscribed'
+  | 'already_subscribed'
+  | 'error';
+
+const STATUS_MESSAGES: Record<string, { icon: typeof CheckCircle2; text: string; color: string }> =
+  {
+    subscribed: {
+      icon: CheckCircle2,
+      text: "You're subscribed! Check your email to confirm.",
+      color: 'text-green-300',
+    },
+    resubscribed: {
+      icon: CheckCircle2,
+      text: 'Welcome back! Your subscription has been reactivated.',
+      color: 'text-green-300',
+    },
+    already_subscribed: {
+      icon: Info,
+      text: 'This email is already subscribed to our newsletter.',
+      color: 'text-amber-300',
+    },
+  };
 
 /**
  * Newsletter email capture banner.
@@ -24,9 +49,9 @@ export default function NewsletterBanner() {
       setStatus('submitting');
       setErrorMsg('');
       try {
-        await subscribeNewsletter(email);
-        setStatus('success');
-        setEmail('');
+        const result = await subscribeNewsletter(email);
+        setStatus(result.status);
+        if (result.status === 'subscribed') setEmail('');
       } catch (err: any) {
         setStatus('error');
         setErrorMsg(err?.message || 'Something went wrong. Please try again.');
@@ -34,6 +59,8 @@ export default function NewsletterBanner() {
     },
     [email]
   );
+
+  const statusInfo = STATUS_MESSAGES[status];
 
   return (
     <section className='relative overflow-hidden py-10 sm:py-14'>
@@ -53,13 +80,13 @@ export default function NewsletterBanner() {
             to your inbox. No account required.
           </p>
 
-          {status === 'success' ? (
+          {statusInfo ? (
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className='flex items-center justify-center gap-2 text-green-300 font-semibold text-sm'>
-              <CheckCircle2 className='w-5 h-5' />
-              You&apos;re subscribed! Check your email to confirm.
+              className={`flex items-center justify-center gap-2 ${statusInfo.color} font-semibold text-sm`}>
+              <statusInfo.icon className='w-5 h-5' />
+              {statusInfo.text}
             </motion.div>
           ) : (
             <form onSubmit={handleSubmit} className='flex flex-col sm:flex-row gap-3'>
