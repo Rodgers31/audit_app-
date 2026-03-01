@@ -31,9 +31,11 @@ class RedisCache:
             )
             # Test connection
             self.client.ping()
-            logger.info("Redis cache initialized successfully")
+            logger.info("Redis cache connected")
         except Exception as e:
-            logger.warning(f"Redis unavailable, using memory cache: {e}")
+            logger.info(
+                "Redis not configured — using in-memory cache (this is normal without a Redis add-on)"
+            )
             self.client = None
 
     def get(self, key: str) -> Optional[Any]:

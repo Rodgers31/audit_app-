@@ -7,10 +7,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Callable, Dict, Optional
 
 import redis.asyncio as aioredis
+from config.settings import settings
 from fastapi import HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
-
-from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +43,7 @@ class RedisRateLimitMiddleware(BaseHTTPMiddleware):
                 self.use_redis = True
                 logger.info("Redis rate limiter initialized")
             except Exception as e:
-                logger.warning(f"Redis unavailable, using in-memory rate limiting: {e}")
+                logger.info("Redis not configured — using in-memory rate limiting")
                 self.use_redis = False
 
     async def dispatch(self, request: Request, call_next: Callable):

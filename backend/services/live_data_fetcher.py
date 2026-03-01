@@ -645,7 +645,10 @@ class KNBSDataFetcher:
                             elif "billion" in unit:
                                 value *= 1e9
 
-                            return {"national_population": int(value)}
+                            return {
+                                "national_population": int(value),
+                                "census_year": datetime.now(timezone.utc).year,
+                            }
 
         except Exception as e:
             logger.error(f"[KNBS] Scrape fallback error: {e}")
