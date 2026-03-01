@@ -2,8 +2,9 @@
 
 import os
 import secrets as stdlib_secrets
-from typing import List, Optional
+from typing import List, Optional, Union
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .secrets import get_secret
@@ -47,11 +48,27 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    # CORS
-    CORS_ORIGINS: List[str] = [
+    # CORS – accepts JSON array '["https://a.com"]' OR comma-separated 'https://a.com,https://b.com'
+    CORS_ORIGINS: Union[List[str], str] = [
         "http://localhost:3000",
-        "https://yourdomain.com",  # Replace with actual domain
     ]
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v: object) -> list[str]:
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            # Try JSON first, fallback to comma-separated
+            import json
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return [s.strip() for s in parsed if s.strip()]
+            except (json.JSONDecodeError, TypeError):
+                pass
+            return [s.strip() for s in v.split(",") if s.strip()]
+        return v  # type: ignore
 
     # Database connection parameters (optional - can use individual params or DATABASE_URL)
     DB_USER: Optional[str] = None

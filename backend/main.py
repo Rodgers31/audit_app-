@@ -637,10 +637,10 @@ async def stop_auto_seeder_service() -> None:
         pass
 
 
-# CORS middleware
+# CORS middleware – uses CORS_ORIGINS from settings / env var
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.js dev server
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
