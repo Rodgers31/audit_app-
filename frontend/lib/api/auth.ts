@@ -154,29 +154,57 @@ export async function markAllAlertsRead(): Promise<void> {
 /* ───── Newsletter ───── */
 export async function subscribeNewsletter(
   email: string
-): Promise<{ status: string; email: string }> {
-  // Try insert first; if email exists, update to re-subscribe
+): Promise<{ status: 'subscribed' | 'resubscribed' | 'already_subscribed'; email: string }> {
+  // Check if already subscribed and active first
+  const { data: existing } = await supabase
+    .from('newsletter_subscribers')
+    .select('email, unsubscribed_at')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.unsubscribed_at) {
+      // Previously unsubscribed → re-subscribe
+      const { error } = await supabase
+        .from('newsletter_subscribers')
+        .update({
+          unsubscribed_at: null,
+          subscribed_at: new Date().toISOString(),
+        })
+        .eq('email', email);
+      if (error) throw error;
+      // Fire-and-forget: send welcome-back email via backend
+      _sendWelcomeEmail(email);
+      return { status: 'resubscribed', email };
+    }
+    // Already subscribed and active
+    return { status: 'already_subscribed', email };
+  }
+
+  // New subscriber
   const { error: insertError } = await supabase
     .from('newsletter_subscribers')
     .insert({ email, confirmed: false, subscribed_at: new Date().toISOString() });
 
-  if (insertError) {
-    // Unique constraint on email → update the existing row
-    if (insertError.code === '23505') {
-      const { error: updateError } = await supabase
-        .from('newsletter_subscribers')
-        .update({
-          confirmed: false,
-          subscribed_at: new Date().toISOString(),
-          unsubscribed_at: null,
-        })
-        .eq('email', email);
-      if (updateError) throw updateError;
-      return { status: 'resubscribed', email };
-    }
-    throw insertError;
-  }
+  if (insertError) throw insertError;
+
+  // Fire-and-forget: send welcome email via backend
+  _sendWelcomeEmail(email);
+
   return { status: 'subscribed', email };
+}
+
+/**
+ * Trigger the backend to send a welcome email.
+ * Best-effort — never blocks or throws on failure.
+ */
+async function _sendWelcomeEmail(email: string): Promise<void> {
+  try {
+    const { apiClient } = await import('@/lib/api/axios');
+    await apiClient.post('/newsletter/send-welcome', { email });
+  } catch {
+    // Intentionally swallowed — welcome email is non-critical
+  }
 }
 
 export async function unsubscribeNewsletter(email: string): Promise<{ status: string }> {

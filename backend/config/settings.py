@@ -167,6 +167,9 @@ class Settings(BaseSettings):
 
     SMTP_FROM: str = ""
 
+    # Frontend URL — used for building links in emails (unsubscribe, etc.)
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
     # Note: Pydantic v2 uses model_config above instead of inner Config
 
 
