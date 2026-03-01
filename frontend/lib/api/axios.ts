@@ -5,7 +5,11 @@
  *   Browser → localhost:3000/api/v1/* → localhost:8000/api/v1/*
  * This avoids CORS preflight overhead since same-origin requests don't
  * need OPTIONS pre-flight.
+ *
+ * Auth tokens are obtained from the Supabase session (cookie-based).
+ * No manual localStorage management is needed.
  */
+import { createClient } from '@/lib/supabase/client';
 import axios from 'axios';
 
 const API_VERSION = process.env.NEXT_PUBLIC_API_VERSION || 'v1';
@@ -26,13 +30,22 @@ export const apiClient = axios.create({
   },
 });
 
-// Request interceptor for adding auth tokens, logging, etc.
+// Request interceptor — attach Supabase access token for backend calls
 apiClient.interceptors.request.use(
-  (config) => {
-    // Add auth token if available
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  async (config) => {
+    // Attach Supabase access token if available (browser only)
+    if (typeof window !== 'undefined') {
+      try {
+        const supabase = createClient();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          config.headers.Authorization = `Bearer ${session.access_token}`;
+        }
+      } catch {
+        // Silent — unauthenticated requests are fine for public endpoints
+      }
     }
 
     // Log requests in development
@@ -61,15 +74,6 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Handle common errors
-    if (error.response?.status === 401) {
-      // Handle unauthorized - redirect to login or refresh token
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('auth_token');
-        // Could redirect to login page
-      }
-    }
-
     // Log errors
     console.error('❌ API Error:', {
       url: error.config?.url,

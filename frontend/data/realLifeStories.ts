@@ -1,6 +1,7 @@
 /**
  * Real Life Stories Data
- * Collection of stories showing real-world impact of government budget decisions
+ * Composite narratives inspired by real Auditor-General findings across multiple counties.
+ * Names and locations are illustrative — not specific allegations against any individual or county.
  * Edit this file to add, update, or modify stories without touching component code
  */
 
@@ -57,7 +58,7 @@ export const realLifeStories: RealLifeStory[] = [
     timeToRead: '2 min',
     summary: 'How budget misallocation left 800 children without a school for 3 years',
     story:
-      "In Kitui County, KES 80 million was budgeted to build a secondary school for 800 students. For three years, children walked 10 kilometers daily to attend the nearest school. An audit revealed the money was used to build the county governor's office and purchase luxury vehicles instead. The school was never built.",
+      'In a rural county in Eastern Kenya, KES 80 million was budgeted to build a secondary school for 800 students. For three years, children walked 10 kilometers daily to attend the nearest school. An audit revealed the money was diverted to office construction and vehicle purchases instead. The school was never built.',
     consequences: [
       '800+ students walking 20km daily to school',
       'High dropout rates, especially among girls',
@@ -65,7 +66,7 @@ export const realLifeStories: RealLifeStory[] = [
       'Entire generation missing quality education opportunities',
     ],
     whatChanged:
-      'After the audit report went public, parents organized protests. The governor was eventually forced to reallocate funds and construction began. The school opened in 2023.',
+      'After the audit report went public, parents organized protests. The county leadership was eventually forced to reallocate funds and construction began.',
     yourRole:
       'Education budgets affect every child in your community. Monitor if promised schools are actually built, if teachers are hired as planned, and if learning materials reach classrooms.',
     personalConnection:
@@ -81,7 +82,7 @@ export const realLifeStories: RealLifeStory[] = [
     timeToRead: '2 min',
     summary: 'Substandard construction due to inflated contracts isolated a farming community',
     story:
-      'Farmers in Meru invested heavily in coffee farming after the county promised an all-weather road to connect them to markets. KES 200 million was allocated for 15 kilometers of tarmac road. The road was "completed" but washed away after the first rainy season. Investigations revealed the contractor inflated costs and used substandard materials, pocketing the difference.',
+      'Farmers in a central highlands county invested heavily in coffee farming after the county promised an all-weather road to connect them to markets. KES 200 million was allocated for 15 kilometers of tarmac road. The road was "completed" but washed away after the first rainy season. Investigations revealed the contractor inflated costs and used substandard materials, pocketing the difference.',
     consequences: [
       'Farmers unable to transport crops to market',
       'Coffee crops rotting during rainy season',

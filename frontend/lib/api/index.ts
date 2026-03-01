@@ -26,3 +26,6 @@ export * from './debt';
 
 // Statistics API
 export * from './statistics';
+
+// Auth & User Features API
+export * from './auth';

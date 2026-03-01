@@ -36,6 +36,10 @@ export default function WhyThisMatters({ searchTerm }: WhyThisMattersProps) {
       </div>
 
       {/* Real Life Stories Section */}
+      <p className='text-xs text-neutral-muted italic mb-2'>
+        These stories are composites inspired by real Auditor-General findings across multiple
+        counties. Names and locations are illustrative.
+      </p>
       <StoriesGrid stories={realLifeStories} searchTerm={searchTerm} />
 
       {/* Impact Categories Section */}

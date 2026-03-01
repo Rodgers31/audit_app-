@@ -698,6 +698,9 @@ try:
 except Exception as e:
     logger.warning(f"Could not register admin router: {e}")
 
+# Auth & user-features are handled entirely by Supabase (frontend → Supabase direct).
+# See: routers/auth.py and routers/user_features.py (DEPRECATED — kept for reference only).
+
 
 # Request logging middleware
 @app.middleware("http")

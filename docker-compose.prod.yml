@@ -25,7 +25,7 @@ volumes:
 
 services:
   reverse-proxy:
-    image: traefik:v2.11
+    image: traefik:v3.3
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
@@ -48,7 +48,7 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:15
+    image: postgres:17
     environment:
       POSTGRES_DB: audit_app
       POSTGRES_USER: postgres
@@ -129,6 +129,8 @@ services:
     image: ${FRONTEND_IMAGE:-${DOCKERHUB_NAMESPACE:-yourhubname}/audit-app-frontend:latest}
     environment:
       NEXT_PUBLIC_API_URL: https://${BACKEND_HOST}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
       NODE_ENV: production
     labels:
       - traefik.enable=true

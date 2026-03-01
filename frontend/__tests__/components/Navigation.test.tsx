@@ -22,8 +22,22 @@ jest.mock('framer-motion', () => ({
   motion: {
     header: ({ children, ...props }: any) => <header {...props}>{children}</header>,
     div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
   },
   AnimatePresence: ({ children }: any) => <>{children}</>,
+}));
+
+// Mock auth hook
+jest.mock('@/lib/auth/AuthProvider', () => ({
+  useAuth: () => ({
+    user: null,
+    isAuthenticated: false,
+    isLoading: false,
+    login: jest.fn(),
+    register: jest.fn(),
+    logout: jest.fn(),
+    refreshUser: jest.fn(),
+  }),
 }));
 
 import Navigation from '@/components/Navigation';

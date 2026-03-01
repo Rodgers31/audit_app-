@@ -157,9 +157,9 @@ function FiscalRow({
    ═══════════════════════════════════════════════════════ */
 
 export default function NationalDebtPage() {
-  const { data: overview, isLoading: ovLoading } = useNationalDebtOverview();
-  const { data: loansResp, isLoading: loansLoading } = useNationalLoans();
-  const { data: timelineResp, isLoading: tlLoading } = useDebtTimeline();
+  const { data: overview, isLoading: ovLoading, isError: ovError } = useNationalDebtOverview();
+  const { data: loansResp, isLoading: loansLoading, isError: loansError } = useNationalLoans();
+  const { data: timelineResp, isLoading: tlLoading, isError: tlError } = useDebtTimeline();
   const { data: fiscalResp } = useFiscalSummary();
   const { data: pendingBillsData } = usePendingBills();
 
@@ -256,13 +256,31 @@ export default function NationalDebtPage() {
       .sort((a, b) => b.value - a.value);
   }, [d.categories]);
 
-  // Loading
+  // Loading & Error states
   const isLoading = ovLoading || loansLoading || tlLoading;
+  const isError = ovError || loansError || tlError;
+
   if (isLoading) {
     return (
       <PageShell title="Kenya's National Debt" subtitle='Loading comprehensive debt data...'>
         <div className='flex items-center justify-center py-20'>
           <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-gov-forest' />
+        </div>
+      </PageShell>
+    );
+  }
+
+  if (isError) {
+    return (
+      <PageShell title="Kenya's National Debt" subtitle='Something went wrong'>
+        <div className='max-w-md mx-auto py-20 text-center'>
+          <AlertTriangle size={40} className='mx-auto text-red-400 mb-3' />
+          <p className='text-red-600 mb-4'>Failed to load debt data. Please try again.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className='px-4 py-2 bg-gov-dark text-white rounded-lg text-sm hover:bg-gov-dark/90 transition-colors'>
+            Retry
+          </button>
         </div>
       </PageShell>
     );

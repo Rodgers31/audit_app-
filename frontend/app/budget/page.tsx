@@ -6,6 +6,7 @@ import { useFiscalSummary } from '@/lib/react-query/useFiscal';
 import { motion } from 'framer-motion';
 import {
   Activity,
+  AlertTriangle,
   ArrowDown,
   ArrowRight,
   ArrowUp,
@@ -352,14 +353,19 @@ function ChartTooltip({ active, payload, label }: any) {
    ═══════════════════════════════════════════════════════ */
 
 export default function BudgetSpendingPage() {
-  const { data: overview, isLoading: loadingOverview } = useBudgetOverview();
-  const { data: fiscal, isLoading: loadingFiscal } = useFiscalSummary();
+  const {
+    data: overview,
+    isLoading: loadingOverview,
+    isError: errorOverview,
+  } = useBudgetOverview();
+  const { data: fiscal, isLoading: loadingFiscal, isError: errorFiscal } = useFiscalSummary();
   const { data: enhanced, isLoading: loadingEnhanced } = useBudgetEnhanced();
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const closeSourcesModal = useCallback(() => setSourcesOpen(false), []);
   const [selectedFY, setSelectedFY] = useState<string | null>(null);
 
   const isLoading = loadingOverview || loadingFiscal;
+  const isError = errorOverview || errorFiscal;
 
   /* ── derived data ── */
   const summary = overview?.summary ?? {};
@@ -498,6 +504,22 @@ export default function BudgetSpendingPage() {
         <div className='flex items-center justify-center py-32'>
           <Loader2 className='animate-spin text-gov-forest mr-3' size={28} />
           <span className='text-gray-500 text-lg'>Loading budget data…</span>
+        </div>
+      </PageShell>
+    );
+  }
+
+  if (isError) {
+    return (
+      <PageShell title="Kenya's Budget & Spending" subtitle='Something went wrong'>
+        <div className='max-w-md mx-auto py-20 text-center'>
+          <AlertTriangle size={40} className='mx-auto text-red-400 mb-3' />
+          <p className='text-red-600 mb-4'>Failed to load budget data. Please try again.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className='px-4 py-2 bg-gov-dark text-white rounded-lg text-sm hover:bg-gov-dark/90 transition-colors'>
+            Retry
+          </button>
         </div>
       </PageShell>
     );

@@ -116,3 +116,48 @@
     @apply bg-gov-sage/30 rounded-full;
   }
 }
+
+/* ── Print / PDF export styles ── */
+@media print {
+  /* Hide chrome */
+  header,
+  nav,
+  footer,
+  .no-print,
+  [data-no-print] {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: #1a1a1a !important;
+    font-size: 11pt;
+    line-height: 1.5;
+  }
+
+  /* Remove glass / backdrop since print engines don't support it */
+  .glass-surface,
+  .glass-surface-dark,
+  .glass-card {
+    background: white !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: 1px solid #e5e5e5 !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure content isn't clipped */
+  * {
+    overflow: visible !important;
+  }
+
+  a[href]::after {
+    content: ' (' attr(href) ')';
+    font-size: 0.8em;
+    color: #666;
+  }
+  a[href^='#']::after,
+  a[href^='javascript']::after {
+    content: '';
+  }
+}

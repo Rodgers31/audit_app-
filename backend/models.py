@@ -101,6 +101,13 @@ class Entity(Base):
 
 class FiscalPeriod(Base):
     __tablename__ = "fiscal_periods"
+    __table_args__ = (
+        UniqueConstraint(
+            "country_id",
+            "label",
+            name="uq_fiscal_period_country_label",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     country_id = Column(Integer, ForeignKey("countries.id"), nullable=False)
@@ -163,6 +170,15 @@ class Extraction(Base):
 
 class BudgetLine(Base):
     __tablename__ = "budget_lines"
+    __table_args__ = (
+        UniqueConstraint(
+            "entity_id",
+            "period_id",
+            "category",
+            "subcategory",
+            name="uq_budget_entity_period_cat_subcat",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     entity_id = Column(Integer, ForeignKey("entities.id"), nullable=False)
@@ -196,6 +212,14 @@ class BudgetLine(Base):
 
 class Loan(Base):
     __tablename__ = "loans"
+    __table_args__ = (
+        UniqueConstraint(
+            "entity_id",
+            "lender",
+            "issue_date",
+            name="uq_loans_entity_lender_date",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     entity_id = Column(Integer, ForeignKey("entities.id"), nullable=False)
@@ -252,13 +276,89 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
+    display_name = Column(String(120), nullable=True)
     roles = Column(JSONB, default=list)
     disabled = Column(Boolean, default=False)
+    email_verified = Column(Boolean, default=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
     # Relationships
     annotations = relationship("Annotation", back_populates="user")
     question_answers = relationship("UserQuestionAnswer", back_populates="user")
+    watchlist_items = relationship(
+        "WatchlistItem", back_populates="user", cascade="all, delete-orphan"
+    )
+    data_alerts = relationship(
+        "DataAlert", back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class WatchlistItem(Base):
+    """User-pinned counties or national categories for their personal dashboard."""
+
+    __tablename__ = "watchlist_items"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "item_type", "item_id", name="uq_watchlist_user_type_item"
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    item_type = Column(
+        String(30), nullable=False
+    )  # "county", "national_category", "budget_programme"
+    item_id = Column(String(100), nullable=False)  # entity slug or category key
+    label = Column(String(200), nullable=False)  # Human-friendly label for display
+    notify = Column(Boolean, default=True)  # Whether to send alerts for this item
+    meta = Column("metadata", JSONB, default=dict)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    user = relationship("User", back_populates="watchlist_items")
+
+
+class DataAlert(Base):
+    """Alerts sent to users when watched items have new data."""
+
+    __tablename__ = "data_alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    alert_type = Column(
+        String(50), nullable=False
+    )  # "new_audit", "budget_update", "debt_change"
+    title = Column(String(300), nullable=False)
+    body = Column(Text, nullable=True)
+    item_type = Column(String(30), nullable=True)  # matches watchlist item_type
+    item_id = Column(String(100), nullable=True)
+    read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    user = relationship("User", back_populates="data_alerts")
+
+
+class NewsletterSubscriber(Base):
+    """Email-only newsletter subscriptions (no account required)."""
+
+    __tablename__ = "newsletter_subscribers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    confirmed = Column(Boolean, default=False)
+    subscribed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    unsubscribed_at = Column(DateTime, nullable=True)
+    meta = Column("metadata", JSONB, default=dict)
 
 
 class Annotation(Base):
@@ -341,6 +441,13 @@ class PopulationData(Base):
     """Population data from KNBS (Kenya National Bureau of Statistics)."""
 
     __tablename__ = "population_data"
+    __table_args__ = (
+        UniqueConstraint(
+            "entity_id",
+            "year",
+            name="uq_population_entity_year",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     entity_id = Column(
@@ -370,6 +477,14 @@ class GDPData(Base):
     """GDP and Gross County Product data from KNBS."""
 
     __tablename__ = "gdp_data"
+    __table_args__ = (
+        UniqueConstraint(
+            "entity_id",
+            "year",
+            "quarter",
+            name="uq_gdp_entity_year_quarter",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     entity_id = Column(
@@ -397,6 +512,14 @@ class EconomicIndicator(Base):
     """Economic indicators from KNBS (CPI, PPI, inflation, unemployment, etc.)."""
 
     __tablename__ = "economic_indicators"
+    __table_args__ = (
+        UniqueConstraint(
+            "indicator_type",
+            "indicator_date",
+            "entity_id",
+            name="uq_econ_type_date_entity",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     indicator_type = Column(
@@ -456,6 +579,13 @@ class PovertyIndex(Base):
     """Poverty indices from KNBS."""
 
     __tablename__ = "poverty_indices"
+    __table_args__ = (
+        UniqueConstraint(
+            "entity_id",
+            "year",
+            name="uq_poverty_entity_year",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     entity_id = Column(

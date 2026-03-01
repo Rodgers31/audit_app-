@@ -1,3 +1,6 @@
+# DEPRECATED — Auth is handled by Supabase (frontend direct).
+# This file is kept for reference only and is NOT imported by any active code.
+
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
