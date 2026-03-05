@@ -253,7 +253,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                         <div className='relative'>
                           <input
                             type={showPassword ? 'text' : 'password'}
-                            required={mode !== 'forgot'}
+                            required
                             minLength={8}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}

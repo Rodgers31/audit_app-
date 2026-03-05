@@ -8,7 +8,6 @@ import {
   Database,
   ExternalLink,
   Eye,
-  Github,
   Globe,
   Heart,
   Scale,
@@ -222,7 +221,7 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
-      ── */
+      ── */}
 
       {/* ── Contact ── */}
       <section className='space-y-3'>
