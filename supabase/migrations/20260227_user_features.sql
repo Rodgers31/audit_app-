@@ -28,6 +28,11 @@ create policy "Users can update own profile"
   using (auth.uid() = id)
   with check (auth.uid() = id);
 
+-- Allow users to insert their own profile (fallback if trigger is slow)
+create policy "Users can insert own profile"
+  on public.profiles for insert
+  with check (auth.uid() = id);
+
 -- Auto-create profile on signup via trigger
 create or replace function public.handle_new_user()
 returns trigger

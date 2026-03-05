@@ -1,6 +1,7 @@
 'use client';
 
 import PageShell from '@/components/layout/PageShell';
+import PDFExportButton from '@/components/PDFExportButton';
 import {
   useDebtTimeline,
   useNationalDebtOverview,
@@ -290,6 +291,11 @@ export default function NationalDebtPage() {
     <PageShell
       title="Kenya's National Debt"
       subtitle='A comprehensive breakdown of every shilling the government owes — who lent it, what it costs, and what it means for you'>
+      {/* ── Export button ── */}
+      <div className='flex justify-end -mb-3'>
+        <PDFExportButton compact documentTitle='Kenya National Debt Report' />
+      </div>
+
       {/* SECTION 1 — KEY METRICS */}
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>
         <StatCard
@@ -865,7 +871,106 @@ export default function NationalDebtPage() {
           </div>
 
           <div className='bg-white rounded-xl border border-gray-100 overflow-hidden'>
-            <div className='overflow-x-auto'>
+            {/* ── Mobile card layout ── */}
+            <div className='md:hidden divide-y divide-gray-100'>
+              {loans.map((loan: any, i: number) => {
+                const outstanding = loan.outstanding_numeric || parseFloat(loan.outstanding || '0');
+                const totalOutstanding = loansResp?.total_outstanding || 1;
+                const shareOfTotal = (outstanding / totalOutstanding) * 100;
+                const rate = loan.interest_rate || '—';
+                const lenderType = LENDER_TYPE_LABELS[loan.lender_type] || loan.lender_type || '—';
+                const isExternal = (loan.lender_type || '').startsWith('external');
+
+                return (
+                  <div key={i} className='px-4 py-3'>
+                    <div className='flex items-start justify-between gap-3'>
+                      <div className='flex-1 min-w-0'>
+                        <div className='flex items-center gap-2'>
+                          <span className='text-xs text-gray-400 font-medium'>{i + 1}.</span>
+                          <span className='font-semibold text-gray-900 text-sm leading-tight'>
+                            {loan.lender}
+                          </span>
+                        </div>
+                        <div className='flex items-center gap-2 mt-1'>
+                          <span
+                            className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${isExternal ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
+                            {isExternal ? <Globe size={8} /> : <Building2 size={8} />}
+                            {lenderType}
+                          </span>
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded-full ${loan.status === 'active' ? 'bg-green-50 text-green-600' : loan.status === 'matured' ? 'bg-gray-100 text-gray-500' : 'bg-yellow-50 text-yellow-600'}`}>
+                            {loan.status || 'active'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className='text-right shrink-0'>
+                        <div className='font-bold text-gov-dark text-sm'>{fmtKES(outstanding)}</div>
+                        <div className='text-[10px] text-gray-400'>outstanding</div>
+                      </div>
+                    </div>
+                    {/* Share bar */}
+                    <div className='w-full h-1 bg-gray-100 rounded-full mt-2'>
+                      <div
+                        className='h-full rounded-full bg-gov-sage'
+                        style={{ width: `${Math.min(shareOfTotal * 2, 100)}%` }}
+                      />
+                    </div>
+                    {/* Secondary stats row */}
+                    <div className='flex items-center justify-between mt-2 text-[11px] text-gray-500'>
+                      <span>
+                        Rate:{' '}
+                        <span
+                          className={`font-medium ${
+                            parseFloat((rate || '0').toString().replace('%', '')) > 8
+                              ? 'text-red-600'
+                              : 'text-gray-700'
+                          }`}>
+                          {rate}
+                        </span>
+                      </span>
+                      <span>
+                        Service:{' '}
+                        <span className='font-medium text-gray-700'>
+                          {fmtKES(loan.annual_service_cost || 0)}
+                        </span>
+                        <span className='text-gray-300'>/yr</span>
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+              {/* Mobile totals */}
+              <div className='px-4 py-3 bg-gray-50 border-t-2 border-gray-200'>
+                <div className='flex items-center justify-between'>
+                  <span className='font-bold text-sm text-gray-700'>
+                    TOTAL ({loans.length} facilities)
+                  </span>
+                  <span className='font-bold text-sm text-gov-dark'>
+                    {fmtKES(loansResp?.total_outstanding || 0)}
+                  </span>
+                </div>
+                <div className='flex items-center justify-between mt-1 text-xs text-gray-500'>
+                  <span>
+                    Principal:{' '}
+                    <span className='font-medium text-gray-600'>
+                      {fmtKES(
+                        loans.reduce((s: number, l: any) => s + (l.principal_numeric || 0), 0)
+                      )}
+                    </span>
+                  </span>
+                  <span>
+                    Service:{' '}
+                    <span className='font-medium text-red-600'>
+                      {fmtKES(loansResp?.total_annual_service_cost || 0)}
+                    </span>
+                    <span className='text-gray-400'>/yr</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Desktop table layout ── */}
+            <div className='hidden md:block overflow-x-auto'>
               <table className='w-full text-sm'>
                 <thead>
                   <tr className='bg-gray-50 text-left'>

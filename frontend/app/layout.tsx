@@ -1,3 +1,4 @@
+import Footer from '@/components/Footer';
 import Navigation from '@/components/Navigation';
 import { AuthProvider } from '@/lib/auth/AuthProvider';
 import { WatchlistProvider } from '@/lib/auth/WatchlistProvider';
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <WatchlistProvider>
               <Navigation />
               <div className='relative z-[1]'>{children}</div>
+              <Footer />
             </WatchlistProvider>
           </AuthProvider>
         </QueryProvider>
