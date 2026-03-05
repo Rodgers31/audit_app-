@@ -12,6 +12,7 @@
 'use client';
 
 import { createClient } from '@/lib/supabase/client';
+import { getBaseUrl } from '@/lib/utils/getBaseUrl';
 import type { User } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
@@ -121,6 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           password,
           options: {
             data: { display_name: displayName || null },
+            emailRedirectTo: `${getBaseUrl()}/auth/callback`,
           },
         });
         if (error) throw error;
@@ -192,7 +194,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetPassword = useCallback(async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+      redirectTo: `${getBaseUrl()}/auth/callback?next=/reset-password`,
     });
     if (error) throw error;
   }, []);
@@ -203,7 +205,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const changeEmail = useCallback(async (newEmail: string) => {
-    const { error } = await supabase.auth.updateUser({ email: newEmail });
+    const { error } = await supabase.auth.updateUser(
+      { email: newEmail },
+      { emailRedirectTo: `${getBaseUrl()}/auth/callback` }
+    );
     if (error) throw error;
   }, []);
 
