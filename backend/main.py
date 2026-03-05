@@ -813,9 +813,9 @@ async def root(request: Request):
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 async def health() -> JSONResponse:
-    """Basic health check endpoint."""
+    """Basic health check endpoint (supports GET and HEAD for uptime monitors)."""
     return JSONResponse(
         {"status": "ok", "timestamp": datetime.datetime.now().isoformat()}
     )
@@ -852,6 +852,262 @@ async def get_seeder_status() -> JSONResponse:
                 "auto_seeder": {"is_running": False},
             }
         )
+
+
+@app.get("/api/v1/system/pipeline-health")
+async def get_pipeline_health(db: Session = Depends(get_db)) -> JSONResponse:
+    """
+    Comprehensive pipeline health dashboard.
+
+    Returns the full picture of:
+    - Data freshness per domain (counties, debt, population, economic)
+    - Source module availability (ETL, extractors)
+    - Auto-seeder status and next refresh times
+    - Database record counts and last-updated timestamps
+    - Any warnings or errors that need attention
+    """
+    import importlib
+
+    alerts: list[dict] = []
+    sources: dict = {}
+    db_stats: dict = {}
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    # ── 1. Check module availability (import health) ──
+    module_checks = {
+        "etl.kenya_pipeline": "ETL Pipeline (OAG/COB/Treasury scraping)",
+        "etl.knbs_parser": "KNBS Parser (population/economic parsing)",
+        "extractors.government.knbs_extractor": "KNBS Extractor (document discovery)",
+    }
+    module_status = {}
+    for mod_name, description in module_checks.items():
+        try:
+            importlib.import_module(mod_name)
+            module_status[mod_name] = {"available": True, "description": description}
+        except Exception as exc:
+            module_status[mod_name] = {
+                "available": False,
+                "description": description,
+                "error": str(exc),
+            }
+            alerts.append(
+                {
+                    "level": "warning",
+                    "source": mod_name,
+                    "message": f"Module not importable: {exc}. Live scraping for this source will fall back to cached data.",
+                }
+            )
+
+    # ── 2. Auto-seeder status ──
+    seeder_info: dict = {"is_running": False}
+    try:
+        from services.auto_seeder import get_seeder_status as _get_status
+
+        seeder_info = _get_status()
+    except Exception as exc:
+        alerts.append(
+            {
+                "level": "error",
+                "source": "auto_seeder",
+                "message": f"Could not retrieve seeder status: {exc}",
+            }
+        )
+
+    # ── 3. Database record counts + freshness ──
+    try:
+        from models import DebtCategory as _DebtCategory
+
+        entity_count = db.query(DBEntity).count()
+        county_count = (
+            db.query(DBEntity).filter(DBEntity.type == EntityType.COUNTY).count()
+        )
+        national_entity = (
+            db.query(DBEntity).filter(DBEntity.type == EntityType.NATIONAL).first()
+        )
+
+        db_stats["entities"] = {
+            "total": entity_count,
+            "counties": county_count,
+            "has_national": national_entity is not None,
+        }
+
+        # Population data
+        pop_count = db.query(DBPopulationData).count()
+        latest_pop = (
+            db.query(DBPopulationData).order_by(DBPopulationData.year.desc()).first()
+        )
+        db_stats["population"] = {
+            "records": pop_count,
+            "latest_year": latest_pop.year if latest_pop else None,
+        }
+
+        # Economic indicators
+        econ_count = db.query(DBEconomicIndicator).count()
+        latest_econ = (
+            db.query(DBEconomicIndicator)
+            .order_by(DBEconomicIndicator.indicator_date.desc())
+            .first()
+        )
+        db_stats["economic_indicators"] = {
+            "records": econ_count,
+            "latest_year": (
+                latest_econ.indicator_date.year
+                if latest_econ and latest_econ.indicator_date
+                else None
+            ),
+        }
+
+        # Debt categories (use Loan table — DebtCategory is an enum, not a table)
+        debt_categories = db.query(DBLoan.debt_category).distinct().count()
+        db_stats["debt_categories"] = {"records": debt_categories}
+
+        # Loans
+        loan_count = db.query(DBLoan).count()
+        db_stats["loans"] = {"records": loan_count}
+
+        # Source documents
+        doc_count = db.query(DBSourceDocument).count()
+        db_stats["source_documents"] = {"records": doc_count}
+
+        # Data quality checks
+        if county_count < 47:
+            alerts.append(
+                {
+                    "level": "warning",
+                    "source": "database",
+                    "message": f"Only {county_count}/47 counties in database.",
+                }
+            )
+        if pop_count == 0:
+            alerts.append(
+                {
+                    "level": "warning",
+                    "source": "population",
+                    "message": "No population records. KNBS live fetch may have failed — check module availability.",
+                }
+            )
+        if econ_count == 0:
+            alerts.append(
+                {
+                    "level": "warning",
+                    "source": "economic",
+                    "message": "No economic indicator records.",
+                }
+            )
+        if loan_count == 0:
+            alerts.append(
+                {
+                    "level": "warning",
+                    "source": "debt",
+                    "message": "No loan records in database. Bootstrap may not have run.",
+                }
+            )
+
+    except Exception as exc:
+        logger.error(f"Error checking database stats: {exc}")
+        alerts.append(
+            {
+                "level": "error",
+                "source": "database",
+                "message": f"Could not query database: {exc}",
+            }
+        )
+
+    # ── 4. Data source reachability (non-blocking quick check) ──
+    import httpx
+
+    source_urls = {
+        "knbs": {
+            "url": "https://www.knbs.or.ke",
+            "name": "Kenya National Bureau of Statistics",
+        },
+        "cob": {"url": "https://www.cob.go.ke", "name": "Controller of Budget"},
+        "treasury": {"url": "https://www.treasury.go.ke", "name": "National Treasury"},
+        "cbk": {
+            "url": "https://www.centralbank.go.ke",
+            "name": "Central Bank of Kenya",
+        },
+        "oag": {
+            "url": "https://www.oagkenya.go.ke",
+            "name": "Office of the Auditor General",
+        },
+    }
+
+    async def _check_source(key: str, info: dict) -> dict:
+        try:
+            async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
+                resp = await client.head(info["url"])
+                return {
+                    "key": key,
+                    "name": info["name"],
+                    "url": info["url"],
+                    "reachable": resp.status_code < 500,
+                    "status_code": resp.status_code,
+                }
+        except Exception as exc:
+            return {
+                "key": key,
+                "name": info["name"],
+                "url": info["url"],
+                "reachable": False,
+                "error": str(exc),
+            }
+
+    import asyncio as _aio
+
+    source_results = await _aio.gather(
+        *[_check_source(k, v) for k, v in source_urls.items()],
+        return_exceptions=True,
+    )
+    for r in source_results:
+        if isinstance(r, Exception):
+            continue
+        sources[r["key"]] = r
+        if not r.get("reachable"):
+            err_detail = r.get("error") or "HTTP %s" % r.get("status_code")
+            alerts.append(
+                {
+                    "level": "warning",
+                    "source": r["key"],
+                    "message": f"{r['name']} ({r['url']}) is unreachable: {err_detail}",
+                }
+            )
+
+    # ── 5. APScheduler jobs ──
+    scheduler_jobs: list[dict] = []
+    try:
+        # The scheduler is set up in setup_scheduler() — we check module-level _etl_jobs dict
+        for jid, jinfo in _etl_jobs.items():
+            scheduler_jobs.append({"job_id": jid, **jinfo})
+    except Exception:
+        pass
+
+    # ── 6. Build overall status ──
+    error_count = sum(1 for a in alerts if a["level"] == "error")
+    warn_count = sum(1 for a in alerts if a["level"] == "warning")
+    overall = (
+        "healthy"
+        if error_count == 0 and warn_count == 0
+        else ("degraded" if error_count == 0 else "unhealthy")
+    )
+
+    return JSONResponse(
+        {
+            "status": overall,
+            "checked_at": now.isoformat(),
+            "auto_seeder": seeder_info,
+            "database": db_stats,
+            "modules": module_status,
+            "sources": sources,
+            "etl_jobs": scheduler_jobs,
+            "alerts": alerts,
+            "summary": {
+                "errors": error_count,
+                "warnings": warn_count,
+                "total_alerts": len(alerts),
+            },
+        }
+    )
 
 
 @app.post("/api/v1/system/seeder-refresh")
