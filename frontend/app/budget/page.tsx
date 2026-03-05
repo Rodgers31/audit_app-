@@ -1,6 +1,7 @@
 'use client';
 
 import PageShell from '@/components/layout/PageShell';
+import PDFExportButton from '@/components/PDFExportButton';
 import { useBudgetEnhanced, useBudgetOverview } from '@/lib/react-query';
 import { useFiscalSummary } from '@/lib/react-query/useFiscal';
 import { motion } from 'framer-motion';
@@ -533,7 +534,8 @@ export default function BudgetSpendingPage() {
       <DataSourcesModal open={sourcesOpen} onClose={closeSourcesModal} />
 
       {/* ── Subtle info trigger (top-right) ── */}
-      <div className='flex justify-end -mb-3'>
+      <div className='flex justify-end items-center gap-2 -mb-3'>
+        <PDFExportButton compact documentTitle='Kenya Budget & Spending Report' />
         <button
           onClick={() => setSourcesOpen(true)}
           className='inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-gov-forest hover:bg-gov-forest/5 rounded-lg transition-colors'
@@ -713,7 +715,7 @@ export default function BudgetSpendingPage() {
 
             <div className='grid lg:grid-cols-2 gap-6'>
               {/* Donut chart */}
-              <div className='h-80'>
+              <div className='h-64 sm:h-80'>
                 <ResponsiveContainer width='100%' height='100%'>
                   <PieChart>
                     <Pie
@@ -722,8 +724,8 @@ export default function BudgetSpendingPage() {
                       nameKey='name'
                       cx='50%'
                       cy='50%'
-                      outerRadius={110}
-                      innerRadius={55}
+                      outerRadius='80%'
+                      innerRadius='40%'
                       paddingAngle={2}
                       strokeWidth={1}
                       stroke='#fff'>
@@ -746,64 +748,129 @@ export default function BudgetSpendingPage() {
                 </ResponsiveContainer>
               </div>
 
-              {/* Revenue table with YoY */}
-              <div className='overflow-x-auto'>
-                <table className='w-full text-sm'>
-                  <thead>
-                    <tr className='border-b border-gray-200'>
-                      <th className='text-left py-2 text-gray-500 font-medium'>Source</th>
-                      <th className='text-right py-2 text-gray-500 font-medium'>Amount</th>
-                      <th className='text-right py-2 text-gray-500 font-medium'>Share</th>
-                      <th className='text-right py-2 text-gray-500 font-medium'>YoY</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {revenuePieData.map((r: any) => {
-                      const Icon = REVENUE_ICONS[r.name] || DollarSign;
-                      return (
-                        <tr
-                          key={r.name}
-                          className='border-b border-gray-50 hover:bg-gray-50/60 transition-colors'>
-                          <td className='py-2.5'>
-                            <div className='flex items-center gap-2'>
-                              <div
-                                className='w-7 h-7 rounded-md flex items-center justify-center'
-                                style={{ backgroundColor: `${r.color}15` }}>
-                                <Icon size={14} style={{ color: r.color }} />
-                              </div>
-                              <span className='font-medium text-gray-800'>{r.name}</span>
+              {/* Revenue breakdown — mobile cards / desktop table */}
+              <div>
+                {/* Mobile card layout */}
+                <div className='sm:hidden space-y-2'>
+                  {revenuePieData.map((r: any) => {
+                    const Icon = REVENUE_ICONS[r.name] || DollarSign;
+                    const total = revenuePieData.reduce(
+                      (sum: number, x: any) => sum + (x.value ?? 0),
+                      0
+                    );
+                    const shareWidth = total > 0 ? ((r.value ?? 0) / total) * 100 : 0;
+                    return (
+                      <div key={r.name} className='rounded-lg border border-gray-100 p-3'>
+                        <div className='flex items-center justify-between gap-2'>
+                          <div className='flex items-center gap-2 min-w-0'>
+                            <div
+                              className='w-7 h-7 rounded-md flex items-center justify-center shrink-0'
+                              style={{ backgroundColor: `${r.color}15` }}>
+                              <Icon size={14} style={{ color: r.color }} />
                             </div>
-                          </td>
-                          <td className='text-right text-gray-700'>KES {r.value}B</td>
-                          <td className='text-right text-gray-700'>{pct(r.share)}</td>
-                          <td className='text-right'>
-                            {r.growth != null ? (
-                              <span
-                                className={`inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full ${
-                                  r.growth > 0
-                                    ? 'bg-green-50 text-green-600'
-                                    : r.growth < 0
-                                      ? 'bg-red-50 text-red-600'
-                                      : 'bg-gray-100 text-gray-500'
-                                }`}>
-                                {r.growth > 0 ? (
-                                  <ArrowUp size={12} />
-                                ) : r.growth < 0 ? (
-                                  <ArrowDown size={12} />
-                                ) : (
-                                  <Minus size={12} />
-                                )}
-                                {Math.abs(r.growth).toFixed(1)}%
-                              </span>
-                            ) : (
-                              <span className='text-gray-400'>—</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                            <span className='font-semibold text-gray-900 text-sm truncate'>
+                              {r.name}
+                            </span>
+                          </div>
+                          <span className='font-bold text-gov-dark text-sm shrink-0'>
+                            KES {r.value}B
+                          </span>
+                        </div>
+                        {/* Share bar */}
+                        <div className='w-full h-1.5 bg-gray-100 rounded-full mt-2'>
+                          <div
+                            className='h-full rounded-full'
+                            style={{ width: `${shareWidth}%`, backgroundColor: r.color }}
+                          />
+                        </div>
+                        <div className='flex items-center justify-between mt-1.5 text-[11px] text-gray-500'>
+                          <span>{pct(r.share)} of revenue</span>
+                          {r.growth != null ? (
+                            <span
+                              className={`inline-flex items-center gap-0.5 font-medium px-1.5 py-0.5 rounded-full ${
+                                r.growth > 0
+                                  ? 'bg-green-50 text-green-600'
+                                  : r.growth < 0
+                                    ? 'bg-red-50 text-red-600'
+                                    : 'bg-gray-100 text-gray-500'
+                              }`}>
+                              {r.growth > 0 ? (
+                                <ArrowUp size={10} />
+                              ) : r.growth < 0 ? (
+                                <ArrowDown size={10} />
+                              ) : (
+                                <Minus size={10} />
+                              )}
+                              {Math.abs(r.growth).toFixed(1)}%
+                            </span>
+                          ) : (
+                            <span className='text-gray-400'>—</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Desktop table */}
+                <div className='hidden sm:block overflow-x-auto'>
+                  <table className='w-full text-sm'>
+                    <thead>
+                      <tr className='border-b border-gray-200'>
+                        <th className='text-left py-2 text-gray-500 font-medium'>Source</th>
+                        <th className='text-right py-2 text-gray-500 font-medium'>Amount</th>
+                        <th className='text-right py-2 text-gray-500 font-medium'>Share</th>
+                        <th className='text-right py-2 text-gray-500 font-medium'>YoY</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {revenuePieData.map((r: any) => {
+                        const Icon = REVENUE_ICONS[r.name] || DollarSign;
+                        return (
+                          <tr
+                            key={r.name}
+                            className='border-b border-gray-50 hover:bg-gray-50/60 transition-colors'>
+                            <td className='py-2.5'>
+                              <div className='flex items-center gap-2'>
+                                <div
+                                  className='w-7 h-7 rounded-md flex items-center justify-center'
+                                  style={{ backgroundColor: `${r.color}15` }}>
+                                  <Icon size={14} style={{ color: r.color }} />
+                                </div>
+                                <span className='font-medium text-gray-800'>{r.name}</span>
+                              </div>
+                            </td>
+                            <td className='text-right text-gray-700'>KES {r.value}B</td>
+                            <td className='text-right text-gray-700'>{pct(r.share)}</td>
+                            <td className='text-right'>
+                              {r.growth != null ? (
+                                <span
+                                  className={`inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full ${
+                                    r.growth > 0
+                                      ? 'bg-green-50 text-green-600'
+                                      : r.growth < 0
+                                        ? 'bg-red-50 text-red-600'
+                                        : 'bg-gray-100 text-gray-500'
+                                  }`}>
+                                  {r.growth > 0 ? (
+                                    <ArrowUp size={12} />
+                                  ) : r.growth < 0 ? (
+                                    <ArrowDown size={12} />
+                                  ) : (
+                                    <Minus size={12} />
+                                  )}
+                                  {Math.abs(r.growth).toFixed(1)}%
+                                </span>
+                              ) : (
+                                <span className='text-gray-400'>—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
 
@@ -908,7 +975,7 @@ export default function BudgetSpendingPage() {
 
           <div className='grid lg:grid-cols-2 gap-6'>
             {/* Pie chart */}
-            <div className='h-80'>
+            <div className='h-64 sm:h-80'>
               <ResponsiveContainer width='100%' height='100%'>
                 <PieChart>
                   <Pie
@@ -917,8 +984,8 @@ export default function BudgetSpendingPage() {
                     nameKey='name'
                     cx='50%'
                     cy='50%'
-                    outerRadius={110}
-                    innerRadius={55}
+                    outerRadius='80%'
+                    innerRadius='40%'
                     paddingAngle={2}
                     strokeWidth={1}
                     stroke='#fff'>
@@ -941,55 +1008,119 @@ export default function BudgetSpendingPage() {
               </ResponsiveContainer>
             </div>
 
-            {/* Sector table */}
-            <div className='overflow-x-auto'>
-              <table className='w-full text-sm'>
-                <thead>
-                  <tr className='border-b border-gray-200'>
-                    <th className='text-left py-2 text-gray-500 font-medium'>Sector</th>
-                    <th className='text-right py-2 text-gray-500 font-medium'>Allocated</th>
-                    <th className='text-right py-2 text-gray-500 font-medium'>Spent</th>
-                    <th className='text-right py-2 text-gray-500 font-medium'>Utilization</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sectors.map((s: any) => {
-                    const Icon = SECTOR_ICONS[s.sector] || BarChart3;
-                    const color = SECTOR_COLORS[s.sector] || '#94a3b8';
-                    return (
-                      <tr
-                        key={s.sector}
-                        className='border-b border-gray-50 hover:bg-gray-50/60 transition-colors'>
-                        <td className='py-2.5'>
-                          <div className='flex items-center gap-2'>
-                            <div
-                              className='w-7 h-7 rounded-md flex items-center justify-center'
-                              style={{ backgroundColor: `${color}15` }}>
-                              <Icon size={14} style={{ color }} />
-                            </div>
-                            <span className='font-medium text-gray-800'>{s.sector}</span>
-                            <span className='text-xs text-gray-400'>{pct(s.percentage)}</span>
+            {/* Sector breakdown — mobile cards / desktop table */}
+            <div>
+              {/* Mobile card layout */}
+              <div className='sm:hidden space-y-2'>
+                {sectors.map((s: any) => {
+                  const Icon = SECTOR_ICONS[s.sector] || BarChart3;
+                  const color = SECTOR_COLORS[s.sector] || '#94a3b8';
+                  return (
+                    <div key={s.sector} className='rounded-lg border border-gray-100 p-3'>
+                      <div className='flex items-center justify-between gap-2'>
+                        <div className='flex items-center gap-2 min-w-0'>
+                          <div
+                            className='w-7 h-7 rounded-md flex items-center justify-center shrink-0'
+                            style={{ backgroundColor: `${color}15` }}>
+                            <Icon size={14} style={{ color }} />
                           </div>
-                        </td>
-                        <td className='text-right text-gray-700'>{fmtKES(s.allocated)}</td>
-                        <td className='text-right text-gray-700'>{fmtKES(s.spent)}</td>
-                        <td className='text-right'>
-                          <span
-                            className={`font-semibold ${
-                              s.utilization >= 50
-                                ? 'text-green-600'
-                                : s.utilization >= 25
-                                  ? 'text-amber-600'
-                                  : 'text-red-500'
-                            }`}>
-                            {pct(s.utilization)}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          <div className='min-w-0'>
+                            <span className='font-semibold text-gray-900 text-sm block truncate'>
+                              {s.sector}
+                            </span>
+                            <span className='text-[11px] text-gray-400'>
+                              {pct(s.percentage)} of budget
+                            </span>
+                          </div>
+                        </div>
+                        <div className='text-right shrink-0'>
+                          <div className='font-bold text-gov-dark text-sm'>
+                            {fmtKES(s.allocated)}
+                          </div>
+                          <div className='text-[10px] text-gray-400'>allocated</div>
+                        </div>
+                      </div>
+                      {/* Utilisation bar */}
+                      <div className='w-full h-1.5 bg-gray-100 rounded-full mt-2'>
+                        <div
+                          className='h-full rounded-full'
+                          style={{
+                            width: `${Math.min(s.utilization || 0, 100)}%`,
+                            backgroundColor: color,
+                          }}
+                        />
+                      </div>
+                      <div className='flex items-center justify-between mt-1.5 text-[11px] text-gray-500'>
+                        <span>
+                          Spent:{' '}
+                          <span className='font-medium text-gray-700'>{fmtKES(s.spent)}</span>
+                        </span>
+                        <span
+                          className={`font-semibold ${
+                            s.utilization >= 50
+                              ? 'text-green-600'
+                              : s.utilization >= 25
+                                ? 'text-amber-600'
+                                : 'text-red-500'
+                          }`}>
+                          {pct(s.utilization)} used
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop table */}
+              <div className='hidden sm:block overflow-x-auto'>
+                <table className='w-full text-sm'>
+                  <thead>
+                    <tr className='border-b border-gray-200'>
+                      <th className='text-left py-2 text-gray-500 font-medium'>Sector</th>
+                      <th className='text-right py-2 text-gray-500 font-medium'>Allocated</th>
+                      <th className='text-right py-2 text-gray-500 font-medium'>Spent</th>
+                      <th className='text-right py-2 text-gray-500 font-medium'>Utilization</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sectors.map((s: any) => {
+                      const Icon = SECTOR_ICONS[s.sector] || BarChart3;
+                      const color = SECTOR_COLORS[s.sector] || '#94a3b8';
+                      return (
+                        <tr
+                          key={s.sector}
+                          className='border-b border-gray-50 hover:bg-gray-50/60 transition-colors'>
+                          <td className='py-2.5'>
+                            <div className='flex items-center gap-2'>
+                              <div
+                                className='w-7 h-7 rounded-md flex items-center justify-center'
+                                style={{ backgroundColor: `${color}15` }}>
+                                <Icon size={14} style={{ color }} />
+                              </div>
+                              <span className='font-medium text-gray-800'>{s.sector}</span>
+                              <span className='text-xs text-gray-400'>{pct(s.percentage)}</span>
+                            </div>
+                          </td>
+                          <td className='text-right text-gray-700'>{fmtKES(s.allocated)}</td>
+                          <td className='text-right text-gray-700'>{fmtKES(s.spent)}</td>
+                          <td className='text-right'>
+                            <span
+                              className={`font-semibold ${
+                                s.utilization >= 50
+                                  ? 'text-green-600'
+                                  : s.utilization >= 25
+                                    ? 'text-amber-600'
+                                    : 'text-red-500'
+                              }`}>
+                              {pct(s.utilization)}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -1025,8 +1156,68 @@ export default function BudgetSpendingPage() {
               </div>
             </div>
 
-            {/* Sector rows */}
-            <div className='space-y-4'>
+            {/* ── Mobile card layout ── */}
+            <div className='sm:hidden space-y-3'>
+              {executionData.map((s: any, i: number) => {
+                const Icon = SECTOR_ICONS[s.sector] || BarChart3;
+                const color = SECTOR_COLORS[s.sector] || '#94a3b8';
+                const fillWidth = s.allocated > 0 ? (s.spent / s.allocated) * 100 : 0;
+                return (
+                  <motion.div
+                    key={s.sector}
+                    initial={{ opacity: 0, x: -12 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.04, duration: 0.35 }}
+                    className='rounded-lg border border-gray-100 p-3'>
+                    <div className='flex items-center justify-between gap-2'>
+                      <div className='flex items-center gap-2 min-w-0'>
+                        <div
+                          className='w-7 h-7 rounded-md flex items-center justify-center shrink-0'
+                          style={{ backgroundColor: `${color}15` }}>
+                          <Icon size={14} style={{ color }} />
+                        </div>
+                        <span className='font-semibold text-gray-900 text-sm truncate'>
+                          {s.sector}
+                        </span>
+                      </div>
+                      <span
+                        className={`text-sm font-bold shrink-0 ${
+                          s.execution_rate >= 70
+                            ? 'text-green-600'
+                            : s.execution_rate >= 50
+                              ? 'text-amber-600'
+                              : 'text-red-500'
+                        }`}>
+                        {pct(s.execution_rate)}
+                      </span>
+                    </div>
+                    {/* Full-width execution bar */}
+                    <div className='w-full h-2 bg-gray-100 rounded-full mt-2.5 overflow-hidden'>
+                      <div
+                        className='h-full rounded-full transition-all duration-700'
+                        style={{
+                          width: `${fillWidth}%`,
+                          backgroundColor: color,
+                        }}
+                      />
+                    </div>
+                    <div className='flex items-center justify-between mt-1.5 text-[11px] text-gray-500'>
+                      <span>
+                        Spent: <span className='font-medium text-gray-700'>KES {s.spent}B</span>
+                      </span>
+                      <span>
+                        of <span className='font-medium text-gray-700'>{s.allocated}B</span>{' '}
+                        allocated
+                      </span>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {/* ── Desktop bar rows ── */}
+            <div className='hidden sm:block space-y-4'>
               {executionData.map((s: any, i: number) => {
                 const Icon = SECTOR_ICONS[s.sector] || BarChart3;
                 const color = SECTOR_COLORS[s.sector] || '#94a3b8';

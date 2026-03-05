@@ -36,6 +36,14 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   /** Re-fetch the profile from the profiles table */
   refreshUser: () => Promise<void>;
+  /** Send a password-reset email to the given address */
+  resetPassword: (email: string) => Promise<void>;
+  /** Set a new password for the currently authenticated user (after reset link) */
+  updatePassword: (newPassword: string) => Promise<void>;
+  /** Send a confirmation link to the new email; email changes once user clicks it */
+  changeEmail: (newEmail: string) => Promise<void>;
+  /** Permanently delete the authenticated user's account */
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -48,7 +56,7 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
     .from('profiles')
     .select('id, email, display_name, roles')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
   if (error || !data) return null;
   return data as UserProfile;
 }
@@ -58,6 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Suppress onAuthStateChange profile fetch while register() is handling it
+  const [registering, setRegistering] = useState(false);
 
   // On mount, restore session + subscribe to auth changes
   useEffect(() => {
@@ -77,8 +87,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         setAuthUser(session.user);
-        const profile = await fetchProfile(session.user.id);
-        setUser(profile);
+        // Skip profile fetch during registration — register() handles it
+        if (!registering) {
+          const profile = await fetchProfile(session.user.id);
+          setUser(profile);
+        }
       } else {
         setAuthUser(null);
         setUser(null);
@@ -86,6 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<UserProfile> => {
@@ -98,27 +112,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = useCallback(
     async (email: string, password: string, displayName?: string): Promise<UserProfile> => {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { display_name: displayName || null },
-        },
-      });
-      if (error) throw error;
-      if (!data.user) throw new Error('Registration failed');
-      // The DB trigger creates the profile — poll with exponential backoff
-      const delays = [300, 600, 1200];
-      let profile: UserProfile | null = null;
-      for (const ms of delays) {
-        profile = await fetchProfile(data.user.id);
-        if (profile) break;
-        await new Promise((r) => setTimeout(r, ms));
+      // Prevent onAuthStateChange from racing with our profile creation
+      setRegistering(true);
+
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { display_name: displayName || null },
+          },
+        });
+        if (error) throw error;
+        if (!data.user) throw new Error('Registration failed');
+
+        // Wait for the DB trigger to create the profile
+        // Short initial delay then quick retries — the trigger usually completes within 200-500ms
+        let profile: UserProfile | null = null;
+        const delays = [300, 500, 800];
+
+        for (const ms of delays) {
+          await new Promise((r) => setTimeout(r, ms));
+          profile = await fetchProfile(data.user.id);
+          if (profile) break;
+        }
+
+        // Fallback: create the profile client-side if the trigger was too slow
+        if (!profile) {
+          const { error: insertErr } = await supabase.from('profiles').insert({
+            id: data.user.id,
+            email: data.user.email ?? email,
+            display_name: displayName || null,
+            roles: ['citizen'],
+          });
+          if (!insertErr) {
+            profile = await fetchProfile(data.user.id);
+          }
+        }
+
+        // Build a guaranteed profile object
+        const finalProfile: UserProfile = profile ?? {
+          id: data.user.id,
+          email: data.user.email ?? email,
+          display_name: displayName || null,
+          roles: ['citizen'],
+        };
+
+        // Set auth state so the rest of the app (WatchlistProvider etc.) sees a signed-in user
+        setAuthUser(data.user);
+        setUser(finalProfile);
+
+        return finalProfile;
+      } finally {
+        setRegistering(false);
       }
-      // One final attempt after the last delay
-      if (!profile) profile = await fetchProfile(data.user.id);
-      if (!profile) throw new Error('Profile creation pending — please sign in.');
-      return profile;
     },
     []
   );
@@ -143,6 +190,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const resetPassword = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+    });
+    if (error) throw error;
+  }, []);
+
+  const updatePassword = useCallback(async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+  }, []);
+
+  const changeEmail = useCallback(async (newEmail: string) => {
+    const { error } = await supabase.auth.updateUser({ email: newEmail });
+    if (error) throw error;
+  }, []);
+
+  const deleteAccount = useCallback(async () => {
+    const res = await fetch('/api/account/delete', { method: 'DELETE' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Failed to delete account');
+    }
+    // Don't signOut here — let the caller show a farewell UI first,
+    // then call logout() when ready to clear the session.
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       authUser,
@@ -153,8 +227,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       register,
       logout,
       refreshUser,
+      resetPassword,
+      updatePassword,
+      changeEmail,
+      deleteAccount,
     }),
-    [authUser, user, isLoading, login, register, logout, refreshUser]
+    [
+      authUser,
+      user,
+      isLoading,
+      login,
+      register,
+      logout,
+      refreshUser,
+      resetPassword,
+      updatePassword,
+      changeEmail,
+      deleteAccount,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -166,25 +166,55 @@ function getCountyRegion(name: string): string {
   return '';
 }
 
-/* Tiny sparkline SVG */
+/* Tiny sparkline SVG — decorative trend indicator */
 function Sparkline({ seed, positive }: { seed: number; positive: boolean }) {
   const pts: number[] = [];
-  let v = 50 + (seed % 30);
-  for (let i = 0; i < 8; i++) {
-    v += (((seed * (i + 1) * 7) % 21) - 10) * (positive ? 0.8 : 1.1);
-    v = Math.max(10, Math.min(90, v));
+  const count = 12;
+  let v = 40 + (seed % 20);
+  for (let i = 0; i < count; i++) {
+    // Add a clear trend direction + small noise
+    const trend = positive ? 1.5 : -1.2;
+    const noise = (((seed * (i + 1) * 7) % 13) - 6) * 0.6;
+    v += trend + noise;
+    v = Math.max(15, Math.min(90, v));
     pts.push(v);
   }
-  const d = pts.map((y, i) => `${i === 0 ? 'M' : 'L'}${i * 10},${100 - y}`).join(' ');
+  const w = 80;
+  const h = 40;
+  const stepX = w / (count - 1);
+  const points = pts.map((y, i) => ({
+    x: i * stepX,
+    y: h - (y / 100) * h,
+  }));
+  const linePath = points
+    .map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+    .join(' ');
+  const areaPath = `${linePath} L${points[points.length - 1].x.toFixed(1)},${h} L0,${h} Z`;
+  const color = positive ? '#22c55e' : '#ef4444';
+  const gradId = `spark-grad-${seed}`;
   return (
-    <svg viewBox='0 0 70 100' className='w-[56px] h-6' preserveAspectRatio='none'>
+    <svg viewBox={`0 0 ${w} ${h}`} className='w-16 h-10' preserveAspectRatio='none'>
+      <defs>
+        <linearGradient id={gradId} x1='0' y1='0' x2='0' y2='1'>
+          <stop offset='0%' stopColor={color} stopOpacity='0.3' />
+          <stop offset='100%' stopColor={color} stopOpacity='0.02' />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill={`url(#${gradId})`} />
       <path
-        d={d}
+        d={linePath}
         fill='none'
-        stroke={positive ? '#22c55e' : '#ef4444'}
-        strokeWidth='2.5'
+        stroke={color}
+        strokeWidth='2'
         strokeLinecap='round'
         strokeLinejoin='round'
+      />
+      {/* End dot */}
+      <circle
+        cx={points[points.length - 1].x}
+        cy={points[points.length - 1].y}
+        r='2.5'
+        fill={color}
       />
     </svg>
   );

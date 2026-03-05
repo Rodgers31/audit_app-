@@ -204,24 +204,30 @@ export default function Navigation() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className='fixed inset-0 z-40 bg-gov-dark/98 backdrop-blur-xl pt-24 px-6 md:hidden flex flex-col items-center space-y-8'>
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className='text-2xl font-bold text-white/90 hover:text-gov-warning transition-colors'
-                onClick={() => setMobileMenuOpen(false)}>
-                {item.label}
-              </Link>
-            ))}
-            <div className='w-16 h-1 bg-white/10 rounded-full mt-8' />
+            className='fixed inset-0 z-40 pt-24 px-6 md:hidden flex flex-col items-center space-y-8'
+            style={{ backgroundColor: '#0F1A12' }}>
+            {navItems.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`text-2xl font-bold transition-colors ${
+                    isActive ? 'text-gov-gold' : 'text-gov-sage hover:text-gov-gold'
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}>
+                  {item.label}
+                </Link>
+              );
+            })}
+            <div className='w-16 h-1 bg-gov-sage/30 rounded-full mt-8' />
 
             {/* Mobile auth links */}
             {isAuthenticated ? (
               <>
                 <Link
                   href='/account'
-                  className='text-lg font-semibold text-gov-sage hover:text-gov-gold transition-colors'
+                  className='text-lg font-semibold text-gov-gold hover:text-gov-warning transition-colors'
                   onClick={() => setMobileMenuOpen(false)}>
                   My Account
                 </Link>
@@ -240,12 +246,12 @@ export default function Navigation() {
                   setMobileMenuOpen(false);
                   setAuthModalOpen(true);
                 }}
-                className='text-lg font-semibold text-gov-sage hover:text-gov-gold transition-colors'>
+                className='text-lg font-semibold text-gov-gold hover:text-gov-warning transition-colors'>
                 Sign In / Register
               </button>
             )}
 
-            <div className='text-white/40 text-sm font-medium uppercase tracking-widest'>
+            <div className='text-gov-sage/60 text-sm font-medium uppercase tracking-widest'>
               Republic of Kenya
             </div>
           </motion.div>

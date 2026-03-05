@@ -1,6 +1,8 @@
 'use client';
 
 import PageShell from '@/components/layout/PageShell';
+import PDFExportButton from '@/components/PDFExportButton';
+import WatchButton from '@/components/WatchButton';
 import { useCountyComprehensive } from '@/lib/react-query/useCounties';
 import { CountyComprehensive } from '@/types';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -1309,11 +1311,19 @@ export default function CountyDetailPage() {
                 {fmtLabel(data.economic_profile.economic_base)} economy
               </p>
             </div>
-            <GradeBadge
-              grade={data.financial_summary.grade}
-              score={data.financial_summary.health_score}
-              onClick={() => setShowHealthModal(true)}
-            />
+            <div className='flex items-center gap-3'>
+              <WatchButton itemType='county' itemId={countyId} label={`${data.name} County`} />
+              <PDFExportButton
+                compact
+                documentTitle={`${data.name} County Report`}
+                className='text-white/70 hover:text-white hover:bg-white/10'
+              />
+              <GradeBadge
+                grade={data.financial_summary.grade}
+                score={data.financial_summary.health_score}
+                onClick={() => setShowHealthModal(true)}
+              />
+            </div>
           </div>
 
           {/* Quick KPIs */}
