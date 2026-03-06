@@ -39,8 +39,8 @@ export default function PrivacyPolicyPage() {
         <p>
           This policy explains what data we collect, why, and how we protect it. If anything is
           unclear, email us at{' '}
-          <a href='mailto:hello@auditgava.com' className='text-gov-sage hover:underline'>
-            hello@auditgava.com
+          <a href='mailto:auditgava@gmail.com' className='text-gov-sage hover:underline'>
+            auditgava@gmail.com
           </a>
           .
         </p>
@@ -109,9 +109,9 @@ export default function PrivacyPolicyPage() {
       {/* ── Data storage ── */}
       <Section title='3. Where Your Data Is Stored'>
         <p>
-          Your data is stored securely using <strong>Supabase</strong> (PostgreSQL database hosted
-          on AWS) with encryption at rest and in transit. Our backend is hosted on{' '}
-          <strong>Render</strong> (EU-Central region) and our frontend on <strong>Vercel</strong>.
+          Your data is stored securely in a PostgreSQL database with encryption at rest and in
+          transit. Our infrastructure is hosted on industry-standard cloud platforms with data
+          centres in secure, audited facilities.
         </p>
         <p>
           Database access is restricted via Row Level Security (RLS) policies. No one — including
@@ -146,8 +146,8 @@ export default function PrivacyPolicyPage() {
             </li>
             <li>
               <strong>Delete your account</strong> and all associated data by contacting us at{' '}
-              <a href='mailto:hello@auditgava.com' className='text-gov-sage hover:underline'>
-                hello@auditgava.com
+              <a href='mailto:auditgava@gmail.com' className='text-gov-sage hover:underline'>
+                auditgava@gmail.com
               </a>
               .
             </li>
@@ -194,9 +194,9 @@ export default function PrivacyPolicyPage() {
         <p>
           Questions about this policy? Email{' '}
           <a
-            href='mailto:hello@auditgava.com'
+            href='mailto:auditgava@gmail.com'
             className='text-gov-sage hover:underline font-medium'>
-            hello@auditgava.com
+            auditgava@gmail.com
           </a>
         </p>
       </Section>

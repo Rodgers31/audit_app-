@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -1320,10 +1320,9 @@ export default function CountyExplorerPage() {
   const [selectedYear, setSelectedYear] = useState('2024/25');
   const [yearOpen, setYearOpen] = useState(false);
 
-  const { data: counties, isLoading, error } = useCounties({ fiscalYear: selectedYear });
+  const { data: counties, isLoading, error, refetch } = useCounties({ fiscalYear: selectedYear });
 
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
-  const [appliedFilters, setAppliedFilters] = useState<FilterState>(defaultFilters);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const [sortField, setSortField] = useState<SortField>('budget');
@@ -1349,8 +1348,8 @@ export default function CountyExplorerPage() {
     });
   }, []);
 
-  const handleApply = useCallback(() => {
-    setAppliedFilters({ ...filters });
+  // Apply sort when sortBy filter changes
+  useEffect(() => {
     const [sf, sd] = filters.sortBy.split('-');
     const fieldMap: Record<string, SortField> = {
       budget: 'budget',
@@ -1361,11 +1360,14 @@ export default function CountyExplorerPage() {
     };
     if (fieldMap[sf]) setSortField(fieldMap[sf]);
     if (sd === 'asc' || sd === 'desc') setSortDir(sd);
-  }, [filters]);
+  }, [filters.sortBy]);
+
+  const handleApply = useCallback(() => {
+    // Filters now apply immediately — this is a no-op kept for the sidebar interface
+  }, []);
 
   const handleReset = useCallback(() => {
     setFilters(defaultFilters);
-    setAppliedFilters(defaultFilters);
     setSortField('budget');
     setSortDir('desc');
   }, []);
@@ -1384,10 +1386,8 @@ export default function CountyExplorerPage() {
       list = list.filter((c) => getCountyRegion(c.name) === filters.region);
     }
 
-    if (appliedFilters.grades.length > 0) {
-      list = list.filter((c) =>
-        appliedFilters.grades.includes(gradeCategory(c.financial_health_score))
-      );
+    if (filters.grades.length > 0) {
+      list = list.filter((c) => filters.grades.includes(gradeCategory(c.financial_health_score)));
     }
 
     // Map-legend grade filter (applied independently of sidebar)
@@ -1395,12 +1395,12 @@ export default function CountyExplorerPage() {
       list = list.filter((c) => mapGrades.includes(gradeCategory(c.financial_health_score)));
     }
 
-    if (appliedFilters.auditStatuses.length > 0) {
-      list = list.filter((c) => appliedFilters.auditStatuses.includes(c.auditStatus ?? 'pending'));
+    if (filters.auditStatuses.length > 0) {
+      list = list.filter((c) => filters.auditStatuses.includes(c.auditStatus ?? 'pending'));
     }
 
-    if (appliedFilters.spendingRange[1] < 150) {
-      const maxB = appliedFilters.spendingRange[1] * 1e9;
+    if (filters.spendingRange[1] < 150) {
+      const maxB = filters.spendingRange[1] * 1e9;
       list = list.filter((c) => (c.totalBudget ?? c.budget ?? 0) <= maxB);
     }
 
@@ -1430,7 +1430,7 @@ export default function CountyExplorerPage() {
     });
 
     return list;
-  }, [counties, filters.search, filters.region, appliedFilters, mapGrades, sortField, sortDir]);
+  }, [counties, filters, mapGrades, sortField, sortDir]);
 
   // Export filtered data as CSV
   const handleExport = useCallback(() => {
@@ -1502,7 +1502,7 @@ export default function CountyExplorerPage() {
             <AlertTriangle size={40} className='mx-auto text-red-400 mb-3' />
             <p className='text-red-600 mb-4'>Failed to load county data</p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => refetch()}
               className='px-4 py-2 bg-gov-dark text-white rounded-lg text-sm'>
               Retry
             </button>

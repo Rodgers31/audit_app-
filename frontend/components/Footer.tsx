@@ -12,7 +12,7 @@ const FOOTER_LINKS = [
 const EXTERNAL_LINKS = [
   {
     label: 'Contact',
-    href: 'mailto:hello@auditgava.com',
+    href: 'mailto:auditgava@gmail.com',
     icon: Mail,
   },
 ];

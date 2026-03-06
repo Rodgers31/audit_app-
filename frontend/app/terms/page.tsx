@@ -66,18 +66,18 @@ export default function TermsPage() {
           </p>
           <p className='mt-2'>
             If you spot an inaccuracy, please{' '}
-            <a
+            {/* <a
               href='https://github.com/Rodgers31/audit_app/issues'
               target='_blank'
               rel='noopener noreferrer'
               className='text-gov-sage hover:underline font-medium'>
               report it on GitHub
-            </a>{' '}
-            or email{' '}
+            </a>{' '} */}
+            email{' '}
             <a
-              href='mailto:hello@auditgava.com'
+              href='mailto:auditgava@gmail.com'
               className='text-gov-sage hover:underline font-medium'>
-              hello@auditgava.com
+              auditgava@gmail.com
             </a>
             .
           </p>
@@ -91,7 +91,7 @@ export default function TermsPage() {
           <li>Research and understand Kenya&apos;s public finances</li>
           <li>Share data, charts, and insights with proper attribution</li>
           <li>Use data for journalism, academic research, or advocacy</li>
-          <li>Build upon our open-source code (see our GitHub license)</li>
+          {/* <li>Build upon our open-source code (see our GitHub license)</li> */}
         </ul>
         <p className='mt-2'>
           We encourage the widest possible use of this data for civic purposes.
@@ -119,8 +119,8 @@ export default function TermsPage() {
         </p>
         <p>
           You may delete your account at any time by contacting{' '}
-          <a href='mailto:hello@auditgava.com' className='text-gov-sage hover:underline'>
-            hello@auditgava.com
+          <a href='mailto:auditgava@gmail.com' className='text-gov-sage hover:underline'>
+            auditgava@gmail.com
           </a>
           . We will remove all associated personal data within 14 days.
         </p>
@@ -180,9 +180,9 @@ export default function TermsPage() {
         <p>
           Questions about these terms? Email{' '}
           <a
-            href='mailto:hello@auditgava.com'
+            href='mailto:auditgava@gmail.com'
             className='text-gov-sage hover:underline font-medium'>
-            hello@auditgava.com
+            auditgava@gmail.com
           </a>
         </p>
       </Section>

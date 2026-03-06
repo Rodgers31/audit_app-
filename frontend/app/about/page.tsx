@@ -102,11 +102,13 @@ export default function AboutPage() {
         </div>
         <div className='bg-gradient-to-r from-gov-sage/5 to-gov-gold/5 rounded-2xl p-6 border border-gov-sage/10'>
           <p className='text-neutral-text leading-relaxed text-[15px]'>
-            <strong className='text-gov-forest'>AuditGava</strong> (from the Swahili word{' '}
-            <em>"gava"</em> meaning government) is a civic technology platform that makes Kenya's
-            public finances accessible to every citizen. We aggregate audit reports, budget data,
-            debt figures, and economic indicators from official government sources — and present
-            them in plain language with clear visualisations.
+            <strong className='text-gov-forest'>AuditGava</strong> — <em>"Gava"</em> is Kenyan
+            Swahili slang for government, widely used in everyday conversation. We chose it because
+            this platform is built for everyday Kenyans, not policy insiders. AuditGava is a civic
+            technology platform that makes Kenya's public finances accessible to every citizen. We
+            aggregate audit reports, budget data, debt figures, and economic indicators from
+            official government sources — and present them in plain language with clear
+            visualisations.
           </p>
           <p className='text-neutral-muted leading-relaxed text-[15px] mt-3'>
             Our goal is simple: when citizens can see where public money goes, they can demand
@@ -234,12 +236,12 @@ export default function AboutPage() {
             <li className='text-neutral-text'>
               Email:{' '}
               <a
-                href='mailto:hello@auditgava.com'
+                href='mailto:auditgava@gmail.com'
                 className='text-gov-sage hover:underline font-medium'>
-                hello@auditgava.com
+                auditgava@gmail.com
               </a>
             </li>
-            <li className='text-neutral-text'>
+            {/* <li className='text-neutral-text'>
               GitHub Issues:{' '}
               <a
                 href='https://github.com/Rodgers31/audit_app/issues'
@@ -248,13 +250,13 @@ export default function AboutPage() {
                 className='text-gov-sage hover:underline font-medium'>
                 Report a bug or suggest a feature
               </a>
-            </li>
+            </li> */}
           </ul>
         </div>
       </section>
 
       {/* ── Legal links ── */}
-      <div className='flex flex-wrap gap-4 pt-2 text-xs text-neutral-muted'>
+      <div className='flex flex-wrap gap-4 pt-2 text-xs text-neutral-900'>
         <Link href='/privacy' className='hover:text-gov-sage transition-colors'>
           Privacy Policy
         </Link>
