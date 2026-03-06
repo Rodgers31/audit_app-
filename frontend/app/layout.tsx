@@ -31,6 +31,14 @@ export const metadata: Metadata = {
       "Track Kenya's national debt, county budgets, and government spending in real time.",
     url: 'https://auditgava.com',
     siteName: 'AuditGava',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1536,
+        height: 1024,
+        alt: 'AuditGava — Kenya Public Money Tracker',
+      },
+    ],
     locale: 'en_KE',
     type: 'website',
   },
@@ -39,6 +47,7 @@ export const metadata: Metadata = {
     title: 'AuditGava — Kenya Public Money Tracker',
     description:
       "Track Kenya's national debt, county budgets, and government spending in real time.",
+    images: ['/og-image.png'],
   },
 };
 
