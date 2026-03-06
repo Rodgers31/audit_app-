@@ -39,7 +39,7 @@ export default function PrivacyPolicyPage() {
         <p>
           This policy explains what data we collect, why, and how we protect it. If anything is
           unclear, email us at{' '}
-          <a href='mailto:hello@auditgava.com' className='text-gov-sage hover:underline'>
+          <a href='mailto:auditgava@gmail.com' className='text-gov-sage hover:underline'>
             auditgava@gmail.com
           </a>
           .
@@ -146,7 +146,7 @@ export default function PrivacyPolicyPage() {
             </li>
             <li>
               <strong>Delete your account</strong> and all associated data by contacting us at{' '}
-              <a href='mailto:hello@auditgava.com' className='text-gov-sage hover:underline'>
+              <a href='mailto:auditgava@gmail.com' className='text-gov-sage hover:underline'>
                 auditgava@gmail.com
               </a>
               .
@@ -194,7 +194,7 @@ export default function PrivacyPolicyPage() {
         <p>
           Questions about this policy? Email{' '}
           <a
-            href='mailto:hello@auditgava.com'
+            href='mailto:auditgava@gmail.com'
             className='text-gov-sage hover:underline font-medium'>
             auditgava@gmail.com
           </a>

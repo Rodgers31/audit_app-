@@ -358,8 +358,14 @@ export default function BudgetSpendingPage() {
     data: overview,
     isLoading: loadingOverview,
     isError: errorOverview,
+    refetch: refetchOverview,
   } = useBudgetOverview();
-  const { data: fiscal, isLoading: loadingFiscal, isError: errorFiscal } = useFiscalSummary();
+  const {
+    data: fiscal,
+    isLoading: loadingFiscal,
+    isError: errorFiscal,
+    refetch: refetchFiscal,
+  } = useFiscalSummary();
   const { data: enhanced, isLoading: loadingEnhanced } = useBudgetEnhanced();
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const closeSourcesModal = useCallback(() => setSourcesOpen(false), []);
@@ -502,7 +508,7 @@ export default function BudgetSpendingPage() {
       <PageShell
         title="Kenya's Budget & Spending"
         subtitle='Understanding how public funds are allocated and spent'>
-        <div className='flex items-center justify-center py-32'>
+        <div className='flex items-center justify-center py-32' role='status' aria-live='polite'>
           <Loader2 className='animate-spin text-gov-forest mr-3' size={28} />
           <span className='text-gray-500 text-lg'>Loading budget data…</span>
         </div>
@@ -517,7 +523,10 @@ export default function BudgetSpendingPage() {
           <AlertTriangle size={40} className='mx-auto text-red-400 mb-3' />
           <p className='text-red-600 mb-4'>Failed to load budget data. Please try again.</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              refetchOverview();
+              refetchFiscal();
+            }}
             className='px-4 py-2 bg-gov-dark text-white rounded-lg text-sm hover:bg-gov-dark/90 transition-colors'>
             Retry
           </button>

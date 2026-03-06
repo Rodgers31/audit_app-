@@ -158,9 +158,24 @@ function FiscalRow({
    ═══════════════════════════════════════════════════════ */
 
 export default function NationalDebtPage() {
-  const { data: overview, isLoading: ovLoading, isError: ovError } = useNationalDebtOverview();
-  const { data: loansResp, isLoading: loansLoading, isError: loansError } = useNationalLoans();
-  const { data: timelineResp, isLoading: tlLoading, isError: tlError } = useDebtTimeline();
+  const {
+    data: overview,
+    isLoading: ovLoading,
+    isError: ovError,
+    refetch: refetchOverview,
+  } = useNationalDebtOverview();
+  const {
+    data: loansResp,
+    isLoading: loansLoading,
+    isError: loansError,
+    refetch: refetchLoans,
+  } = useNationalLoans();
+  const {
+    data: timelineResp,
+    isLoading: tlLoading,
+    isError: tlError,
+    refetch: refetchTimeline,
+  } = useDebtTimeline();
   const { data: fiscalResp } = useFiscalSummary();
   const { data: pendingBillsData } = usePendingBills();
 
@@ -176,7 +191,8 @@ export default function NationalDebtPage() {
     const summary = api.summary || {};
     const categories = api.categories || {};
     const sustainability = api.debt_sustainability || {};
-    const population = 56_000_000;
+    // Kenya's 2024 census estimate; TODO: fetch from /api/v1/population when available
+    const population = api.population || 57_500_000;
     const perCapita = totalDebt > 0 ? totalDebt / population : 0;
 
     return {
@@ -264,8 +280,9 @@ export default function NationalDebtPage() {
   if (isLoading) {
     return (
       <PageShell title="Kenya's National Debt" subtitle='Loading comprehensive debt data...'>
-        <div className='flex items-center justify-center py-20'>
+        <div className='flex items-center justify-center py-20' role='status' aria-live='polite'>
           <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-gov-forest' />
+          <span className='sr-only'>Loading debt data…</span>
         </div>
       </PageShell>
     );
@@ -278,7 +295,11 @@ export default function NationalDebtPage() {
           <AlertTriangle size={40} className='mx-auto text-red-400 mb-3' />
           <p className='text-red-600 mb-4'>Failed to load debt data. Please try again.</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              refetchOverview();
+              refetchLoans();
+              refetchTimeline();
+            }}
             className='px-4 py-2 bg-gov-dark text-white rounded-lg text-sm hover:bg-gov-dark/90 transition-colors'>
             Retry
           </button>
@@ -1296,7 +1317,7 @@ export default function NationalDebtPage() {
       </motion.section>
 
       {/* Data source footer */}
-      <div className='text-center text-xs text-black-200 pt-4 border-t border-gray-100'>
+      <div className='text-center text-xs text-neutral-muted pt-4 border-t border-neutral-border'>
         Data sourced from the Central Bank of Kenya, National Treasury Public Debt Bulletins,
         Controller of Budget Reports, and the Budget Policy Statement. Last updated:{' '}
         {timelineResp?.last_updated || fiscalResp?.last_updated || '—'}

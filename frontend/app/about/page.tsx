@@ -236,7 +236,7 @@ export default function AboutPage() {
             <li className='text-neutral-text'>
               Email:{' '}
               <a
-                href='mailto:hello@auditgava.com'
+                href='mailto:auditgava@gmail.com'
                 className='text-gov-sage hover:underline font-medium'>
                 auditgava@gmail.com
               </a>

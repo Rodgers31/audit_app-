@@ -115,6 +115,9 @@ export default function Navigation() {
               <div className='relative' ref={userMenuRef}>
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  aria-haspopup='true'
+                  aria-expanded={userMenuOpen}
+                  aria-label='User menu'
                   className='w-10 h-10 rounded-full bg-gradient-to-br from-gov-sage to-gov-forest border-2 border-white/20 flex items-center justify-center shadow-lg overflow-hidden relative transition-transform hover:scale-105 active:scale-95'>
                   <span className='text-white font-bold text-sm'>
                     {(user.display_name || user.email)[0].toUpperCase()}
@@ -131,7 +134,9 @@ export default function Navigation() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className='absolute right-0 top-14 w-64 bg-gov-dark/95 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl overflow-hidden'>
+                      className='absolute right-0 top-14 w-64 bg-gov-dark/95 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl overflow-hidden'
+                      role='menu'
+                      aria-label='User menu'>
                       {/* User info */}
                       <div className='p-4 border-b border-white/10'>
                         <p className='text-white font-semibold text-sm truncate'>
@@ -190,7 +195,10 @@ export default function Navigation() {
 
             <button
               className='md:hidden p-2 text-white/90 hover:text-white bg-white/10 rounded-full backdrop-blur-md'
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-expanded={mobileMenuOpen}
+              aria-controls='mobile-menu'
+              aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}>
               {mobileMenuOpen ? <X className='w-6 h-6' /> : <Menu className='w-6 h-6' />}
             </button>
           </div>
@@ -201,6 +209,9 @@ export default function Navigation() {
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
+            id='mobile-menu'
+            role='navigation'
+            aria-label='Mobile navigation'
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}

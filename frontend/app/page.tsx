@@ -35,45 +35,46 @@ export default async function HomePage() {
   const queryClient = getQueryClient();
 
   // Prefetch all homepage data in parallel (server → backend is fast, same machine)
-  // AbortController ensures we don't block SSR beyond SSR_TIMEOUT_MS
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), SSR_TIMEOUT_MS);
-
+  // Uses Promise.allSettled so a single failing endpoint doesn't block others.
+  // If the backend is cold-sleeping, these will fail — React Query on the client
+  // will retry with loading skeletons.
   try {
-    await Promise.allSettled([
-      queryClient.prefetchQuery({
-        queryKey: ['debt', 'national-timeline'],
-        queryFn: () => getDebtTimeline(),
-      }),
-      queryClient.prefetchQuery({
-        queryKey: ['debt', 'national'],
-        queryFn: () => getNationalDebtOverview(),
-      }),
-      queryClient.prefetchQuery({
-        queryKey: ['fiscal', 'summary'],
-        queryFn: () => getFiscalSummary(),
-      }),
-      queryClient.prefetchQuery({
-        queryKey: ['audits', 'federal'],
-        queryFn: () => getFederalAudits(),
-      }),
-      queryClient.prefetchQuery({
-        queryKey: ['budget', 'national', undefined],
-        queryFn: () => getNationalBudgetSummary(),
-      }),
-      queryClient.prefetchQuery({
-        queryKey: ['debt', 'national-loans'],
-        queryFn: () => getNationalLoans(),
-      }),
-      queryClient.prefetchQuery({
-        queryKey: ['counties', 'filtered', undefined],
-        queryFn: () => getCounties(),
-      }),
+    await Promise.race([
+      Promise.allSettled([
+        queryClient.prefetchQuery({
+          queryKey: ['debt', 'national-timeline'],
+          queryFn: () => getDebtTimeline(),
+        }),
+        queryClient.prefetchQuery({
+          queryKey: ['debt', 'national'],
+          queryFn: () => getNationalDebtOverview(),
+        }),
+        queryClient.prefetchQuery({
+          queryKey: ['fiscal', 'summary'],
+          queryFn: () => getFiscalSummary(),
+        }),
+        queryClient.prefetchQuery({
+          queryKey: ['audits', 'federal'],
+          queryFn: () => getFederalAudits(),
+        }),
+        queryClient.prefetchQuery({
+          queryKey: ['budget', 'national', undefined],
+          queryFn: () => getNationalBudgetSummary(),
+        }),
+        queryClient.prefetchQuery({
+          queryKey: ['debt', 'national-loans'],
+          queryFn: () => getNationalLoans(),
+        }),
+        queryClient.prefetchQuery({
+          queryKey: ['counties', 'filtered', undefined],
+          queryFn: () => getCounties(),
+        }),
+      ]),
+      // Bail after SSR_TIMEOUT_MS so cold starts don't block page render
+      new Promise((resolve) => setTimeout(resolve, SSR_TIMEOUT_MS)),
     ]);
   } catch {
     // Timeout or other SSR error — client React Query will handle it
-  } finally {
-    clearTimeout(timeout);
   }
 
   return (

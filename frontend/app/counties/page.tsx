@@ -1320,7 +1320,7 @@ export default function CountyExplorerPage() {
   const [selectedYear, setSelectedYear] = useState('2024/25');
   const [yearOpen, setYearOpen] = useState(false);
 
-  const { data: counties, isLoading, error } = useCounties({ fiscalYear: selectedYear });
+  const { data: counties, isLoading, error, refetch } = useCounties({ fiscalYear: selectedYear });
 
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -1502,7 +1502,7 @@ export default function CountyExplorerPage() {
             <AlertTriangle size={40} className='mx-auto text-red-400 mb-3' />
             <p className='text-red-600 mb-4'>Failed to load county data</p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => refetch()}
               className='px-4 py-2 bg-gov-dark text-white rounded-lg text-sm'>
               Retry
             </button>

@@ -9,7 +9,10 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Kenya Public Money Tracker',
+  title: {
+    default: 'AuditGava — Kenya Public Money Tracker',
+    template: '%s | AuditGava',
+  },
   description: 'Where your taxes go, in real time — Government Financial Transparency Dashboard',
   keywords: [
     'government',
@@ -21,6 +24,22 @@ export const metadata: Metadata = {
     'national debt',
     'county finances',
   ],
+  metadataBase: new URL('https://auditgava.com'),
+  openGraph: {
+    title: 'AuditGava — Kenya Public Money Tracker',
+    description:
+      "Track Kenya's national debt, county budgets, and government spending in real time.",
+    url: 'https://auditgava.com',
+    siteName: 'AuditGava',
+    locale: 'en_KE',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'AuditGava — Kenya Public Money Tracker',
+    description:
+      "Track Kenya's national debt, county budgets, and government spending in real time.",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

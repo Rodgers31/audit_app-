@@ -75,7 +75,7 @@ export default function TermsPage() {
             </a>{' '} */}
             email{' '}
             <a
-              href='mailto:hello@auditgava.com'
+              href='mailto:auditgava@gmail.com'
               className='text-gov-sage hover:underline font-medium'>
               auditgava@gmail.com
             </a>
@@ -119,7 +119,7 @@ export default function TermsPage() {
         </p>
         <p>
           You may delete your account at any time by contacting{' '}
-          <a href='mailto:hello@auditgava.com' className='text-gov-sage hover:underline'>
+          <a href='mailto:auditgava@gmail.com' className='text-gov-sage hover:underline'>
             auditgava@gmail.com
           </a>
           . We will remove all associated personal data within 14 days.
@@ -180,7 +180,7 @@ export default function TermsPage() {
         <p>
           Questions about these terms? Email{' '}
           <a
-            href='mailto:hello@auditgava.com'
+            href='mailto:auditgava@gmail.com'
             className='text-gov-sage hover:underline font-medium'>
             auditgava@gmail.com
           </a>
