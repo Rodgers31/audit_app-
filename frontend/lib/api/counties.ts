@@ -52,7 +52,8 @@ interface BackendCountyResponse {
 
 // Transform backend county data to frontend County type
 const transformCountyData = (bc: BackendCountyResponse): County => {
-  const coordinates: [number, number] = bc.coordinates || [36.8219, -1.2921];
+  // Use real coordinates from backend; undefined if not provided (do not default to Nairobi)
+  const coordinates: [number, number] | undefined = bc.coordinates || undefined;
   const budget = bc.total_budget || bc.budget_2025 || 0;
   const debt = bc.total_debt || bc.debt || 0;
 

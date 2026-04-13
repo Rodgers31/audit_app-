@@ -105,6 +105,20 @@ class SourceRegistry:
                         "/quarterly-reviews/",
                     ],
                 },
+                {
+                    "source_id": "kenya_parliament",
+                    "name": "Kenya Parliament Digital Library",
+                    "base_url": "https://libraryir.parliament.go.ke",
+                    "source_type": "parliament",
+                    "description": "DSpace 7 digital repository — Auditor-General reports, committee reports, Hansards, Bills and Acts tabled in Parliament",
+                    "update_frequency": "ongoing",
+                    "api_endpoint": "/server/api",
+                    "document_patterns": [
+                        "/server/api/core/communities",
+                        "/server/api/core/items",
+                        "/server/api/discover/search/objects",
+                    ],
+                },
             ]
 
             # Add Kenya sources to registry

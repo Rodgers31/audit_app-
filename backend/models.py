@@ -26,6 +26,12 @@ class EntityType(enum.Enum):
     MINISTRY = "ministry"
     AGENCY = "agency"
     MUNICIPALITY = "municipality"
+    STATE_CORPORATION = "state_corporation"
+    JUDICIARY = "judiciary"
+    COMMISSION = "commission"
+    FUND = "fund"
+    CONSTITUENCY = "constituency"
+    SUB_COUNTY = "sub_county"
 
 
 class DebtCategory(enum.Enum):
@@ -767,6 +773,186 @@ class RevenueBySource(Base):
     source_document_id = Column(
         Integer, ForeignKey("source_documents.id"), nullable=True
     )
+    meta = Column("metadata", JSONB, default=dict)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    # Relationships
+    source_document = relationship("SourceDocument")
+
+
+# ===== Parliament & Accountability Expansion Models =====
+
+
+class ParliamentDocType(enum.Enum):
+    """Classification of Parliament library documents."""
+
+    AUDIT_REPORT = "audit_report"
+    COMMITTEE_REPORT = "committee_report"
+    BUDGET_ESTIMATE = "budget_estimate"
+    GREEN_BOOK = "green_book"
+    HANSARD = "hansard"
+    BILL = "bill"
+    ACT = "act"
+    POLICY_DOCUMENT = "policy_document"
+    OTHER = "other"
+
+
+class AuditOpinion(enum.Enum):
+    """Standardised OAG audit opinions."""
+
+    UNQUALIFIED = "unqualified"
+    QUALIFIED = "qualified"
+    ADVERSE = "adverse"
+    DISCLAIMER = "disclaimer"
+
+
+class FiscalYear(Base):
+    """Canonical fiscal year reference table.
+
+    Kenya's fiscal year runs July 1 - June 30.
+    This complements FiscalPeriod but is simpler and keyed on the 'YYYY/YY' label.
+    """
+
+    __tablename__ = "fiscal_years"
+
+    id = Column(Integer, primary_key=True, index=True)
+    label = Column(
+        String(20), unique=True, nullable=False, index=True
+    )  # e.g. "2023/24"
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=False)
+    is_current = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class CountyOrgUnit(Base):
+    """Sub-county administrative units within a county entity.
+
+    Enables linking audit findings to wards, sub-counties, or specific
+    county departments when reports provide that granularity.
+    """
+
+    __tablename__ = "county_org_units"
+    __table_args__ = (
+        UniqueConstraint("entity_id", "name", name="uq_county_org_entity_name"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    entity_id = Column(
+        Integer, ForeignKey("entities.id"), nullable=False, index=True
+    )  # parent county entity
+    name = Column(String(200), nullable=False)
+    unit_type = Column(
+        String(50), nullable=False, default="sub_county"
+    )  # sub_county | ward | department
+    code = Column(String(20), nullable=True)
+    meta = Column("metadata", JSONB, default=dict)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    entity = relationship("Entity")
+
+
+class Constituency(Base):
+    """National Assembly constituencies, each linked to a parent county.
+
+    Useful for mapping constituency-level audit findings and budget allocations
+    (e.g. CDF / NG-CDF disbursements).
+    """
+
+    __tablename__ = "constituencies"
+    __table_args__ = (
+        UniqueConstraint("name", name="uq_constituency_name"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False)
+    code = Column(String(20), nullable=True, unique=True, index=True)
+    county_entity_id = Column(
+        Integer, ForeignKey("entities.id"), nullable=False, index=True
+    )  # parent county
+    population = Column(Integer, nullable=True)
+    registered_voters = Column(Integer, nullable=True)
+    meta = Column("metadata", JSONB, default=dict)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    county_entity = relationship("Entity")
+
+
+class NationalEntity(Base):
+    """Extended detail for national-level audited entities
+    (state corporations, commissions, funds, etc.).
+
+    These are entities that appear in OAG audit reports but are not counties
+    or ministries.  Linking them here provides richer metadata for resolution.
+    """
+
+    __tablename__ = "national_entities"
+    __table_args__ = (
+        UniqueConstraint("entity_id", name="uq_national_entity"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    entity_id = Column(
+        Integer, ForeignKey("entities.id"), nullable=False, unique=True, index=True
+    )
+    parent_ministry_entity_id = Column(
+        Integer, ForeignKey("entities.id"), nullable=True
+    )
+    establishment_act = Column(String(300), nullable=True)
+    website = Column(String(300), nullable=True)
+    category = Column(
+        String(50), nullable=True
+    )  # commercial | regulatory | executive_agency | constitutional_commission
+    meta = Column("metadata", JSONB, default=dict)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    entity = relationship("Entity", foreign_keys=[entity_id])
+    parent_ministry = relationship("Entity", foreign_keys=[parent_ministry_entity_id])
+
+
+class ParliamentSourceDocument(Base):
+    """Parliament-specific metadata extension for source_documents.
+
+    Rather than widening the source_documents table directly, this is a
+    companion table linked 1:1 via source_document_id.  It stores DSpace
+    metadata, committee references, and tabling dates.
+    """
+
+    __tablename__ = "parliament_source_documents"
+    __table_args__ = (
+        UniqueConstraint("source_document_id", name="uq_parliament_src_doc"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    source_document_id = Column(
+        Integer, ForeignKey("source_documents.id"), nullable=False, unique=True, index=True
+    )
+    dspace_uuid = Column(String(64), nullable=True, unique=True, index=True)
+    dspace_handle = Column(String(100), nullable=True)
+    collection_uuid = Column(String(64), nullable=True)
+    community_uuid = Column(String(64), nullable=True)
+    parliament_doc_type = Column(
+        Enum(ParliamentDocType, values_callable=lambda e: [x.value for x in e]),
+        nullable=True,
+    )
+    tabling_date = Column(DateTime, nullable=True)
+    fiscal_year_label = Column(String(20), nullable=True)  # e.g. "2022/23"
+    committee_name = Column(String(200), nullable=True)
+    entity_table = Column(String(50), nullable=True)  # polymorphic ref: "entities" etc.
+    entity_ref_id = Column(Integer, nullable=True)  # polymorphic FK
+    audit_opinion = Column(
+        Enum(AuditOpinion, values_callable=lambda e: [x.value for x in e]),
+        nullable=True,
+    )
+    confidence_score = Column(Numeric(3, 2), nullable=True)
     meta = Column("metadata", JSONB, default=dict)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(

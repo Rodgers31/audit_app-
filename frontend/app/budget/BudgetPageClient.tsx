@@ -1,6 +1,7 @@
 'use client';
 
 import DataFreshnessBadge from '@/components/DataFreshnessBadge';
+import DataIntegrityBanner from '@/components/DataIntegrityBanner';
 import PageShell from '@/components/layout/PageShell';
 import PDFExportButton from '@/components/PDFExportButton';
 import { useBudgetEnhanced, useBudgetOverview } from '@/lib/react-query';
@@ -552,6 +553,14 @@ export default function BudgetSpendingPage() {
       {/* ── Data freshness banner ── */}
       <DataFreshnessBadge sources="COB/Treasury" variant="banner" />
 
+      {/* ── Empty data integrity warning ── */}
+      {!overview && !fiscal && (
+        <DataIntegrityBanner
+          message="Budget data returned empty from the backend. Figures below may show zeros or dashes instead of real values."
+          severity="warning"
+        />
+      )}
+
       {/* ── Data Sources Modal ── */}
       <DataSourcesModal open={sourcesOpen} onClose={closeSourcesModal} />
 
@@ -657,6 +666,7 @@ export default function BudgetSpendingPage() {
       </motion.section>
 
       {/* ═══ Section 3 — Budget Growth Timeline ═══ */}
+      {budgetTrendData.length > 0 && (
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -712,6 +722,7 @@ export default function BudgetSpendingPage() {
           </div>
         </div>
       </motion.section>
+      )}
 
       {/* ═══ Section 4 — Where Revenue Comes From ═══ */}
       {latestRevenueYear && revenuePieData.length > 0 && (
