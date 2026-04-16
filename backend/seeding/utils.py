@@ -79,7 +79,7 @@ def load_json_resource(
             # The path may include a "backend/" prefix while CWD is already
             # backend/, or vice-versa. Try common alternatives before failing.
             alternatives = [
-                Path("backend") / path,        # CWD is repo root
+                Path("backend") / path,  # CWD is repo root
                 Path(str(path).removeprefix("backend/")),  # CWD is backend/
                 Path(__file__).resolve().parent.parent / path,  # relative to backend/
             ]
@@ -134,4 +134,36 @@ def compute_hash(payload: Any) -> str:
     return hashlib.sha256(normalized).hexdigest()
 
 
-__all__ = ["parse_rate_limit", "load_json_resource", "compute_hash"]
+import re as _re
+
+_FY_PATTERN = _re.compile(r"^(?:FY\s*)?(\d{4})[/\-](\d{2,4})$")
+
+
+def normalize_fiscal_label(raw: str) -> str:
+    """Normalise any fiscal-year string to the canonical ``FY{YYYY}/{YY}`` form.
+
+    Accepted inputs and their canonical output::
+
+        "FY2023/24"   -> "FY2023/24"
+        "FY 2024/25"  -> "FY2024/25"
+        "2023/2024"   -> "FY2023/24"
+        "2022/2023"   -> "FY2022/23"
+        "FY2025/26"   -> "FY2025/26"
+
+    Raises ``ValueError`` for strings that cannot be parsed.
+    """
+    m = _FY_PATTERN.match(raw.strip())
+    if not m:
+        raise ValueError(f"Cannot normalise fiscal label: {raw!r}")
+    start_year = int(m.group(1))
+    end_raw = m.group(2)
+    end_short = int(end_raw) % 100
+    return f"FY{start_year}/{end_short:02d}"
+
+
+__all__ = [
+    "parse_rate_limit",
+    "load_json_resource",
+    "compute_hash",
+    "normalize_fiscal_label",
+]

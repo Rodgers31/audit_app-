@@ -1,15 +1,30 @@
 'use client';
 
+import InfoTip from '@/components/InfoTip';
+import { useDebtTimeline } from '@/lib/react-query';
 import { motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
-import InfoTip from '@/components/InfoTip';
 
 /**
  * Zone 3: Floating metrics surface — overlaps the hero.
  * Semi-transparent surface with Total Debt, Risk Level, and Kenya map preview.
- * This surface is NOT a card — it bleeds across zone boundaries.
+ * Data sourced from GET /debt/timeline.
  */
 export default function MetricsStrip() {
+  const { data, isLoading } = useDebtTimeline();
+
+  const latestEntry = data?.timeline?.[data.timeline.length - 1];
+  const totalDebt = latestEntry?.total ?? 0;
+  const debtToGdp = latestEntry?.gdp_ratio ?? 0;
+  const latestYear = latestEntry?.year ?? '';
+
+  // Format debt for hero display: "11.5" + "T" or "850" + "B"
+  const debtTrillions = totalDebt / 1000;
+  const heroValue = debtTrillions >= 1 ? debtTrillions.toFixed(1) : totalDebt.toFixed(0);
+  const heroUnit = debtTrillions >= 1 ? 'T' : 'B';
+
+  const riskLevel = debtToGdp >= 55 ? 'High Risk' : debtToGdp >= 30 ? 'Moderate' : 'Low Risk';
+
   return (
     <div className='relative z-20 max-w-dashboard mx-auto px-4 sm:px-6 lg:px-8 -mt-[14vh]'>
       <motion.div
@@ -27,13 +42,18 @@ export default function MetricsStrip() {
                 <div className='flex items-center gap-2 mb-1'>
                   <span className='text-2xl'>🇰🇪</span>
                   <span className='text-xs font-medium text-neutral-muted uppercase tracking-widest'>
-                    Total Debt as of 2024
+                    {isLoading ? 'Loading…' : `Total Debt as of ${latestYear}`}
                   </span>
                   <InfoTip term='debt-to-gdp' size={11} />
                 </div>
-                <span className='metric-hero text-gov-dark'>
-                  11.5<span className='text-4xl md:text-5xl ml-1'>T</span>
-                </span>
+                {isLoading ? (
+                  <div className='h-16 w-40 bg-neutral-200 rounded animate-pulse' />
+                ) : (
+                  <span className='metric-hero text-gov-dark'>
+                    {heroValue}
+                    <span className='text-4xl md:text-5xl ml-1'>{heroUnit}</span>
+                  </span>
+                )}
               </div>
 
               {/* Divider */}
@@ -47,13 +67,19 @@ export default function MetricsStrip() {
                   </span>
                   <InfoTip term='debt-sustainability' size={11} />
                 </div>
-                <div className='flex items-end gap-3'>
-                  <span className='metric-large text-gov-dark'>74%</span>
-                  <span className='pill-risk mb-1'>
-                    <AlertTriangle className='w-3.5 h-3.5' />
-                    High Risk
-                  </span>
-                </div>
+                {isLoading ? (
+                  <div className='h-12 w-32 bg-neutral-200 rounded animate-pulse' />
+                ) : (
+                  <div className='flex items-end gap-3'>
+                    <span className='metric-large text-gov-dark'>{Math.round(debtToGdp)}%</span>
+                    {debtToGdp >= 55 && (
+                      <span className='pill-risk mb-1'>
+                        <AlertTriangle className='w-3.5 h-3.5' />
+                        {riskLevel}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

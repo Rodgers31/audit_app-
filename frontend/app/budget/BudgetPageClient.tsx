@@ -6,6 +6,7 @@ import PageShell from '@/components/layout/PageShell';
 import PDFExportButton from '@/components/PDFExportButton';
 import { useBudgetEnhanced, useBudgetOverview } from '@/lib/react-query';
 import { useFiscalSummary } from '@/lib/react-query/useFiscal';
+import { fmtBillionKES, fmtKES, getCurrentFiscalYear } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import {
   Activity,
@@ -61,20 +62,7 @@ import {
    Helpers
    ═══════════════════════════════════════════════════════ */
 
-function fmtKES(val: number): string {
-  if (!val || val === 0) return 'KES 0';
-  const abs = Math.abs(val);
-  if (abs >= 1e12) return `KES ${(val / 1e12).toFixed(2)}T`;
-  if (abs >= 1e9) return `KES ${(val / 1e9).toFixed(1)}B`;
-  if (abs >= 1e6) return `KES ${(val / 1e6).toFixed(1)}M`;
-  return `KES ${val.toLocaleString()}`;
-}
-
-function fmtB(val: number): string {
-  if (!val) return '—';
-  if (val >= 1000) return `${(val / 1000).toFixed(2)}T`;
-  return `${val.toFixed(0)}B`;
-}
+// fmtKES and fmtBillionKES imported from @/lib/utils
 
 function pct(val: number): string {
   if (val === undefined || val === null) return '—';
@@ -343,7 +331,7 @@ function ChartTooltip({ active, payload, label }: any) {
         <p key={i} style={{ color: p.color }} className='flex justify-between gap-4'>
           <span>{p.name}:</span>
           <span className='font-medium'>
-            {typeof p.value === 'number' ? fmtB(p.value) : p.value}
+            {typeof p.value === 'number' ? fmtBillionKES(p.value) : p.value}
           </span>
         </p>
       ))}
@@ -384,8 +372,13 @@ export default function BudgetSpendingPage() {
   const fiscalHistory = useMemo(
     () =>
       fiscalHistoryRaw.filter((f: any) =>
-        [f.appropriated_budget, f.total_revenue, f.total_borrowing, f.debt_service_cost, f.county_allocation]
-          .some((v) => v != null && v > 0)
+        [
+          f.appropriated_budget,
+          f.total_revenue,
+          f.total_borrowing,
+          f.debt_service_cost,
+          f.county_allocation,
+        ].some((v) => v != null && v > 0)
       ),
     [fiscalHistoryRaw]
   );
@@ -551,13 +544,13 @@ export default function BudgetSpendingPage() {
       title="Kenya's Budget & Spending"
       subtitle='How public funds are allocated, spent, and tracked across sectors and counties'>
       {/* ── Data freshness banner ── */}
-      <DataFreshnessBadge sources="COB/Treasury" variant="banner" />
+      <DataFreshnessBadge sources='COB/Treasury' variant='banner' />
 
       {/* ── Empty data integrity warning ── */}
       {!overview && !fiscal && (
         <DataIntegrityBanner
-          message="Budget data returned empty from the backend. Figures below may show zeros or dashes instead of real values."
-          severity="warning"
+          message='Budget data returned empty from the backend. Figures below may show zeros or dashes instead of real values.'
+          severity='warning'
         />
       )}
 
@@ -586,21 +579,21 @@ export default function BudgetSpendingPage() {
           <StatCard
             icon={DollarSign}
             label='Total Budget'
-            value={fmtB(activeData.appropriated_budget)}
+            value={fmtBillionKES(activeData.appropriated_budget)}
             sub={activeFY ?? ''}
             delay={0}
           />
           <StatCard
             icon={TrendingUp}
             label='Total Revenue'
-            value={fmtB(activeData.total_revenue)}
-            sub={`Tax: ${fmtB(activeData.tax_revenue)}`}
+            value={fmtBillionKES(activeData.total_revenue)}
+            sub={`Tax: ${fmtBillionKES(activeData.tax_revenue)}`}
             delay={0.08}
           />
           <StatCard
             icon={Landmark}
             label='Borrowing'
-            value={fmtB(activeData.total_borrowing)}
+            value={fmtBillionKES(activeData.total_borrowing)}
             sub={`${pct(activeData.borrowing_pct_of_budget)} of budget`}
             delay={0.16}
           />
@@ -650,7 +643,7 @@ export default function BudgetSpendingPage() {
             ].map(({ label, key }) => (
               <div key={key} className='bg-gray-50 rounded-lg p-3'>
                 <p className='text-xs text-gray-500 mb-1'>{label}</p>
-                <p className='text-lg font-bold text-gray-900'>{fmtB(activeData[key])}</p>
+                <p className='text-lg font-bold text-gray-900'>{fmtBillionKES(activeData[key])}</p>
                 {prevData[key] != null && (
                   <div className='mt-1'>
                     <ChangeIndicator current={activeData[key]} previous={prevData[key]} />
@@ -667,61 +660,66 @@ export default function BudgetSpendingPage() {
 
       {/* ═══ Section 3 — Budget Growth Timeline ═══ */}
       {budgetTrendData.length > 0 && (
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ delay: 0.1, duration: 0.5 }}>
-        <div className='bg-white rounded-xl border border-gray-100 p-5'>
-          <h2 className='text-lg font-bold text-gray-900 mb-1'>Budget, Revenue & Borrowing</h2>
-          <p className='text-sm text-gray-500 mb-5'>
-            KES Billions — how the budget gap is financed
-          </p>
-          <div className='h-72' role="img" aria-label="Area chart showing Kenya's budget, revenue, and borrowing trends over time in KES Billions">
-            <ResponsiveContainer width='100%' height='100%'>
-              <AreaChart data={budgetTrendData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
-                <defs>
-                  <linearGradient id='gBudget' x1='0' y1='0' x2='0' y2='1'>
-                    <stop offset='5%' stopColor='#1a5632' stopOpacity={0.25} />
-                    <stop offset='95%' stopColor='#1a5632' stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id='gRevenue' x1='0' y1='0' x2='0' y2='1'>
-                    <stop offset='5%' stopColor='#3b82f6' stopOpacity={0.25} />
-                    <stop offset='95%' stopColor='#3b82f6' stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray='3 3' stroke='#f0f0f0' />
-                <XAxis dataKey='year' tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}B`} />
-                <Tooltip content={<ChartTooltip />} />
-                <Legend iconType='circle' wrapperStyle={{ fontSize: 13 }} />
-                <Area
-                  type='monotone'
-                  dataKey='Budget'
-                  stroke='#1a5632'
-                  fill='url(#gBudget)'
-                  strokeWidth={2}
-                />
-                <Area
-                  type='monotone'
-                  dataKey='Revenue'
-                  stroke='#3b82f6'
-                  fill='url(#gRevenue)'
-                  strokeWidth={2}
-                />
-                <Area
-                  type='monotone'
-                  dataKey='Borrowing'
-                  stroke='#ef4444'
-                  fill='none'
-                  strokeWidth={2}
-                  strokeDasharray='5 5'
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.1, duration: 0.5 }}>
+          <div className='bg-white rounded-xl border border-gray-100 p-5'>
+            <h2 className='text-lg font-bold text-gray-900 mb-1'>Budget, Revenue & Borrowing</h2>
+            <p className='text-sm text-gray-500 mb-5'>
+              KES Billions — how the budget gap is financed
+            </p>
+            <div
+              className='h-72'
+              role='img'
+              aria-label="Area chart showing Kenya's budget, revenue, and borrowing trends over time in KES Billions">
+              <ResponsiveContainer width='100%' height='100%'>
+                <AreaChart
+                  data={budgetTrendData}
+                  margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+                  <defs>
+                    <linearGradient id='gBudget' x1='0' y1='0' x2='0' y2='1'>
+                      <stop offset='5%' stopColor='#1a5632' stopOpacity={0.25} />
+                      <stop offset='95%' stopColor='#1a5632' stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id='gRevenue' x1='0' y1='0' x2='0' y2='1'>
+                      <stop offset='5%' stopColor='#3b82f6' stopOpacity={0.25} />
+                      <stop offset='95%' stopColor='#3b82f6' stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray='3 3' stroke='#f0f0f0' />
+                  <XAxis dataKey='year' tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}B`} />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Legend iconType='circle' wrapperStyle={{ fontSize: 13 }} />
+                  <Area
+                    type='monotone'
+                    dataKey='Budget'
+                    stroke='#1a5632'
+                    fill='url(#gBudget)'
+                    strokeWidth={2}
+                  />
+                  <Area
+                    type='monotone'
+                    dataKey='Revenue'
+                    stroke='#3b82f6'
+                    fill='url(#gRevenue)'
+                    strokeWidth={2}
+                  />
+                  <Area
+                    type='monotone'
+                    dataKey='Borrowing'
+                    stroke='#ef4444'
+                    fill='none'
+                    strokeWidth={2}
+                    strokeDasharray='5 5'
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
-      </motion.section>
+        </motion.section>
       )}
 
       {/* ═══ Section 4 — Where Revenue Comes From ═══ */}
@@ -1007,7 +1005,10 @@ export default function BudgetSpendingPage() {
         transition={{ delay: 0.1, duration: 0.5 }}>
         <div className='bg-white rounded-xl border border-gray-100 p-5'>
           <h2 className='text-lg font-bold text-gray-900 mb-1'>Where the Money Goes</h2>
-          <p className='text-sm text-gray-500 mb-5'>Sector allocation from county budget lines</p>
+          <p className='text-sm text-gray-500 mb-5'>
+            Sector allocation from county budget lines
+            {overview?.fiscal_period ? ` — ${overview.fiscal_period}` : ''}
+          </p>
 
           <div className='grid lg:grid-cols-2 gap-6'>
             {/* Pie chart */}
@@ -1320,7 +1321,9 @@ export default function BudgetSpendingPage() {
                 <div className='w-3 h-3 rounded-sm bg-gov-forest/60' />
                 <span>Spent</span>
               </div>
-              <span className='ml-auto'>Source: Controller of Budget, FY 2023/24</span>
+              <span className='ml-auto'>
+                Source: Controller of Budget, FY {getCurrentFiscalYear()}
+              </span>
             </div>
           </div>
         </motion.section>
@@ -1337,7 +1340,10 @@ export default function BudgetSpendingPage() {
           <p className='text-sm text-gray-500 mb-5'>
             Recurrent vs development vs county allocation — KES Billions
           </p>
-          <div className='h-72' role="img" aria-label="Bar chart showing recurrent versus development versus county allocation spending mix over time">
+          <div
+            className='h-72'
+            role='img'
+            aria-label='Bar chart showing recurrent versus development versus county allocation spending mix over time'>
             <ResponsiveContainer width='100%' height='100%'>
               <BarChart data={spendingMixData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray='3 3' stroke='#f0f0f0' />
@@ -1544,7 +1550,7 @@ export default function BudgetSpendingPage() {
                 <h4 className='text-sm font-semibold text-gray-800 mb-1'>Budget Size</h4>
                 <p className='text-xs text-gray-600 leading-relaxed'>
                   The {activeFY} national budget stands at KES{' '}
-                  {fmtB(activeData.appropriated_budget)}, with{' '}
+                  {fmtBillionKES(activeData.appropriated_budget)}, with{' '}
                   {pct(
                     ((activeData.recurrent_spending ?? 0) / (activeData.appropriated_budget ?? 1)) *
                       100
@@ -1563,9 +1569,10 @@ export default function BudgetSpendingPage() {
               <div className='bg-gray-50 rounded-lg p-4'>
                 <h4 className='text-sm font-semibold text-gray-800 mb-1'>Borrowing Gap</h4>
                 <p className='text-xs text-gray-600 leading-relaxed'>
-                  Revenue covers KES {fmtB(activeData.total_revenue)} of the budget. The remaining
-                  KES {fmtB(activeData.total_borrowing)} ({pct(activeData.borrowing_pct_of_budget)})
-                  is financed through borrowing — both domestic and external.
+                  Revenue covers KES {fmtBillionKES(activeData.total_revenue)} of the budget. The
+                  remaining KES {fmtBillionKES(activeData.total_borrowing)} (
+                  {pct(activeData.borrowing_pct_of_budget)}) is financed through borrowing — both
+                  domestic and external.
                 </p>
               </div>
             )}

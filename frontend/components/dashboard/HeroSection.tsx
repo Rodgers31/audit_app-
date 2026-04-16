@@ -3,15 +3,13 @@
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useDebtTimeline, useNationalDebtOverview } from '@/lib/react-query/useDebt';
 import { useFiscalSummary } from '@/lib/react-query/useFiscal';
+import { fmtBillionKES } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import DebtExplainerModal from './DebtExplainerModal';
 
 /* ── Formatting helpers ── */
-function fmtB(val: number): string {
-  if (val >= 1000) return `KES ${(val / 1000).toFixed(2)}T`;
-  return `KES ${val}B`;
-}
+// fmtBillionKES imported from @/lib/utils — expects billions input (FiscalSummary data)
 
 /**
  * Dashboard Hero — full hero zone with title + 3-container card layout.
@@ -227,14 +225,14 @@ export function KenyanGovCard() {
             <div className='grid grid-cols-2 gap-2'>
               <StatMiniCard
                 label='Budget'
-                value={fmtB(fy.appropriated_budget)}
+                value={fmtBillionKES(fy.appropriated_budget)}
                 sub={fy.fiscal_year}
                 color='forest'
                 icon='📊'
               />
               <StatMiniCard
                 label='Revenue'
-                value={fmtB(fy.total_revenue)}
+                value={fmtBillionKES(fy.total_revenue)}
                 sub='Tax + non-tax'
                 color='teal'
                 icon='💰'
@@ -245,7 +243,7 @@ export function KenyanGovCard() {
             <div className='grid grid-cols-2 gap-2'>
               <StatMiniCard
                 label='Borrowed'
-                value={fmtB(fy.total_borrowing)}
+                value={fmtBillionKES(fy.total_borrowing)}
                 sub={`${fy.borrowing_pct_of_budget}% of budget`}
                 color='copper'
                 icon='📉'
@@ -253,7 +251,7 @@ export function KenyanGovCard() {
               />
               <StatMiniCard
                 label='Debt Service'
-                value={fmtB(fy.debt_service_cost)}
+                value={fmtBillionKES(fy.debt_service_cost)}
                 sub={`${fy.debt_service_per_shilling}¢/KES`}
                 color='gold'
                 icon='⚖️'

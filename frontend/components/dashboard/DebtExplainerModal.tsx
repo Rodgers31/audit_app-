@@ -1,5 +1,6 @@
 'use client';
 
+import { usePendingBillsSummary } from '@/lib/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Info, X } from 'lucide-react';
 import { useState } from 'react';
@@ -20,6 +21,11 @@ interface Props {
 
 export default function DebtExplainerModal({ context, className = '' }: Props) {
   const [open, setOpen] = useState(false);
+  const { data: pendingData } = usePendingBillsSummary();
+
+  const pendingBillsLabel = pendingData?.total_pending_amount
+    ? `≈ ${Math.round(pendingData.total_pending_amount)} B`
+    : '—';
 
   return (
     <>
@@ -123,10 +129,11 @@ export default function DebtExplainerModal({ context, className = '' }: Props) {
                   </p>
                   <ul className='list-disc list-inside space-y-0.5 text-sm'>
                     <li>
-                      <strong>Pending bills</strong> (≈ 568 B) — unpaid government invoices
+                      <strong>Pending bills</strong> ({pendingBillsLabel}) — unpaid government
+                      invoices
                     </li>
                     <li>
-                      <strong>County-guaranteed debt</strong> (≈ 45 B)
+                      <strong>County-guaranteed debt</strong>
                     </li>
                     <li>
                       <strong>Projection vs. actuals</strong> — the headline figure projects to

@@ -3,6 +3,7 @@
 import DataFreshnessBadge from '@/components/DataFreshnessBadge';
 import InfoTip from '@/components/InfoTip';
 import { useCounties } from '@/lib/react-query';
+import { generateFiscalYears, getCurrentFiscalYear } from '@/lib/utils';
 import { County } from '@/types';
 import { motion } from 'framer-motion';
 import {
@@ -293,7 +294,9 @@ function KPICards({ counties }: { counties: County[] }) {
           <div className='text-2xl font-bold text-gray-900 tracking-tight'>
             KES {fmtKES(stats.totalBudget)}
           </div>
-          <div className='text-[11px] text-gray-400 font-medium mt-0.5'>Year-over-year change not available</div>
+          <div className='text-[11px] text-gray-400 font-medium mt-0.5'>
+            Year-over-year change not available
+          </div>
         </div>
         <Sparkline seed={42} positive />
       </Link>
@@ -307,7 +310,9 @@ function KPICards({ counties }: { counties: County[] }) {
           <div className='text-2xl font-bold text-gray-900 tracking-tight'>
             KES {fmtKES(stats.totalDebt)}
           </div>
-          <div className='text-[11px] text-gray-400 font-medium mt-0.5'>Year-over-year change not available</div>
+          <div className='text-[11px] text-gray-400 font-medium mt-0.5'>
+            Year-over-year change not available
+          </div>
         </div>
         <Sparkline seed={99} positive={false} />
       </Link>
@@ -317,7 +322,9 @@ function KPICards({ counties }: { counties: County[] }) {
         className='bg-white/40 backdrop-blur-xl rounded-2xl p-5 shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/50 flex items-center justify-between hover:shadow-lg hover:scale-[1.02] transition-all cursor-pointer'
         title='See county rankings below'>
         <div>
-          <div className='text-xs font-medium text-gray-500 mb-1'>Avg. Execution Rate <InfoTip term='budget-execution' size={11} /></div>
+          <div className='text-xs font-medium text-gray-500 mb-1'>
+            Avg. Execution Rate <InfoTip term='budget-execution' size={11} />
+          </div>
           <div className='text-2xl font-bold text-gray-900 tracking-tight'>
             {stats.avgExec.toFixed(0)}%
           </div>
@@ -1317,8 +1324,8 @@ function CountyRankingsTable({
 
 export default function CountyExplorerPage() {
   // Year dropdown state (must be declared before useCounties which depends on it)
-  const YEARS = ['2025/26', '2024/25', '2023/24', '2022/23'];
-  const [selectedYear, setSelectedYear] = useState('2024/25');
+  const YEARS = generateFiscalYears(4);
+  const [selectedYear, setSelectedYear] = useState(getCurrentFiscalYear());
   const [yearOpen, setYearOpen] = useState(false);
 
   const { data: counties, isLoading, error, refetch } = useCounties({ fiscalYear: selectedYear });
@@ -1627,7 +1634,7 @@ export default function CountyExplorerPage() {
         {/* ═══ Main content ═══ */}
         <div className='max-w-[1340px] mx-auto px-5 lg:px-8 py-8'>
           {/* Data freshness banner */}
-          <DataFreshnessBadge sources="COB" variant="banner" className="mb-2" />
+          <DataFreshnessBadge sources='COB' variant='banner' className='mb-2' />
 
           {/* KPI Cards */}
           <motion.div
@@ -1694,7 +1701,7 @@ export default function CountyExplorerPage() {
           </div>
         </div>
 
-        <DataFreshnessBadge sources="COB" className="mt-4 justify-center" />
+        <DataFreshnessBadge sources='COB' className='mt-4 justify-center' />
 
         {/* Spacer so bottom scenic image peeks through */}
         <div className='h-24' />

@@ -99,18 +99,19 @@ def _ensure_country(session: Session) -> Country:
 
 def _ensure_fiscal_period(session: Session, country_id: int) -> FiscalPeriod:
     """Ensure current fiscal period exists for Kenya."""
+    from seeding.utils import normalize_fiscal_label
+
+    canonical = normalize_fiscal_label(FISCAL_LABEL)
     period = (
         session.query(FiscalPeriod)
-        .filter(
-            FiscalPeriod.country_id == country_id, FiscalPeriod.label == FISCAL_LABEL
-        )
+        .filter(FiscalPeriod.country_id == country_id, FiscalPeriod.label == canonical)
         .first()
     )
     if period:
         return period
     period = FiscalPeriod(
         country_id=country_id,
-        label=FISCAL_LABEL,
+        label=canonical,
         start_date=FISCAL_START,
         end_date=FISCAL_END,
     )
@@ -548,28 +549,78 @@ def _seed_economic_indicators(
     # Source: KNBS Economic Survey 2025 + CBK Monthly Economic Indicators
     indicators = [
         # Inflation rates (KNBS CPI releases)
-        {"type": "inflation_rate", "date": datetime(2024, 12, 31), "value": Decimal("6.6"), "unit": "percent",
-         "source": "KNBS CPI December 2024"},
-        {"type": "inflation_rate", "date": datetime(2024, 6, 30), "value": Decimal("4.6"), "unit": "percent",
-         "source": "KNBS CPI June 2024"},
-        {"type": "inflation_rate", "date": datetime(2023, 12, 31), "value": Decimal("6.6"), "unit": "percent",
-         "source": "KNBS CPI December 2023"},
-        {"type": "inflation_rate", "date": datetime(2023, 6, 30), "value": Decimal("7.9"), "unit": "percent",
-         "source": "KNBS CPI June 2023"},
-        {"type": "inflation_rate", "date": datetime(2025, 1, 31), "value": Decimal("3.3"), "unit": "percent",
-         "source": "KNBS CPI January 2025"},
+        {
+            "type": "inflation_rate",
+            "date": datetime(2024, 12, 31),
+            "value": Decimal("6.6"),
+            "unit": "percent",
+            "source": "KNBS CPI December 2024",
+        },
+        {
+            "type": "inflation_rate",
+            "date": datetime(2024, 6, 30),
+            "value": Decimal("4.6"),
+            "unit": "percent",
+            "source": "KNBS CPI June 2024",
+        },
+        {
+            "type": "inflation_rate",
+            "date": datetime(2023, 12, 31),
+            "value": Decimal("6.6"),
+            "unit": "percent",
+            "source": "KNBS CPI December 2023",
+        },
+        {
+            "type": "inflation_rate",
+            "date": datetime(2023, 6, 30),
+            "value": Decimal("7.9"),
+            "unit": "percent",
+            "source": "KNBS CPI June 2023",
+        },
+        {
+            "type": "inflation_rate",
+            "date": datetime(2025, 1, 31),
+            "value": Decimal("3.3"),
+            "unit": "percent",
+            "source": "KNBS CPI January 2025",
+        },
         # Unemployment rates (KNBS Labour Force Survey)
-        {"type": "unemployment_rate", "date": datetime(2024, 12, 31), "value": Decimal("5.4"), "unit": "percent",
-         "source": "KNBS QLFS Q4 2024"},
-        {"type": "unemployment_rate", "date": datetime(2023, 12, 31), "value": Decimal("5.6"), "unit": "percent",
-         "source": "KNBS QLFS Q4 2023"},
-        {"type": "unemployment_rate", "date": datetime(2022, 12, 31), "value": Decimal("5.7"), "unit": "percent",
-         "source": "KNBS QLFS Q4 2022"},
+        {
+            "type": "unemployment_rate",
+            "date": datetime(2024, 12, 31),
+            "value": Decimal("5.4"),
+            "unit": "percent",
+            "source": "KNBS QLFS Q4 2024",
+        },
+        {
+            "type": "unemployment_rate",
+            "date": datetime(2023, 12, 31),
+            "value": Decimal("5.6"),
+            "unit": "percent",
+            "source": "KNBS QLFS Q4 2023",
+        },
+        {
+            "type": "unemployment_rate",
+            "date": datetime(2022, 12, 31),
+            "value": Decimal("5.7"),
+            "unit": "percent",
+            "source": "KNBS QLFS Q4 2022",
+        },
         # CPI index values
-        {"type": "CPI", "date": datetime(2025, 1, 31), "value": Decimal("143.08"), "unit": "index",
-         "source": "KNBS Consumer Price Index January 2025"},
-        {"type": "CPI", "date": datetime(2024, 12, 31), "value": Decimal("142.47"), "unit": "index",
-         "source": "KNBS Consumer Price Index December 2024"},
+        {
+            "type": "CPI",
+            "date": datetime(2025, 1, 31),
+            "value": Decimal("143.08"),
+            "unit": "index",
+            "source": "KNBS Consumer Price Index January 2025",
+        },
+        {
+            "type": "CPI",
+            "date": datetime(2024, 12, 31),
+            "value": Decimal("142.47"),
+            "unit": "index",
+            "source": "KNBS Consumer Price Index December 2024",
+        },
     ]
 
     for ind in indicators:
@@ -725,7 +776,11 @@ def _seed_national_data(
                 total_population=NATIONAL_POPULATION,
                 source_document_id=national_doc.id,
                 confidence=Decimal("0.95"),
-                meta={"source": "Kenya Census 2019", "bootstrap": True, "scope": "national"},
+                meta={
+                    "source": "Kenya Census 2019",
+                    "bootstrap": True,
+                    "scope": "national",
+                },
             )
         )
     elif existing_null_pop.total_population != NATIONAL_POPULATION:
@@ -867,7 +922,11 @@ def _seed_federal_audits(
         amount = Decimal(str(amount_value)) if amount_value > 0 else None
         status = entry.get("status")
         audit_opinion = entry.get("audit_opinion", "Qualified")
-        audit_year = int(report_meta.get("fiscal_year", "2024").split("/")[0]) if report_meta.get("fiscal_year") else 2024
+        audit_year = (
+            int(report_meta.get("fiscal_year", "2024").split("/")[0])
+            if report_meta.get("fiscal_year")
+            else 2024
+        )
 
         if existing:
             existing.severity = severity
@@ -978,13 +1037,18 @@ def initialize_reference_data(code_lookup: Optional[Dict[str, str]] = None) -> N
                 )
 
             meta = dict(entity.meta or {})
-            metrics = dict((meta.get("metrics") or {}).get(FISCAL_LABEL, {}))
+            from seeding.utils import normalize_fiscal_label as _nlbl
+
+            _fy_key = _nlbl(FISCAL_LABEL)
+            metrics = dict((meta.get("metrics") or {}).get(_fy_key, {}))
+            _rev = info.get("revenue_2024", 0)
             metrics.update(
                 {
                     "county_code": county_code,
                     "population": info.get("population", 0),
                     "budget_2025": info.get("budget_2025", 0),
-                    "revenue_2024": info.get("revenue_2024", 0),
+                    "revenue_2024": _rev,
+                    "local_revenue": _rev,
                     "debt_outstanding": info.get("debt_outstanding", 0),
                     "pending_bills": info.get("pending_bills", 0),
                     "missing_funds": info.get("missing_funds", 0),
@@ -997,14 +1061,15 @@ def initialize_reference_data(code_lookup: Optional[Dict[str, str]] = None) -> N
                 }
             )
 
-            meta.setdefault("metrics", {})[FISCAL_LABEL] = metrics
+            meta.setdefault("metrics", {})[_fy_key] = metrics
             meta["financial_metrics"] = {
                 "budget_execution_rate": info.get("budget_execution_rate", 0),
                 "pending_bills": info.get("pending_bills", 0),
                 "financial_health_score": info.get("financial_health_score", 0),
                 "debt_outstanding": info.get("debt_outstanding", 0),
                 "missing_funds": info.get("missing_funds", 0),
-                "revenue_2024": info.get("revenue_2024", 0),
+                "revenue_2024": _rev,
+                "local_revenue": _rev,
             }
             meta["economic_profile"] = {
                 "county_type": info.get("county_type"),

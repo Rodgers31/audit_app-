@@ -105,6 +105,165 @@ except Exception as exc:  # pragma: no cover - fail fast if DB unavailable
     raise
 
 
+def get_current_fiscal_year() -> str:
+    """Return the current Kenyan fiscal year key (e.g. 'FY2024/25').
+
+    Kenyan fiscal years run July 1 – June 30.  Before July the
+    current FY started the *previous* calendar year.
+    """
+    today = datetime.date.today()
+    start = today.year if today.month >= 7 else today.year - 1
+    return f"FY{start}/{(start + 1) % 100:02d}"
+
+
+def _fy_metrics_key(fiscal_year: Optional[str] = None) -> str:
+    """Build the metrics dict key for a given fiscal year, defaulting to current."""
+    if not fiscal_year:
+        return get_current_fiscal_year()
+    return fiscal_year if fiscal_year.startswith("FY") else f"FY{fiscal_year}"
+
+
+def _resolve_fy_metrics(meta: dict, fiscal_year: Optional[str] = None) -> dict:
+    """Get metrics for the requested FY, falling back to the latest available FY.
+
+    When the current fiscal year has no data yet (e.g. early in FY2025/26 when
+    only FY2024/25 was ingested), we return the most recent FY's metrics rather
+    than returning empty values.
+    """
+    all_metrics = (meta or {}).get("metrics") or {}
+    if not isinstance(all_metrics, dict):
+        return {}
+    key = _fy_metrics_key(fiscal_year)
+    result = all_metrics.get(key)
+    if result:
+        return result
+    # Fallback: latest available FY (sorted descending)
+    sorted_keys = sorted(all_metrics.keys(), reverse=True)
+    for k in sorted_keys:
+        v = all_metrics.get(k)
+        if isinstance(v, dict) and v:
+            return v
+    return {}
+
+
+# ── Unit & plausibility metadata ──────────────────────────────────────
+
+
+def _response_meta(
+    *,
+    unit: str,
+    entity_scope: str,
+    fiscal_period: str | None = None,
+) -> dict:
+    """Build a standard ``_meta`` envelope for finance endpoints.
+
+    unit: "kes" | "billion_kes" | "percentage" | "mixed"
+    entity_scope: "national" | "county" | "all"
+    """
+    meta: dict = {"unit": unit, "entity_scope": entity_scope}
+    if fiscal_period:
+        meta["fiscal_period"] = fiscal_period
+    return meta
+
+
+# Plausibility bounds (order-of-magnitude sanity checks)
+_MAX_COUNTY_BUDGET_KES = 50_000_000_000  # 50 B KES – largest county ≈ Nairobi 10B
+_MAX_NATIONAL_BUDGET_KES = 10_000_000_000_000  # 10 T KES
+_MAX_NATIONAL_BUDGET_BILLION = 10_000  # 10 T KES expressed in billions
+_MAX_SINGLE_LOAN_KES = 5_000_000_000_000  # 5 T KES
+
+
+def _check_plausibility(
+    value: float,
+    ceiling: float,
+    label: str,
+    *,
+    allow_negative: bool = False,
+) -> None:
+    """Log a WARNING if *value* exceeds *ceiling* or is unexpectedly negative."""
+    if value > ceiling:
+        logging.warning(
+            "PLAUSIBILITY FAIL: %s = %s exceeds ceiling %s",
+            label,
+            f"{value:,.0f}",
+            f"{ceiling:,.0f}",
+        )
+    if not allow_negative and value < 0:
+        logging.warning(
+            "PLAUSIBILITY FAIL: %s = %s is negative",
+            label,
+            f"{value:,.0f}",
+        )
+
+
+def _latest_county_period(db) -> Optional[int]:
+    """Return the period_id of the latest FiscalPeriod that has county BudgetLines.
+
+    This ensures sector/budget queries are scoped to a single fiscal year and
+    only include county-level data — never national budget lines or aggregate rows.
+    Returns None if no county budget lines exist.
+    """
+    from sqlalchemy import func as _fn
+
+    row = (
+        db.query(DBBudgetLine.period_id)
+        .join(DBEntity, DBBudgetLine.entity_id == DBEntity.id)
+        .join(DBFiscalPeriod, DBBudgetLine.period_id == DBFiscalPeriod.id)
+        .filter(DBEntity.type == EntityType.COUNTY)
+        .filter(DBBudgetLine.category != "Total Budget")
+        .order_by(DBFiscalPeriod.start_date.desc())
+        .limit(1)
+        .first()
+    )
+    return row[0] if row else None
+
+
+def _latest_national_period(db) -> Optional[int]:
+    """Return the period_id of the latest FiscalPeriod that has national BudgetLines."""
+    from sqlalchemy import func as _fn
+
+    row = (
+        db.query(DBBudgetLine.period_id)
+        .join(DBEntity, DBBudgetLine.entity_id == DBEntity.id)
+        .join(DBFiscalPeriod, DBBudgetLine.period_id == DBFiscalPeriod.id)
+        .filter(DBEntity.type == EntityType.NATIONAL)
+        .order_by(DBFiscalPeriod.start_date.desc())
+        .limit(1)
+        .first()
+    )
+    return row[0] if row else None
+
+
+def _entity_period_budget_query(db, entity_id: int, period_id: Optional[int] = None):
+    """Return BudgetLine query scoped to a single entity and (optionally) period.
+
+    If period_id is None, auto-resolves to the latest period that has data for the entity.
+    Excludes 'Total Budget' aggregate rows.
+    """
+    q = db.query(DBBudgetLine).filter(
+        DBBudgetLine.entity_id == entity_id,
+        DBBudgetLine.category != "Total Budget",
+    )
+    if period_id:
+        q = q.filter(DBBudgetLine.period_id == period_id)
+    else:
+        # Find the latest period for this specific entity
+        latest = (
+            db.query(DBBudgetLine.period_id)
+            .join(DBFiscalPeriod, DBBudgetLine.period_id == DBFiscalPeriod.id)
+            .filter(
+                DBBudgetLine.entity_id == entity_id,
+                DBBudgetLine.category != "Total Budget",
+            )
+            .order_by(DBFiscalPeriod.start_date.desc())
+            .limit(1)
+            .scalar()
+        )
+        if latest:
+            q = q.filter(DBBudgetLine.period_id == latest)
+    return q
+
+
 # County ID to Name mapping
 COUNTY_MAPPING = {
     "001": "Nairobi",
@@ -213,22 +372,58 @@ NAME_TO_ID_MAPPING = {v: k for k, v in COUNTY_MAPPING.items()}
 # County regions for peer comparison (based on Kenya's former provinces)
 COUNTY_REGIONS = {
     "001": "Nairobi",
-    "002": "Coast", "003": "Coast", "004": "Coast", "005": "Coast", "006": "Coast", "047": "Coast",
-    "007": "North Eastern", "008": "North Eastern", "009": "North Eastern",
-    "010": "Eastern", "011": "Eastern", "012": "Eastern", "013": "Eastern", "014": "Eastern",
-    "015": "Eastern", "016": "Eastern", "017": "Eastern",
-    "018": "Central", "019": "Central", "020": "Central", "021": "Central", "022": "Central",
-    "023": "Rift Valley", "024": "Rift Valley", "025": "Rift Valley", "026": "Rift Valley",
-    "027": "Rift Valley", "028": "Rift Valley", "029": "Rift Valley", "030": "Rift Valley",
-    "031": "Rift Valley", "032": "Rift Valley", "033": "Rift Valley", "034": "Rift Valley",
-    "035": "Rift Valley", "036": "Rift Valley",
-    "037": "Western", "038": "Western", "039": "Western", "040": "Western",
-    "041": "Nyanza", "042": "Nyanza", "043": "Nyanza", "044": "Nyanza",
-    "045": "Nyanza", "046": "Nyanza",
+    "002": "Coast",
+    "003": "Coast",
+    "004": "Coast",
+    "005": "Coast",
+    "006": "Coast",
+    "047": "Coast",
+    "007": "North Eastern",
+    "008": "North Eastern",
+    "009": "North Eastern",
+    "010": "Eastern",
+    "011": "Eastern",
+    "012": "Eastern",
+    "013": "Eastern",
+    "014": "Eastern",
+    "015": "Eastern",
+    "016": "Eastern",
+    "017": "Eastern",
+    "018": "Central",
+    "019": "Central",
+    "020": "Central",
+    "021": "Central",
+    "022": "Central",
+    "023": "Rift Valley",
+    "024": "Rift Valley",
+    "025": "Rift Valley",
+    "026": "Rift Valley",
+    "027": "Rift Valley",
+    "028": "Rift Valley",
+    "029": "Rift Valley",
+    "030": "Rift Valley",
+    "031": "Rift Valley",
+    "032": "Rift Valley",
+    "033": "Rift Valley",
+    "034": "Rift Valley",
+    "035": "Rift Valley",
+    "036": "Rift Valley",
+    "037": "Western",
+    "038": "Western",
+    "039": "Western",
+    "040": "Western",
+    "041": "Nyanza",
+    "042": "Nyanza",
+    "043": "Nyanza",
+    "044": "Nyanza",
+    "045": "Nyanza",
+    "046": "Nyanza",
 }
 
 # Enhanced County Analytics API base URL
-ENHANCED_COUNTY_API_BASE = "http://localhost:8003"
+ENHANCED_COUNTY_API_BASE = os.getenv(
+    "ENHANCED_COUNTY_API_BASE", "http://localhost:8003"
+)
 
 
 class InternalAPIClient:
@@ -1285,17 +1480,34 @@ async def get_country_summary(country_id: int):
             from sqlalchemy import func
 
             with next(get_db()) as db:
-                # Total budget allocation
-                total_allocation_result = db.query(
-                    func.sum(DBBudgetLine.allocated_amount)
-                ).scalar()
-                total_allocation = float(total_allocation_result or 0)
+                # Scope to latest county fiscal period
+                _county_pid = _latest_county_period(db)
 
-                # Total actual spending
-                total_spent_result = db.query(
-                    func.sum(DBBudgetLine.actual_spent)
-                ).scalar()
-                total_spent = float(total_spent_result or 0)
+                # Total budget allocation (county-only, latest FY)
+                alloc_q = (
+                    db.query(func.sum(DBBudgetLine.allocated_amount))
+                    .join(DBEntity, DBBudgetLine.entity_id == DBEntity.id)
+                    .filter(
+                        DBEntity.type == EntityType.COUNTY,
+                        DBBudgetLine.category != "Total Budget",
+                    )
+                )
+                if _county_pid:
+                    alloc_q = alloc_q.filter(DBBudgetLine.period_id == _county_pid)
+                total_allocation = float(alloc_q.scalar() or 0)
+
+                # Total actual spending (same scope)
+                spent_q = (
+                    db.query(func.sum(DBBudgetLine.actual_spent))
+                    .join(DBEntity, DBBudgetLine.entity_id == DBEntity.id)
+                    .filter(
+                        DBEntity.type == EntityType.COUNTY,
+                        DBBudgetLine.category != "Total Budget",
+                    )
+                )
+                if _county_pid:
+                    spent_q = spent_q.filter(DBBudgetLine.period_id == _county_pid)
+                total_spent = float(spent_q.scalar() or 0)
 
                 # Total *national* debt (only sovereign-level loans)
                 from models import EntityType as _ET
@@ -1472,30 +1684,20 @@ async def get_counties(fiscal_year: Optional[str] = None):
             # Resolve fiscal period IDs for the requested year
             from models import FiscalPeriod as _FP
 
+            from seeding.utils import normalize_fiscal_label as _nlbl
+
             period_ids = None
             if fiscal_year:
-                # Parse requested year: accept '2024/25', '2023/24', etc.
-                # Match against period start_date year
                 try:
-                    start_yr = int(fiscal_year.split("/")[0])
-                    all_periods = db.query(_FP).all()
-                    matched = []
-                    for fp in all_periods:
-                        lbl = fp.label.replace("FY", "").replace("FY ", "").strip()
-                        if lbl == fiscal_year or lbl == f"{start_yr}/{start_yr+1}":
-                            matched.append(fp.id)
-                        elif fp.start_date and fp.start_date.year == start_yr:
-                            matched.append(fp.id)
-                    period_ids = list(set(matched)) if matched else None
+                    canonical = _nlbl(fiscal_year)
+                    period_ids = [
+                        fp.id for fp in db.query(_FP).all() if fp.label == canonical
+                    ] or None
                 except (ValueError, IndexError):
                     pass  # Ignore bad fiscal_year format, return unfiltered
             else:
                 # Default to latest fiscal period to avoid summing across all years
-                latest_fp = (
-                    db.query(_FP)
-                    .order_by(_FP.start_date.desc())
-                    .first()
-                )
+                latest_fp = db.query(_FP).order_by(_FP.start_date.desc()).first()
                 if latest_fp:
                     period_ids = [latest_fp.id]
 
@@ -1537,19 +1739,13 @@ async def get_counties(fiscal_year: Optional[str] = None):
                 bl_by_entity.setdefault(bl.entity_id, []).append(bl)
 
             # 3. Loans (all county loans at once)
-            all_loans = (
-                db.query(DBLoan)
-                .filter(DBLoan.entity_id.in_(entity_ids))
-                .all()
-            )
+            all_loans = db.query(DBLoan).filter(DBLoan.entity_id.in_(entity_ids)).all()
             loans_by_entity: dict = {}
             for loan in all_loans:
                 loans_by_entity.setdefault(loan.entity_id, []).append(loan)
 
             # 4. Audits (all at once, optionally filtered by period)
-            audit_q = db.query(DBAudit).filter(
-                DBAudit.entity_id.in_(entity_ids)
-            )
+            audit_q = db.query(DBAudit).filter(DBAudit.entity_id.in_(entity_ids))
             if period_ids:
                 audit_q = audit_q.filter(DBAudit.period_id.in_(period_ids))
             all_audits = audit_q.order_by(
@@ -1623,18 +1819,17 @@ async def get_counties(fiscal_year: Optional[str] = None):
                     else:
                         recurrent_total += amt
 
-                if (
-                    development_total == 0
-                    and recurrent_total == 0
-                    and total_allocated > 0
-                ):
+                if development_total == 0 and total_allocated > 0:
                     meta = e.meta or {}
-                    _fy_key = f"FY{fiscal_year}" if fiscal_year else "FY2024/25"
-                    metrics = (meta.get("metrics") or {}).get(_fy_key) or {}
-                    if not metrics:
-                        metrics = (meta.get("metrics") or {}).get("FY2024/25") or {}
-                    development_total = float(metrics.get("development_budget", 0))
-                    recurrent_total = float(metrics.get("recurrent_budget", 0))
+                    metrics = _resolve_fy_metrics(meta, fiscal_year)
+                    dev_from_meta = float(metrics.get("development_budget", 0))
+                    if dev_from_meta > 0:
+                        development_total = dev_from_meta
+                        recurrent_total = float(
+                            metrics.get(
+                                "recurrent_budget", total_allocated - dev_from_meta
+                            )
+                        )
 
                 total_debt = sum(
                     float(loan.outstanding or loan.principal or 0) for loan in loans
@@ -1647,10 +1842,7 @@ async def get_counties(fiscal_year: Optional[str] = None):
                 )
                 if pending_bills == 0:
                     meta = e.meta or {}
-                    _fy_key = f"FY{fiscal_year}" if fiscal_year else "FY2024/25"
-                    metrics = (meta.get("metrics") or {}).get(_fy_key) or {}
-                    if not metrics:
-                        metrics = (meta.get("metrics") or {}).get("FY2024/25") or {}
+                    metrics = _resolve_fy_metrics(meta, fiscal_year)
                     pending_bills = float(metrics.get("pending_bills", 0))
 
                 latest_audit = audits[0] if audits else None
@@ -1692,11 +1884,10 @@ async def get_counties(fiscal_year: Optional[str] = None):
                         health_score = max(0, 80 - (utilization - 100))
 
                 meta = e.meta or {}
-                _fy_key = f"FY{fiscal_year}" if fiscal_year else "FY2024/25"
-                metrics = (meta.get("metrics") or {}).get(_fy_key) or {}
-                if not metrics:
-                    metrics = (meta.get("metrics") or {}).get("FY2024/25") or {}
-                revenue_collection = float(metrics.get("local_revenue", 0))
+                metrics = _resolve_fy_metrics(meta, fiscal_year)
+                revenue_collection = float(
+                    metrics.get("local_revenue") or metrics.get("revenue_2024", 0)
+                )
                 money_received = float(
                     metrics.get("transfers_received", total_allocated)
                 )
@@ -1775,7 +1966,7 @@ async def get_counties(fiscal_year: Optional[str] = None):
 
 @app.get("/api/v1/counties/{county_id}")
 @cached(key_prefix="county", ttl=1800)  # Cache for 30 minutes
-async def get_county_details(county_id: str):
+async def get_county_details(county_id: str, fiscal_year: Optional[str] = None):
     """Get detailed information for a specific county (DB-first, enriched)."""
     if DATABASE_AVAILABLE:
         try:
@@ -1786,7 +1977,29 @@ async def get_county_details(county_id: str):
                     q = q.filter(DBEntity.canonical_name == f"{name} County")
                 e = q.first()
                 if e:
-                    # Reuse the same enriched data logic as the list endpoint
+                    # Resolve fiscal period — same logic as list endpoint
+                    from models import FiscalPeriod as _FP
+
+                    from seeding.utils import normalize_fiscal_label as _nlbl
+
+                    period_ids = None
+                    if fiscal_year:
+                        try:
+                            canonical = _nlbl(fiscal_year)
+                            period_ids = [
+                                fp.id
+                                for fp in db.query(_FP).all()
+                                if fp.label == canonical
+                            ] or None
+                        except (ValueError, IndexError):
+                            pass
+                    else:
+                        latest_fp = (
+                            db.query(_FP).order_by(_FP.start_date.desc()).first()
+                        )
+                        if latest_fp:
+                            period_ids = [latest_fp.id]
+
                     pop_data = (
                         db.query(DBPopulationData)
                         .filter(DBPopulationData.entity_id == e.id)
@@ -1794,11 +2007,14 @@ async def get_county_details(county_id: str):
                         .first()
                     )
 
-                    budget_lines = (
-                        db.query(DBBudgetLine)
-                        .filter(DBBudgetLine.entity_id == e.id)
-                        .all()
+                    bl_query = db.query(DBBudgetLine).filter(
+                        DBBudgetLine.entity_id == e.id
                     )
+                    if period_ids:
+                        bl_query = bl_query.filter(
+                            DBBudgetLine.period_id.in_(period_ids)
+                        )
+                    budget_lines = bl_query.all()
                     total_allocated = sum(
                         float(b.allocated_amount or 0) for b in budget_lines
                     )
@@ -1891,8 +2107,10 @@ async def get_county_details(county_id: str):
                             health_score = max(0, 80 - (utilization - 100))
 
                     meta = e.meta or {}
-                    metrics = (meta.get("metrics") or {}).get("FY2024/25") or {}
-                    revenue_collection = float(metrics.get("local_revenue", 0))
+                    metrics = _resolve_fy_metrics(meta, fiscal_year)
+                    revenue_collection = float(
+                        metrics.get("local_revenue") or metrics.get("revenue_2024", 0)
+                    )
                     money_received = float(
                         metrics.get("transfers_received", total_allocated)
                     )
@@ -1919,13 +2137,15 @@ async def get_county_details(county_id: str):
                             "T"
                         )[0]
 
-                    if (
-                        development_total == 0
-                        and recurrent_total == 0
-                        and total_allocated > 0
-                    ):
-                        development_total = float(metrics.get("development_budget", 0))
-                        recurrent_total = float(metrics.get("recurrent_budget", 0))
+                    if development_total == 0 and total_allocated > 0:
+                        dev_from_meta = float(metrics.get("development_budget", 0))
+                        if dev_from_meta > 0:
+                            development_total = dev_from_meta
+                            recurrent_total = float(
+                                metrics.get(
+                                    "recurrent_budget", total_allocated - dev_from_meta
+                                )
+                            )
 
                     if pending_bills == 0:
                         pending_bills = float(metrics.get("pending_bills", 0))
@@ -2015,7 +2235,7 @@ async def get_county_comprehensive(county_id: str):
                 )
 
             meta = entity.meta or {}
-            metrics = (meta.get("metrics") or {}).get("FY2024/25") or {}
+            metrics = _resolve_fy_metrics(meta)
             financial_metrics_meta = meta.get("financial_metrics") or {}
             economic_profile = meta.get("economic_profile") or {}
             audit_summary_meta = meta.get("audit_summary") or {}
@@ -2028,10 +2248,8 @@ async def get_county_comprehensive(county_id: str):
                 .first()
             )
 
-            # --- Budget lines ---
-            budget_lines = (
-                db.query(DBBudgetLine).filter(DBBudgetLine.entity_id == entity.id).all()
-            )
+            # --- Budget lines (scoped to latest FY for this entity) ---
+            budget_lines = _entity_period_budget_query(db, entity.id).all()
             total_allocated = sum(float(b.allocated_amount or 0) for b in budget_lines)
             total_spent = sum(float(b.actual_spent or 0) for b in budget_lines)
 
@@ -2460,10 +2678,9 @@ async def get_county_budget(county_id: str):
                     .first()
                 )
                 if e:
-                    # Simple aggregate from budget lines (if available); fallback to metrics
+                    # Simple aggregate from budget lines (latest FY); fallback to metrics
                     bl_sum = (
-                        db.query(DBBudgetLine)
-                        .filter(DBBudgetLine.entity_id == e.id)
+                        _entity_period_budget_query(db, e.id)
                         .with_entities(DBBudgetLine.allocated_amount)
                         .all()
                     )
@@ -2471,7 +2688,7 @@ async def get_county_budget(county_id: str):
                         float(sum((x[0] or 0) for x in bl_sum)) if bl_sum else 0.0
                     )
                     meta = e.meta or {}
-                    metrics = (meta.get("metrics") or {}).get("FY2024/25") or {}
+                    metrics = _resolve_fy_metrics(meta)
                     return {
                         "county_id": county_id,
                         "county_name": name,
@@ -2567,10 +2784,8 @@ async def get_county_debt(county_id: str):
                 total_principal = sum(float(l.principal or 0) for l in loans)
                 total_outstanding = sum(float(l.outstanding or 0) for l in loans)
 
-                # Pending bills from BudgetLine (actual - allocated deficit)
-                budget_rows = (
-                    db.query(DBBudgetLine).filter(DBBudgetLine.entity_id == e.id).all()
-                )
+                # Pending bills from BudgetLine (latest FY deficit)
+                budget_rows = _entity_period_budget_query(db, e.id).all()
                 total_allocated = sum(
                     float(b.allocated_amount or 0) for b in budget_rows
                 )
@@ -2578,7 +2793,7 @@ async def get_county_debt(county_id: str):
 
                 # Local revenue from meta
                 meta = e.meta or {}
-                metrics = (meta.get("metrics") or {}).get("FY2024/25") or {}
+                metrics = _resolve_fy_metrics(meta)
                 revenue = float(metrics.get("revenue_2024", 0) or 0)
 
                 debt_to_revenue = (
@@ -2827,6 +3042,7 @@ async def get_available_fiscal_years(db: Session = Depends(get_db)):
         if not years:
             # Fallback: derive from fiscal_summaries table
             from models import FiscalSummary
+
             summaries = (
                 db.query(FiscalSummary.fiscal_year)
                 .order_by(FiscalSummary.fiscal_year.desc())
@@ -3465,17 +3681,14 @@ async def list_county_audits(
 # County Accountability Scorecard
 # ---------------------------------------------------------------------------
 
+
 def _compute_accountability(db, entity, county_id: str) -> Dict[str, Any]:
     """Compute accountability scorecard for a county entity.
 
     Returns dict with opinion history, flagged amounts, recurring/unresolved
     findings, absorption rate, grade, and peer comparison.
     """
-    audits = (
-        db.query(DBAudit)
-        .filter(DBAudit.entity_id == entity.id)
-        .all()
-    )
+    audits = db.query(DBAudit).filter(DBAudit.entity_id == entity.id).all()
 
     # --- audit_opinion_history ---
     opinion_by_year: Dict[int, str] = {}
@@ -3500,16 +3713,11 @@ def _compute_accountability(db, entity, county_id: str) -> Dict[str, Any]:
     # --- unresolved_findings_count ---
     unresolved_statuses = {"pending", "unresolved", "recurring"}
     unresolved_findings_count = sum(
-        1 for a in audits
-        if a.status and a.status.lower() in unresolved_statuses
+        1 for a in audits if a.status and a.status.lower() in unresolved_statuses
     )
 
-    # --- absorption_rate from budget data ---
-    budget_lines = (
-        db.query(DBBudgetLine)
-        .filter(DBBudgetLine.entity_id == entity.id)
-        .all()
-    )
+    # --- absorption_rate from budget data (latest FY) ---
+    budget_lines = _entity_period_budget_query(db, entity.id).all()
     total_allocated = sum(float(b.allocated_amount or 0) for b in budget_lines)
     total_spent = sum(float(b.actual_spent or 0) for b in budget_lines)
     absorption_rate = (
@@ -3529,13 +3737,17 @@ def _compute_accountability(db, entity, county_id: str) -> Dict[str, Any]:
     for entry in audit_opinion_history:
         op = entry["opinion"].lower()
         if op in ("adverse", "disclaimer"):
-            grade = _drop_grade(grade, max(0, grade_order.index("D") - grade_order.index(grade)))
+            grade = _drop_grade(
+                grade, max(0, grade_order.index("D") - grade_order.index(grade))
+            )
             break
 
     # Qualified opinion in latest year -> drop to C (if not already worse)
     if audit_opinion_history:
         latest_opinion = audit_opinion_history[-1]["opinion"].lower()
-        if latest_opinion == "qualified" and grade_order.index(grade) < grade_order.index("C"):
+        if latest_opinion == "qualified" and grade_order.index(
+            grade
+        ) < grade_order.index("C"):
             grade = "C"
 
     # recurring_findings_count > 5 -> drop one grade
@@ -3552,7 +3764,9 @@ def _compute_accountability(db, entity, county_id: str) -> Dict[str, Any]:
 
     # --- peer_comparison ---
     region = COUNTY_REGIONS.get(county_id, "Unknown")
-    region_county_ids = [cid for cid, r in COUNTY_REGIONS.items() if r == region and cid != county_id]
+    region_county_ids = [
+        cid for cid, r in COUNTY_REGIONS.items() if r == region and cid != county_id
+    ]
 
     pop_data = (
         db.query(DBPopulationData)
@@ -3602,9 +3816,7 @@ def _compute_accountability(db, entity, county_id: str) -> Dict[str, Any]:
         if not peer_entity:
             continue
         peer_audits = (
-            db.query(DBAudit)
-            .filter(DBAudit.entity_id == peer_entity.id)
-            .all()
+            db.query(DBAudit).filter(DBAudit.entity_id == peer_entity.id).all()
         )
         peer_flagged = float(sum(float(pa.amount or 0) for pa in peer_audits))
         region_flagged_amounts.append(peer_flagged)
@@ -3627,11 +3839,13 @@ def _compute_accountability(db, entity, county_id: str) -> Dict[str, Any]:
 
     region_avg_flagged = (
         round(sum(region_flagged_amounts) / len(region_flagged_amounts), 2)
-        if region_flagged_amounts else 0.0
+        if region_flagged_amounts
+        else 0.0
     )
     region_avg_grade = (
         _num_to_grade(sum(_grade_to_num(g) for g in region_grades) / len(region_grades))
-        if region_grades else None
+        if region_grades
+        else None
     )
 
     # Population bracket average
@@ -3668,7 +3882,8 @@ def _compute_accountability(db, entity, county_id: str) -> Dict[str, Any]:
 
     population_bracket_avg = (
         round(sum(bracket_flagged_amounts) / len(bracket_flagged_amounts), 2)
-        if bracket_flagged_amounts else 0.0
+        if bracket_flagged_amounts
+        else 0.0
     )
 
     peer_comparison = {
@@ -3756,11 +3971,7 @@ async def get_county_summary(county_id: str):
                 .order_by(DBPopulationData.year.desc())
                 .first()
             )
-            budget_lines = (
-                db.query(DBBudgetLine)
-                .filter(DBBudgetLine.entity_id == entity.id)
-                .all()
-            )
+            budget_lines = _entity_period_budget_query(db, entity.id).all()
             total_allocated = sum(float(b.allocated_amount or 0) for b in budget_lines)
             total_spent = sum(float(b.actual_spent or 0) for b in budget_lines)
             audits = db.query(DBAudit).filter(DBAudit.entity_id == entity.id).all()
@@ -4329,6 +4540,128 @@ async def setup_scheduler():
 
     scheduler.start()
 
+    # ------------------------------------------------------------------
+    # Parliament ETL automation (daily ingest + weekly reconcile)
+    # ------------------------------------------------------------------
+    # Parliament jobs run via subprocess to avoid import shadowing between
+    # backend/etl/ (normalizer) and the top-level etl/ package.
+    if os.getenv("PARLIAMENT_PIPELINE_ENABLED", "0") == "1":
+        logger.info("Parliament pipeline enabled — scheduling ingest & reconcile jobs")
+        _project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+        def _sync_parliament_ingest():
+            """Run Parliament ingest + validate as a subprocess."""
+            import subprocess
+
+            try:
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        "-m",
+                        "etl.parliament_orchestrator",
+                        "--commit",
+                        "--ingest-only",
+                    ],
+                    cwd=_project_root,
+                    capture_output=True,
+                    text=True,
+                    timeout=3600,
+                    env={**os.environ, "PARLIAMENT_PIPELINE_ENABLED": "1"},
+                )
+                if result.returncode != 0:
+                    logger.error(
+                        "Parliament ingest failed (rc=%d): %s",
+                        result.returncode,
+                        result.stderr[-1000:],
+                    )
+                else:
+                    logger.info(
+                        "Parliament ingest completed:\n%s", result.stdout[-1000:]
+                    )
+                return {"returncode": result.returncode}
+            except subprocess.TimeoutExpired:
+                logger.error("Parliament ingest timed out after 3600s")
+                return {"returncode": -1, "error": "timeout"}
+            except Exception as e:
+                logger.exception("Parliament ingest failed: %s", e)
+                return {"returncode": -1, "error": str(e)}
+
+        def _sync_parliament_reconcile():
+            """Run Parliament reconcile + validate as a subprocess."""
+            import subprocess
+
+            if os.getenv("PARLIAMENT_RECONCILE_ENABLED", "1") == "0":
+                logger.info(
+                    "Parliament reconcile disabled via PARLIAMENT_RECONCILE_ENABLED=0"
+                )
+                return {"status": "skipped"}
+            try:
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        "-m",
+                        "etl.parliament_orchestrator",
+                        "--commit",
+                        "--reconcile-only",
+                    ],
+                    cwd=_project_root,
+                    capture_output=True,
+                    text=True,
+                    timeout=3600,
+                    env={**os.environ, "PARLIAMENT_PIPELINE_ENABLED": "1"},
+                )
+                if result.returncode != 0:
+                    logger.error(
+                        "Parliament reconcile failed (rc=%d): %s",
+                        result.returncode,
+                        result.stderr[-1000:],
+                    )
+                else:
+                    logger.info(
+                        "Parliament reconcile completed:\n%s", result.stdout[-1000:]
+                    )
+                return {"returncode": result.returncode}
+            except subprocess.TimeoutExpired:
+                logger.error("Parliament reconcile timed out after 3600s")
+                return {"returncode": -1, "error": "timeout"}
+            except Exception as e:
+                logger.exception("Parliament reconcile failed: %s", e)
+                return {"returncode": -1, "error": str(e)}
+
+        async def _parliament_ingest_async():
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(_etl_executor, _sync_parliament_ingest)
+
+        async def _parliament_reconcile_async():
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(_etl_executor, _sync_parliament_reconcile)
+
+        # Daily ingest: discover and insert new items (every 24h ± jitter)
+        scheduler.add_job(
+            _parliament_ingest_async,
+            trigger="interval",
+            seconds=jitter(24 * 3600),
+            id="etl_parliament_ingest",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=3600,
+        )
+
+        # Weekly reconcile: re-resolve entity metadata (every 7 days ± jitter)
+        scheduler.add_job(
+            _parliament_reconcile_async,
+            trigger="interval",
+            seconds=jitter(7 * 24 * 3600),
+            id="etl_parliament_reconcile",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=3600,
+        )
+
+        logger.info("Parliament scheduled: daily ingest + weekly reconcile")
+    else:
+        logger.info("Parliament pipeline disabled (PARLIAMENT_PIPELINE_ENABLED != 1)")
+
     # Weekly digest email (every 7 days)
     try:
 
@@ -4479,8 +4812,12 @@ async def get_national_budget_summary(fiscal_year: str = None):
             from sqlalchemy import func
 
             with next(get_db()) as db:
-                # Base query — optionally filter by fiscal period label
-                budget_query = db.query(DBBudgetLine)
+                # Base query — scoped to NATIONAL entities only
+                budget_query = (
+                    db.query(DBBudgetLine)
+                    .join(DBEntity, DBBudgetLine.entity_id == DBEntity.id)
+                    .filter(DBEntity.type == EntityType.NATIONAL)
+                )
                 if fiscal_year:
                     fp = (
                         db.query(DBFiscalPeriod)
@@ -4489,7 +4826,14 @@ async def get_national_budget_summary(fiscal_year: str = None):
                     )
                     if fp:
                         budget_query = budget_query.filter(
-                            DBBudgetLine.fiscal_period_id == fp.id
+                            DBBudgetLine.period_id == fp.id
+                        )
+                else:
+                    # Default to latest national FY
+                    _nat_pid = _latest_national_period(db)
+                    if _nat_pid:
+                        budget_query = budget_query.filter(
+                            DBBudgetLine.period_id == _nat_pid
                         )
 
                 total_allocated = float(
@@ -4555,6 +4899,7 @@ async def get_national_budget_summary(fiscal_year: str = None):
 
                 return {
                     "status": "success",
+                    "_meta": _response_meta(unit="kes", entity_scope="national"),
                     "data": {
                         "total": total_allocated,
                         "total_spent": total_spent,
@@ -4585,16 +4930,32 @@ async def get_budget_utilization_summary(fiscal_year: str = None):
             from sqlalchemy import func
 
             with next(get_db()) as db:
-                rows = (
+                # Resolve fiscal period
+                period_id = None
+                if fiscal_year:
+                    fp = (
+                        db.query(DBFiscalPeriod)
+                        .filter(DBFiscalPeriod.label.ilike(f"%{fiscal_year}%"))
+                        .first()
+                    )
+                    if fp:
+                        period_id = fp.id
+                else:
+                    period_id = _latest_county_period(db)
+
+                util_q = (
                     db.query(
                         DBEntity.canonical_name,
                         func.sum(DBBudgetLine.allocated_amount).label("allocated"),
                         func.sum(DBBudgetLine.actual_spent).label("spent"),
                     )
                     .join(DBBudgetLine, DBBudgetLine.entity_id == DBEntity.id)
-                    .group_by(DBEntity.canonical_name)
-                    .all()
+                    .filter(DBEntity.type == EntityType.COUNTY)
+                    .filter(DBBudgetLine.category != "Total Budget")
                 )
+                if period_id:
+                    util_q = util_q.filter(DBBudgetLine.period_id == period_id)
+                rows = util_q.group_by(DBEntity.canonical_name).all()
                 entities = []
                 for row in rows:
                     alloc = float(row[1] or 0)
@@ -4614,6 +4975,7 @@ async def get_budget_utilization_summary(fiscal_year: str = None):
 
                 return {
                     "status": "success",
+                    "_meta": _response_meta(unit="kes", entity_scope="county"),
                     "data": entities,
                     "data_source": "database",
                 }
@@ -4683,16 +5045,27 @@ async def get_budget_overview():
         from sqlalchemy import func
 
         with next(get_db()) as db:
-            # ── Sector allocations (merged) ─────────────────────
-            sector_rows = (
+            # ── Resolve latest county fiscal period ─────────────
+            county_period_id = _latest_county_period(db)
+            period_label = None
+            if county_period_id:
+                _fp = db.query(DBFiscalPeriod).get(county_period_id)
+                period_label = _fp.label if _fp else None
+
+            # ── Sector allocations (county-only, latest FY) ─────
+            sector_q = (
                 db.query(
                     DBBudgetLine.category,
                     func.sum(DBBudgetLine.allocated_amount).label("allocated"),
                     func.sum(DBBudgetLine.actual_spent).label("spent"),
                 )
-                .group_by(DBBudgetLine.category)
-                .all()
+                .join(DBEntity, DBBudgetLine.entity_id == DBEntity.id)
+                .filter(DBEntity.type == EntityType.COUNTY)
+                .filter(DBBudgetLine.category != "Total Budget")
             )
+            if county_period_id:
+                sector_q = sector_q.filter(DBBudgetLine.period_id == county_period_id)
+            sector_rows = sector_q.group_by(DBBudgetLine.category).all()
             merged: dict = {}
             for cat, alloc, spent in sector_rows:
                 key = SECTOR_NORMALIZE.get(str(cat or "").strip().lower(), "Other")
@@ -4741,9 +5114,7 @@ async def get_budget_overview():
                     "tax_revenue": float(r.tax_revenue or 0),
                     "non_tax_revenue": float(r.non_tax_revenue or 0),
                     "total_borrowing": float(r.total_borrowing or 0),
-                    "borrowing_pct_of_budget": float(
-                        r.borrowing_pct_of_budget or 0
-                    ),
+                    "borrowing_pct_of_budget": float(r.borrowing_pct_of_budget or 0),
                     "debt_service_cost": float(r.debt_service_cost or 0),
                     "development_spending": float(r.development_spending or 0),
                     "recurrent_spending": float(r.recurrent_spending or 0),
@@ -4762,17 +5133,20 @@ async def get_budget_overview():
 
             latest = fiscal_years[-1] if fiscal_years else {}
 
-            # ── Top / bottom utilization counties ──────────────────
-            util_rows = (
+            # ── Top / bottom utilization counties (same FY scope) ──
+            util_q = (
                 db.query(
                     DBEntity.canonical_name,
                     func.sum(DBBudgetLine.allocated_amount).label("a"),
                     func.sum(DBBudgetLine.actual_spent).label("s"),
                 )
                 .join(DBBudgetLine, DBBudgetLine.entity_id == DBEntity.id)
-                .group_by(DBEntity.canonical_name)
-                .all()
+                .filter(DBEntity.type == EntityType.COUNTY)
+                .filter(DBBudgetLine.category != "Total Budget")
             )
+            if county_period_id:
+                util_q = util_q.filter(DBBudgetLine.period_id == county_period_id)
+            util_rows = util_q.group_by(DBEntity.canonical_name).all()
             county_utils = []
             for name, a, s in util_rows:
                 a_f = float(a or 0)
@@ -4788,10 +5162,32 @@ async def get_budget_overview():
                     )
             county_utils.sort(key=lambda x: x["utilization"], reverse=True)
 
+            # Plausibility checks
+            _check_plausibility(
+                total_allocated,
+                _MAX_NATIONAL_BUDGET_KES,
+                "budget/overview total_budget",
+            )
+            for s in sectors:
+                _check_plausibility(
+                    float(s.get("amount", 0)),
+                    _MAX_NATIONAL_BUDGET_KES,
+                    f"budget/overview sector {s.get('name')}",
+                )
+
             return {
                 "status": "success",
                 "data_source": "database",
+                "fiscal_period": period_label,
                 "last_updated": datetime.datetime.now().isoformat(),
+                "_meta": {
+                    "summary_unit": "kes",
+                    "sectors_unit": "kes",
+                    "fiscal_history_unit": "billion_kes",
+                    "county_utilization_unit": "kes",
+                    "entity_scope": "all",
+                    "fiscal_period": period_label,
+                },
                 "summary": {
                     "total_budget": total_allocated,
                     "total_spent": total_spent,
@@ -4800,11 +5196,6 @@ async def get_budget_overview():
                         if total_allocated > 0
                         else 0
                     ),
-                    "development_budget": float(latest.get("development_spending", 0)),
-                    "recurrent_budget": float(latest.get("recurrent_spending", 0)),
-                    "county_allocation": float(latest.get("county_allocation", 0)),
-                    "total_revenue": float(latest.get("total_revenue", 0)),
-                    "total_borrowing": float(latest.get("total_borrowing", 0)),
                     "currency": "KES",
                 },
                 "sectors": sectors,
@@ -4975,7 +5366,9 @@ async def get_budget_enhanced(db: Session = Depends(get_db)):
         )
 
         if national_entity:
-            sector_pipeline = (
+            # Scope to latest national FY to avoid summing across all periods
+            _nat_pid = _latest_national_period(db)
+            sector_q = (
                 db.query(
                     BudgetLine.category,
                     func.sum(BudgetLine.allocated_amount).label("allocated"),
@@ -4984,9 +5377,10 @@ async def get_budget_enhanced(db: Session = Depends(get_db)):
                 .filter(BudgetLine.entity_id == national_entity)
                 .filter(BudgetLine.committed_amount.isnot(None))
                 .filter(BudgetLine.allocated_amount > 0)
-                .group_by(BudgetLine.category)
-                .all()
             )
+            if _nat_pid:
+                sector_q = sector_q.filter(BudgetLine.period_id == _nat_pid)
+            sector_pipeline = sector_q.group_by(BudgetLine.category).all()
         else:
             sector_pipeline = []
 
@@ -5025,6 +5419,12 @@ async def get_budget_enhanced(db: Session = Depends(get_db)):
                 )
 
         return {
+            "_meta": {
+                "revenue_by_source_unit": "billion_kes",
+                "execution_by_sector_unit": "kes",
+                "economic_context_units": "field_name_suffixed",
+                "entity_scope": "national",
+            },
             "revenue_by_source": revenue_by_source,
             "economic_context": economic_context,
             "execution_by_sector": execution_by_sector,
@@ -5090,6 +5490,7 @@ async def get_debt_timeline(db: Session = Depends(get_db)):
         return {
             "status": "success",
             "data_source": "database",
+            "_meta": _response_meta(unit="billion_kes", entity_scope="national"),
             "last_updated": last_updated,
             "source": source_title,
             "years": len(timeline),
@@ -5173,12 +5574,19 @@ async def get_fiscal_summary(db: Session = Depends(get_db)):
         # Only include years with substantially complete data —
         # World Bank back-fill years often only have 1-2 fields.
         fiscal_years = [
-            fy for fy in all_fiscal_years
+            fy
+            for fy in all_fiscal_years
             if sum(
                 1
-                for k in ("appropriated_budget", "total_revenue", "total_borrowing", "county_allocation")
+                for k in (
+                    "appropriated_budget",
+                    "total_revenue",
+                    "total_borrowing",
+                    "county_allocation",
+                )
                 if (fy.get(k) or 0) > 0
-            ) >= 3
+            )
+            >= 3
         ]
         latest = fiscal_years[-1] if fiscal_years else all_fiscal_years[-1]
 
@@ -5199,6 +5607,7 @@ async def get_fiscal_summary(db: Session = Depends(get_db)):
         return {
             "status": "success",
             "data_source": "database",
+            "_meta": _response_meta(unit="billion_kes", entity_scope="national"),
             "last_updated": last_updated,
             "source": source_title,
             "current": latest,
@@ -5305,6 +5714,7 @@ async def get_top_loans(limit: int = 10, db: Session = Depends(get_db)):
                 source_title = sdoc.title
 
         return {
+            "_meta": _response_meta(unit="kes", entity_scope="national"),
             "loans": result_loans,
             "total_available": len(loans),
             "limit": limit,
@@ -5429,7 +5839,15 @@ async def get_national_loans(db: Session = Depends(get_db)):
         if loans[0].updated_at:
             last_updated = loans[0].updated_at.isoformat()
 
+        # Plausibility
+        _check_plausibility(
+            total_outstanding,
+            _MAX_NATIONAL_BUDGET_KES * 3,
+            "debt/loans total_outstanding",
+        )
+
         return {
+            "_meta": _response_meta(unit="kes", entity_scope="national"),
             "loans": national_loans,
             "total_loans": len(national_loans),
             "total_outstanding": total_outstanding,
@@ -5445,7 +5863,9 @@ async def get_national_loans(db: Session = Depends(get_db)):
 
 
 @app.get("/api/v1/debt/national")
-@cached(key_prefix="debt:national", ttl=43200)  # 12 hours — national debt data changes infrequently
+@cached(
+    key_prefix="debt:national", ttl=43200
+)  # 12 hours — national debt data changes infrequently
 async def get_national_debt():
     """Get national debt overview with categorized breakdown."""
     # Try database first
@@ -5727,6 +6147,7 @@ async def get_national_debt():
                         },
                         "currency": "KES",
                         "source": "Central Bank of Kenya / National Treasury",
+                        "_meta": _response_meta(unit="kes", entity_scope="national"),
                     }
         except Exception as e:
             logging.error(f"DB debt query failed: {e}")
@@ -5798,9 +6219,11 @@ async def get_pending_bills(
             unique_eids = list({l.entity_id for l in pending_loans if l.entity_id})
             entity_map: Dict[int, tuple] = {}
             if unique_eids:
-                for eid, ename, etype in db.query(
-                    DBEntity.id, DBEntity.canonical_name, DBEntity.type
-                ).filter(DBEntity.id.in_(unique_eids)).all():
+                for eid, ename, etype in (
+                    db.query(DBEntity.id, DBEntity.canonical_name, DBEntity.type)
+                    .filter(DBEntity.id.in_(unique_eids))
+                    .all()
+                ):
                     entity_map[eid] = (ename, etype.value if etype else "national")
 
             for loan in pending_loans:
@@ -5819,7 +6242,11 @@ async def get_pending_bills(
                 # provenance can be a dict or list — normalize to dict
                 raw_prov = loan.provenance
                 if isinstance(raw_prov, list):
-                    provenance = raw_prov[0] if raw_prov and isinstance(raw_prov[0], dict) else {}
+                    provenance = (
+                        raw_prov[0]
+                        if raw_prov and isinstance(raw_prov[0], dict)
+                        else {}
+                    )
                 elif isinstance(raw_prov, dict):
                     provenance = raw_prov
                 else:
@@ -5882,6 +6309,7 @@ async def get_pending_bills(
                 "source": source_title,
                 "source_url": source_url,
                 "currency": "KES",
+                "_meta": _response_meta(unit="kes", entity_scope="all"),
                 "explanation": (
                     "Pending bills are verified but unpaid government invoices "
                     "to suppliers and contractors. Unlike formal loans, they "
@@ -6000,9 +6428,11 @@ async def get_pending_bills_summary(db: Session = Depends(get_db)):
         unique_eids = list({b.entity_id for b in bills if b.entity_id})
         entity_map: Dict[int, tuple] = {}
         if unique_eids:
-            for eid, ename, etype in db.query(
-                DBEntity.id, DBEntity.canonical_name, DBEntity.type
-            ).filter(DBEntity.id.in_(unique_eids)).all():
+            for eid, ename, etype in (
+                db.query(DBEntity.id, DBEntity.canonical_name, DBEntity.type)
+                .filter(DBEntity.id.in_(unique_eids))
+                .all()
+            ):
                 entity_map[eid] = (ename, etype.value if etype else "unknown")
 
         county_totals: Dict[int, Dict[str, Any]] = {}
@@ -6020,7 +6450,9 @@ async def get_pending_bills_summary(db: Session = Depends(get_db)):
 
         # Get population for per_capita (best-effort)
         _pop_map = _get_population_map(db)
-        top_counties = sorted(county_totals.values(), key=lambda x: x["amount"], reverse=True)[:15]
+        top_counties = sorted(
+            county_totals.values(), key=lambda x: x["amount"], reverse=True
+        )[:15]
         for c in top_counties:
             pop = _pop_map.get(c["county"], 0)
             c["per_capita"] = round(c["amount"] / pop, 2) if pop > 0 else None
@@ -6055,6 +6487,7 @@ async def get_pending_bills_summary(db: Session = Depends(get_db)):
         return {
             "status": "success",
             "data_source": "pending_bills_table",
+            "_meta": _response_meta(unit="kes", entity_scope="all"),
             "total_pending_amount": total_pending,
             "eligible_total": eligible_total,
             "ineligible_total": ineligible_total,
@@ -6120,9 +6553,11 @@ def _pending_bills_summary_from_loans(db: Session) -> dict:
     unique_eids = list({l.entity_id for l in pending_loans if l.entity_id})
     entity_name_map = {}
     if unique_eids:
-        entity_rows = db.query(DBEntity.id, DBEntity.canonical_name).filter(
-            DBEntity.id.in_(unique_eids)
-        ).all()
+        entity_rows = (
+            db.query(DBEntity.id, DBEntity.canonical_name)
+            .filter(DBEntity.id.in_(unique_eids))
+            .all()
+        )
         entity_name_map = {eid: name for eid, name in entity_rows}
 
     entity_totals: Dict[int, Dict[str, Any]] = {}
@@ -6136,7 +6571,9 @@ def _pending_bills_summary_from_loans(db: Session) -> dict:
             }
         entity_totals[eid]["amount"] += float(l.outstanding or l.principal or 0)
 
-    top_counties = sorted(entity_totals.values(), key=lambda x: x["amount"], reverse=True)[:15]
+    top_counties = sorted(
+        entity_totals.values(), key=lambda x: x["amount"], reverse=True
+    )[:15]
 
     # Derive bill type from lender name
     breakdown_by_type: Dict[str, float] = {}
@@ -6199,7 +6636,9 @@ async def get_pending_bills_by_county(county_id: str, db: Session = Depends(get_
         # Resolve county entity
         entity = _resolve_county_entity(db, county_id)
         if not entity:
-            raise HTTPException(status_code=404, detail=f"County '{county_id}' not found")
+            raise HTTPException(
+                status_code=404, detail=f"County '{county_id}' not found"
+            )
 
         bills = db.query(PendingBill).filter(PendingBill.entity_id == entity.id).all()
 
@@ -6223,7 +6662,12 @@ async def get_pending_bills_by_county(county_id: str, db: Session = Depends(get_
                 "county_id": county_id,
                 "total_pending": total,
                 "breakdown_by_type": {"supplier_arrears": total} if total else {},
-                "aging_buckets": {"0-30d": 0, "31-90d": 0, "91-180d": 0, "180d+": total},
+                "aging_buckets": {
+                    "0-30d": 0,
+                    "31-90d": 0,
+                    "91-180d": 0,
+                    "180d+": total,
+                },
                 "bills": [],
                 "currency": "KES",
             }
@@ -6341,9 +6785,7 @@ async def get_debt_sustainability(db: Session = Depends(get_db)):
 
     try:
         # Latest debt timeline entry (has debt/GDP data)
-        latest_dt = (
-            db.query(DebtTimeline).order_by(DebtTimeline.year.desc()).first()
-        )
+        latest_dt = db.query(DebtTimeline).order_by(DebtTimeline.year.desc()).first()
         # Latest fiscal summary (has debt service and revenue)
         latest_fs = (
             db.query(FiscalSummary).order_by(FiscalSummary.fiscal_year.desc()).first()
@@ -6389,7 +6831,11 @@ async def get_debt_sustainability(db: Session = Depends(get_db)):
                     "value": ratio_val,
                     "year": latest_fs.fiscal_year,
                     "threshold": 30.0,
-                    "status": "above" if ratio_val > 30 else ("warning" if ratio_val > 25 else "below"),
+                    "status": (
+                        "above"
+                        if ratio_val > 30
+                        else ("warning" if ratio_val > 25 else "below")
+                    ),
                 }
 
         # ── External Debt Share ────────────────────────────────────
@@ -6405,11 +6851,16 @@ async def get_debt_sustainability(db: Session = Depends(get_db)):
 
         # ── Regional Peers ─────────────────────────────────────────
         peers = _get_regional_peers(
-            kenya_ratio=float(latest_dt.gdp_ratio) if latest_dt and latest_dt.gdp_ratio else None
+            kenya_ratio=(
+                float(latest_dt.gdp_ratio)
+                if latest_dt and latest_dt.gdp_ratio
+                else None
+            )
         )
 
         return {
             "status": "success",
+            "_meta": _response_meta(unit="percentage", entity_scope="national"),
             "debt_to_gdp": debt_to_gdp,
             "debt_service_to_revenue": debt_service_to_revenue,
             "external_debt_share": external_share,
@@ -6490,14 +6941,14 @@ _EAC_COUNTRIES = {
 
 # World Bank indicator codes
 _WB_INDICATORS = {
-    "debt_to_gdp": "GC.DOD.TOTL.GD.ZS",           # Central govt debt (% GDP)
-    "debt_service_to_revenue": "GC.XPN.INTP.RV.ZS", # Interest payments (% revenue)
-    "external_debt_pct": "DT.DOD.DECT.GN.ZS",       # External debt stocks (% GNI)
+    "debt_to_gdp": "GC.DOD.TOTL.GD.ZS",  # Central govt debt (% GDP)
+    "debt_service_to_revenue": "GC.XPN.INTP.RV.ZS",  # Interest payments (% revenue)
+    "external_debt_pct": "DT.DOD.DECT.GN.ZS",  # External debt stocks (% GNI)
 }
 
 # IMF DataMapper indicator codes (WEO dataset)
 _IMF_INDICATORS = {
-    "debt_to_gdp": "GGXWDG_NGDP",   # General govt gross debt (% GDP)
+    "debt_to_gdp": "GGXWDG_NGDP",  # General govt gross debt (% GDP)
 }
 
 # Simple TTL cache: (timestamp, data)
@@ -6571,7 +7022,10 @@ def _get_regional_peers_cached(kenya_ratio: Optional[float] = None) -> list:
     now = time.time()
 
     # Check cache
-    if _peers_cache["data"] is not None and (now - _peers_cache["ts"]) < _PEERS_CACHE_TTL:
+    if (
+        _peers_cache["data"] is not None
+        and (now - _peers_cache["ts"]) < _PEERS_CACHE_TTL
+    ):
         cached = [dict(p) for p in _peers_cache["data"]]  # shallow copy
         if kenya_ratio is not None:
             for p in cached:
@@ -6598,32 +7052,62 @@ def _get_regional_peers_cached(kenya_ratio: Optional[float] = None) -> list:
         for iso, val in wb_debt_gdp.items():
             if iso not in debt_gdp:
                 debt_gdp[iso] = round(val, 1)
-        _logger_peers.info("WB debt-to-GDP: got data for %d countries", len(wb_debt_gdp))
+        _logger_peers.info(
+            "WB debt-to-GDP: got data for %d countries", len(wb_debt_gdp)
+        )
     except Exception as exc:
         _logger_peers.debug("WB debt-to-GDP unavailable: %s", exc)
 
     # 3. World Bank: debt service to revenue
     try:
-        service_rev = _wb_fetch_indicator(_WB_INDICATORS["debt_service_to_revenue"], codes_str)
-        _logger_peers.info("WB debt-service/revenue: got data for %d countries", len(service_rev))
+        service_rev = _wb_fetch_indicator(
+            _WB_INDICATORS["debt_service_to_revenue"], codes_str
+        )
+        _logger_peers.info(
+            "WB debt-service/revenue: got data for %d countries", len(service_rev)
+        )
     except Exception as exc:
         _logger_peers.debug("WB debt-service/revenue unavailable: %s", exc)
 
     # 4. World Bank: external debt as % of GNI
     try:
-        external_pct = _wb_fetch_indicator(_WB_INDICATORS["external_debt_pct"], codes_str)
-        _logger_peers.info("WB external-debt%%: got data for %d countries", len(external_pct))
+        external_pct = _wb_fetch_indicator(
+            _WB_INDICATORS["external_debt_pct"], codes_str
+        )
+        _logger_peers.info(
+            "WB external-debt%%: got data for %d countries", len(external_pct)
+        )
     except Exception as exc:
         _logger_peers.debug("WB external-debt%% unavailable: %s", exc)
 
     # ── Verified fallback values (updated Mar 2026) ───────────────
     # Used ONLY when both APIs are unreachable for a given indicator.
     _fallback = {
-        "KEN": {"debt_to_gdp": 68.0, "debt_service_to_revenue": 57.6, "external_debt_share": 52.3},
-        "ETH": {"debt_to_gdp": 31.4, "debt_service_to_revenue": 22.8, "external_debt_share": 58.1},
-        "TZA": {"debt_to_gdp": 48.2, "debt_service_to_revenue": 15.3, "external_debt_share": 61.5},
-        "UGA": {"debt_to_gdp": 53.1, "debt_service_to_revenue": 19.7, "external_debt_share": 55.8},
-        "RWA": {"debt_to_gdp": 67.2, "debt_service_to_revenue": 13.5, "external_debt_share": 68.4},
+        "KEN": {
+            "debt_to_gdp": 68.0,
+            "debt_service_to_revenue": 57.6,
+            "external_debt_share": 52.3,
+        },
+        "ETH": {
+            "debt_to_gdp": 31.4,
+            "debt_service_to_revenue": 22.8,
+            "external_debt_share": 58.1,
+        },
+        "TZA": {
+            "debt_to_gdp": 48.2,
+            "debt_service_to_revenue": 15.3,
+            "external_debt_share": 61.5,
+        },
+        "UGA": {
+            "debt_to_gdp": 53.1,
+            "debt_service_to_revenue": 19.7,
+            "external_debt_share": 55.8,
+        },
+        "RWA": {
+            "debt_to_gdp": 67.2,
+            "debt_service_to_revenue": 13.5,
+            "external_debt_share": 68.4,
+        },
     }
 
     # ── Assemble peers ────────────────────────────────────────────
@@ -6643,18 +7127,24 @@ def _get_regional_peers_cached(kenya_ratio: Optional[float] = None) -> list:
         # External debt share
         ext = external_pct.get(iso) or fb.get("external_debt_share")
 
-        peers.append({
-            "country": name,
-            "debt_to_gdp": round(d2g, 1) if d2g else None,
-            "debt_service_to_revenue": round(dsr, 1) if dsr else None,
-            "external_debt_share": round(ext, 1) if ext else None,
-        })
+        peers.append(
+            {
+                "country": name,
+                "debt_to_gdp": round(d2g, 1) if d2g else None,
+                "debt_service_to_revenue": round(dsr, 1) if dsr else None,
+                "external_debt_share": round(ext, 1) if ext else None,
+            }
+        )
 
     _peers_cache["ts"] = now
     _peers_cache["data"] = peers
     _logger_peers.info(
         "Regional peers updated: %d/%d countries have full data",
-        sum(1 for p in peers if all(v is not None for k, v in p.items() if k != "country")),
+        sum(
+            1
+            for p in peers
+            if all(v is not None for k, v in p.items() if k != "country")
+        ),
         len(peers),
     )
     return peers
@@ -6725,12 +7215,7 @@ async def get_entities(
                 entity.type.value if hasattr(entity.type, "value") else entity.type
             )
 
-            metrics_by_period = (entity.meta or {}).get("metrics", {})
-            fy_metrics = (
-                metrics_by_period.get("FY2024/25")
-                if isinstance(metrics_by_period, dict)
-                else {}
-            )
+            fy_metrics = _resolve_fy_metrics(entity.meta or {})
             code_value = (
                 fy_metrics.get("county_code") if isinstance(fy_metrics, dict) else None
             )
@@ -7075,8 +7560,7 @@ async def search(
     results["entities"] = []
     for e in entities:
         entity_type_value = e.type.value if hasattr(e.type, "value") else e.type
-        metrics = (e.meta or {}).get("metrics", {})
-        fy_metrics = metrics.get("FY2024/25") if isinstance(metrics, dict) else {}
+        fy_metrics = _resolve_fy_metrics(e.meta or {})
         code_value = (
             fy_metrics.get("county_code") if isinstance(fy_metrics, dict) else None
         )
@@ -7219,6 +7703,9 @@ async def dashboard_debt_mix():
                             "total": total,
                             "currency": "KES",
                             "data_source": "database",
+                            "_meta": _response_meta(
+                                unit="percentage", entity_scope="national"
+                            ),
                         }
         except Exception as e:
             logging.error(f"DB debt-mix query failed: {e}")
@@ -7241,42 +7728,56 @@ async def dashboard_debt_mix():
 
 @app.get("/api/v1/dashboards/national/fiscal-outturns")
 async def dashboard_fiscal_outturns():
-    """Quarterly fiscal outturns. Uses DB budget data grouped by fiscal period; ETL/static fallback."""
-    # Try DB data first
+    """National fiscal outturns per fiscal year.
+
+    Uses the FiscalSummary table (national-scope by design) to avoid
+    mixing county and national BudgetLine data.
+    """
+    # Try DB data first — use FiscalSummary (national-scope, has real revenue/expenditure)
     if DATABASE_AVAILABLE:
         try:
-            from sqlalchemy import func as _fn
+            from models import FiscalSummary as FSModel
 
             with next(get_db()) as db:
                 rows = (
-                    db.query(
-                        DBFiscalPeriod.label,
-                        _fn.sum(DBBudgetLine.allocated_amount).label("allocated"),
-                        _fn.sum(DBBudgetLine.actual_spent).label("spent"),
-                    )
-                    .join(
-                        DBBudgetLine,
-                        DBBudgetLine.fiscal_period_id == DBFiscalPeriod.id,
-                    )
-                    .group_by(DBFiscalPeriod.label)
-                    .order_by(DBFiscalPeriod.label.desc())
-                    .limit(8)
+                    db.query(FSModel)
+                    .order_by(FSModel.fiscal_year.desc())
+                    .limit(12)
                     .all()
                 )
                 if rows:
                     series = []
-                    for label, allocated, spent in rows:
-                        alloc = float(allocated or 0)
-                        sp = float(spent or 0)
+                    for r in rows:
+                        rev = float(r.total_revenue or 0)
+                        # expenditure = recurrent + development if available
+                        recurrent = float(r.recurrent_spending or 0)
+                        development = float(r.development_spending or 0)
+                        expenditure = (
+                            (recurrent + development)
+                            if (recurrent + development) > 0
+                            else 0
+                        )
+                        # Skip years with no revenue AND no expenditure (incomplete backfill)
+                        if rev == 0 or expenditure == 0:
+                            continue
                         series.append(
                             {
-                                "period": str(label),
-                                "revenue": alloc,
-                                "expenditure": sp,
-                                "balance": alloc - sp,
+                                "period": str(r.fiscal_year),
+                                "revenue": rev,
+                                "expenditure": expenditure,
+                                "balance": rev - expenditure,
                             }
                         )
-                    return {"series": series, "data_source": "database"}
+                    series = series[:8]  # cap to 8 most recent complete years
+                    if series:
+                        return {
+                            "series": series,
+                            "data_source": "database",
+                            "unit": "billion_kes",
+                            "_meta": _response_meta(
+                                unit="billion_kes", entity_scope="national"
+                            ),
+                        }
         except Exception as e:
             logging.error(f"DB fiscal outturns failed: {e}")
 
@@ -7302,7 +7803,7 @@ async def dashboard_fiscal_outturns():
     if not series:
         series = [
             {
-                "period": "FY2024/25 Q1",
+                "period": f"{get_current_fiscal_year()} Q1",
                 "revenue": None,
                 "expenditure": None,
                 "balance": None,
@@ -7320,14 +7821,25 @@ async def dashboard_sector_ceilings():
             from sqlalchemy import func as _fn
 
             with next(get_db()) as db:
-                rows = (
+                # Scope to latest national FY; fall back to county if no national data.
+                # Also filter by entity type to avoid mixing county + national categories.
+                _nat_pid = _latest_national_period(db)
+                _pid = _nat_pid or _latest_county_period(db)
+                _entity_type = EntityType.NATIONAL if _nat_pid else EntityType.COUNTY
+                q = (
                     db.query(
                         DBBudgetLine.category,
                         _fn.sum(DBBudgetLine.allocated_amount).label("allocated"),
                     )
-                    .group_by(DBBudgetLine.category)
-                    .all()
+                    .join(DBEntity, DBBudgetLine.entity_id == DBEntity.id)
+                    .filter(
+                        DBBudgetLine.category != "Total Budget",
+                        DBEntity.type == _entity_type,
+                    )
                 )
+                if _pid:
+                    q = q.filter(DBBudgetLine.period_id == _pid)
+                rows = q.group_by(DBBudgetLine.category).all()
                 total = sum(float(r[1] or 0) for r in rows)
                 if total > 0:
                     allocation = {}
@@ -7338,6 +7850,14 @@ async def dashboard_sector_ceilings():
                     allocation["total_amount"] = total
                     allocation["currency"] = "KES"
                     allocation["data_source"] = "database"
+                    allocation["_meta"] = _response_meta(
+                        unit="percentage",
+                        entity_scope="national" if _nat_pid else "county",
+                    )
+                    # Plausibility: total_amount is raw KES
+                    _check_plausibility(
+                        total, _MAX_NATIONAL_BUDGET_KES, "sector-ceilings total_amount"
+                    )
                     return allocation
         except Exception as e:
             logging.error(f"DB sector ceilings failed: {e}")

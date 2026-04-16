@@ -2,19 +2,6 @@
 
 import { motion } from 'framer-motion';
 
-const DEFAULT_DEBT_TIMELINE_DATA = [
-  { year: 2015, debt: 3200 },
-  { year: 2016, debt: 3800 },
-  { year: 2017, debt: 4500 },
-  { year: 2018, debt: 5200 },
-  { year: 2019, debt: 6100 },
-  { year: 2020, debt: 7400 },
-  { year: 2021, debt: 8500 },
-  { year: 2022, debt: 9300 },
-  { year: 2023, debt: 10100 },
-  { year: 2024, debt: 10800 },
-];
-
 interface DebtTimelineDataPoint {
   year: number;
   debt: number;
@@ -25,9 +12,15 @@ interface DebtTimelineChartProps {
 }
 
 export default function DebtTimelineChart({ data }: DebtTimelineChartProps) {
-  // Use provided data or fall back to defaults
-  const timelineData: DebtTimelineDataPoint[] =
-    data && data.length > 0 ? data : DEFAULT_DEBT_TIMELINE_DATA;
+  const timelineData: DebtTimelineDataPoint[] = data && data.length > 0 ? data : [];
+
+  if (timelineData.length === 0) {
+    return (
+      <div className='h-80 w-full flex items-center justify-center'>
+        <p className='text-sm text-gray-500'>Debt timeline data unavailable.</p>
+      </div>
+    );
+  }
 
   const maxDebt = Math.max(...timelineData.map((item) => item.debt));
   const minYear = timelineData[0]?.year ?? 2015;

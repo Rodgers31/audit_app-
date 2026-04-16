@@ -29,11 +29,15 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy.exc import IntegrityError
+
 logger = logging.getLogger(__name__)
 
 # Conditional imports — graceful fallback if DB is not configured
 try:
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
+    _be = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend"))
+    if _be not in sys.path:
+        sys.path.append(_be)
     from models import (
         AuditOpinion,
         Base,
@@ -62,8 +66,8 @@ try:
     from .parliament_dspace_client import (
         AUDITOR_GENERAL_COMMUNITY,
         AUDITOR_GENERAL_SUBCOMMUNITY,
-        NATIONAL_ASSEMBLY_COMMUNITY,
         COLLECTION_CONSTITUENCIES_AG,
+        NATIONAL_ASSEMBLY_COMMUNITY,
         BitstreamInfo,
         DSpaceItem,
         ParliamentDSpaceClient,
@@ -72,8 +76,8 @@ except ImportError:
     from parliament_dspace_client import (
         AUDITOR_GENERAL_COMMUNITY,
         AUDITOR_GENERAL_SUBCOMMUNITY,
-        NATIONAL_ASSEMBLY_COMMUNITY,
         COLLECTION_CONSTITUENCIES_AG,
+        NATIONAL_ASSEMBLY_COMMUNITY,
         BitstreamInfo,
         DSpaceItem,
         ParliamentDSpaceClient,
@@ -189,7 +193,10 @@ class ParliamentPipeline:
                     .all()
                 )
                 self._seen_uuids = {row[0] for row in existing}
-                logger.info("Loaded %d existing Parliament UUIDs for dedup", len(self._seen_uuids))
+                logger.info(
+                    "Loaded %d existing Parliament UUIDs for dedup",
+                    len(self._seen_uuids),
+                )
             except Exception as e:
                 if "UndefinedTable" in type(e).__name__ or "UndefinedTable" in str(e):
                     logger.warning(
@@ -227,6 +234,15 @@ class ParliamentPipeline:
             try:
                 self.db.commit()
                 logger.info("Committed %d new records", stats.items_inserted)
+            except IntegrityError as e:
+                # Late uniqueness conflict at commit — treat as partial success
+                logger.warning(
+                    "Commit IntegrityError (concurrent race): %s — "
+                    "rolling back uncommitted batch",
+                    e.orig,
+                )
+                self.db.rollback()
+                stats.errors.append({"phase": "commit", "error": str(e.orig)})
             except Exception as e:
                 logger.error("Commit failed: %s", e)
                 self.db.rollback()
@@ -297,7 +313,9 @@ class ParliamentPipeline:
                 else:
                     logger.debug("No PDF bitstreams for item %s", item.uuid[:12])
             except Exception as e:
-                logger.warning("Bitstream fetch/download failed for %s: %s", item.uuid[:12], e)
+                logger.warning(
+                    "Bitstream fetch/download failed for %s: %s", item.uuid[:12], e
+                )
                 stats.pdfs_failed += 1
 
         # 6. Log or insert
@@ -351,54 +369,80 @@ class ParliamentPipeline:
             "disclaimer": AuditOpinion.DISCLAIMER,
         }
 
-        source_doc = SourceDocument(
-            country_id=self.country_id,
-            publisher="Kenya Parliament Digital Library",
-            title=item.title[:500],
-            url=f"https://libraryir.parliament.go.ke/handle/{item.handle}"
-            if item.handle
-            else None,
-            file_path=downloaded_path,
-            fetch_date=datetime.now(timezone.utc),
-            md5=downloaded_md5 or item.content_md5(),
-            doc_type=doc_type_map.get(classification.doc_type, DocumentType.OTHER),
-            status=DocumentStatus.AVAILABLE,
-            meta={
-                "dspace_uuid": item.uuid,
-                "dspace_handle": item.handle,
-                "date_issued": item.date_issued,
-                "subjects": item.subjects,
-                "publisher": item.publisher,
-                "description": (item.description or "")[:1000],
-            },
-        )
-        self.db.add(source_doc)
-        self.db.flush()  # Get source_doc.id
+        # 7+8: Insert source_document + parliament_source_document inside
+        # a SAVEPOINT so a dspace_uuid uniqueness conflict (concurrent
+        # insert race) rolls back only this item, not the whole session.
+        try:
+            with self.db.begin_nested():
+                source_doc = SourceDocument(
+                    country_id=self.country_id,
+                    publisher="Kenya Parliament Digital Library",
+                    title=item.title[:500],
+                    url=(
+                        f"https://libraryir.parliament.go.ke/handle/{item.handle}"
+                        if item.handle
+                        else None
+                    ),
+                    file_path=downloaded_path,
+                    fetch_date=datetime.now(timezone.utc),
+                    md5=downloaded_md5 or item.content_md5(),
+                    doc_type=doc_type_map.get(
+                        classification.doc_type, DocumentType.OTHER
+                    ),
+                    status=DocumentStatus.AVAILABLE,
+                    meta={
+                        "dspace_uuid": item.uuid,
+                        "dspace_handle": item.handle,
+                        "date_issued": item.date_issued,
+                        "subjects": item.subjects,
+                        "publisher": item.publisher,
+                        "description": (item.description or "")[:1000],
+                    },
+                )
+                self.db.add(source_doc)
+                self.db.flush()  # Get source_doc.id
 
-        # 8. Create parliament_source_documents record
-        parliament_doc = ParliamentSourceDocument(
-            source_document_id=source_doc.id,
-            dspace_uuid=item.uuid,
-            dspace_handle=item.handle,
-            collection_uuid=item.collection_uuid,
-            community_uuid=AUDITOR_GENERAL_COMMUNITY,
-            parliament_doc_type=parliament_doc_type_map.get(classification.doc_type),
-            fiscal_year_label=(
-                resolved.fiscal_years[0] if resolved.fiscal_years else None
-            ),
-            committee_name=classification.committee_name,
-            audit_opinion=audit_opinion_map.get(resolved.audit_opinion) if resolved.audit_opinion else None,
-            confidence_score=combined_confidence,
-            meta={
-                "entity_name": resolved.entity_name,
-                "entity_type": resolved.entity_type,
-                "is_green_book": resolved.is_green_book,
-                "classification_pattern": classification.matched_pattern,
-                "pdf_file_path": downloaded_path,
-                "all_fiscal_years": resolved.fiscal_years,
-            },
-        )
-        self.db.add(parliament_doc)
+                parliament_doc = ParliamentSourceDocument(
+                    source_document_id=source_doc.id,
+                    dspace_uuid=item.uuid,
+                    dspace_handle=item.handle,
+                    collection_uuid=item.collection_uuid,
+                    community_uuid=AUDITOR_GENERAL_COMMUNITY,
+                    parliament_doc_type=parliament_doc_type_map.get(
+                        classification.doc_type
+                    ),
+                    fiscal_year_label=(
+                        resolved.fiscal_years[0] if resolved.fiscal_years else None
+                    ),
+                    committee_name=classification.committee_name,
+                    audit_opinion=(
+                        audit_opinion_map.get(resolved.audit_opinion)
+                        if resolved.audit_opinion
+                        else None
+                    ),
+                    confidence_score=combined_confidence,
+                    meta={
+                        "entity_name": resolved.entity_name,
+                        "entity_type": resolved.entity_type,
+                        "is_green_book": resolved.is_green_book,
+                        "classification_pattern": classification.matched_pattern,
+                        "pdf_file_path": downloaded_path,
+                        "all_fiscal_years": resolved.fiscal_years,
+                    },
+                )
+                self.db.add(parliament_doc)
+                self.db.flush()  # Force dspace_uuid UNIQUE check inside savepoint
+        except IntegrityError as e:
+            # dspace_uuid UNIQUE violation → concurrent insert race.
+            # The SAVEPOINT was rolled back; session stays usable.
+            logger.info(
+                "Duplicate dspace_uuid %s — skipped (race-safe dedup): %s",
+                item.uuid[:12],
+                e.orig,
+            )
+            stats.items_skipped_duplicate += 1
+            self._seen_uuids.add(item.uuid)
+            return
 
         stats.items_inserted += 1
         self._seen_uuids.add(item.uuid)
@@ -451,7 +495,8 @@ def main():
         help="Directory for PDF downloads (default: downloads/parliament)",
     )
     parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Enable debug logging",
     )
@@ -474,6 +519,7 @@ def main():
     if not dry_run:
         try:
             from database import SessionLocal
+
             db_session = SessionLocal()
             logger.info("DB session created via backend SessionLocal")
         except Exception as e:

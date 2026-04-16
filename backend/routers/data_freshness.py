@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 # ── response models ──────────────────────────────────────────────
 
+
 class SourceFreshness(BaseModel):
     source: str
     label: str
@@ -49,6 +50,9 @@ class FreshnessResponse(BaseModel):
 
 
 # ── source config (static metadata) ─────────────────────────────
+# NOTE: covers_through reflects the latest period known to be
+# ingested.  Update these values when new ETL data is loaded,
+# or replace with dynamic queries on source_documents.title.
 
 SOURCE_CONFIG = [
     {
@@ -130,10 +134,12 @@ async def get_data_freshness(db: Session = Depends(get_db)):
                 db.query(func.max(IngestionJob.finished_at))
                 .filter(
                     IngestionJob.domain.ilike(f"%{cfg['domain']}%"),
-                    IngestionJob.status.in_([
-                        IngestionStatus.COMPLETED,
-                        IngestionStatus.COMPLETED_WITH_ERRORS,
-                    ]),
+                    IngestionJob.status.in_(
+                        [
+                            IngestionStatus.COMPLETED,
+                            IngestionStatus.COMPLETED_WITH_ERRORS,
+                        ]
+                    ),
                 )
                 .scalar()
             )
@@ -145,17 +151,13 @@ async def get_data_freshness(db: Session = Depends(get_db)):
                 doc_date = (
                     db.query(func.max(SourceDocument.fetch_date))
                     .filter(
-                        SourceDocument.publisher.ilike(
-                            f"%{cfg['publisher_pattern']}%"
-                        )
+                        SourceDocument.publisher.ilike(f"%{cfg['publisher_pattern']}%")
                     )
                     .scalar()
                 )
                 if doc_date:
                     last_updated_date = (
-                        doc_date.date()
-                        if isinstance(doc_date, datetime)
-                        else doc_date
+                        doc_date.date() if isinstance(doc_date, datetime) else doc_date
                     )
 
         results.append(

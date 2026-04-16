@@ -11,32 +11,28 @@ export default function CountyDebtChart({ county }: CountyDebtChartProps) {
   const totalDebt = county.debt ?? county.totalDebt ?? 0;
   const budget = county.budget ?? county.totalBudget ?? 0;
 
-  // Estimate debt composition (in real scenario, this would come from detailed data)
+  // Use actual pending bills data when available
   const debtComposition = [
-    {
-      type: 'National Government Loans',
-      amount: totalDebt * 0.45, // 45% from national government
-      color: '#3b82f6',
-      description: 'Loans from the national treasury',
-    },
-    {
-      type: 'Commercial Banks',
-      amount: totalDebt * 0.25, // 25% from commercial banks
-      color: '#ef4444',
-      description: 'Loans from private banking institutions',
-    },
-    {
-      type: 'Development Partners',
-      amount: totalDebt * 0.2, // 20% from development partners
-      color: '#f59e0b',
-      description: 'World Bank, AfDB, and other partners',
-    },
-    {
-      type: 'Pending Bills',
-      amount: county.pendingBills || totalDebt * 0.1, // 10% pending bills
-      color: '#10b981',
-      description: 'Outstanding payments to suppliers',
-    },
+    ...(county.pendingBills && county.pendingBills > 0
+      ? [
+          {
+            type: 'Pending Bills',
+            amount: county.pendingBills,
+            color: '#10b981',
+            description: 'Outstanding payments to suppliers',
+          },
+        ]
+      : []),
+    ...(totalDebt > (county.pendingBills ?? 0)
+      ? [
+          {
+            type: 'Other Debt',
+            amount: totalDebt - (county.pendingBills ?? 0),
+            color: '#3b82f6',
+            description: 'Loans and other obligations',
+          },
+        ]
+      : []),
   ];
 
   const formatAmount = (amount: number) => {

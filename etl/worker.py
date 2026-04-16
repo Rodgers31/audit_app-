@@ -31,7 +31,9 @@ def load_config(path: str) -> Dict[str, Any]:
 
 
 def run_once(env: Dict[str, str]):
-    # Small wrapper to run incremental backfill with env filters
+    # Small wrapper to run incremental backfill with env filters.
+    # NOTE: Parliament is NOT routed here — it is owned exclusively by
+    # APScheduler in backend/main.py to avoid dual-scheduler execution.
     from subprocess import run
 
     args = ["python", "-m", "etl.backfill"]
@@ -103,7 +105,8 @@ def schedule_worker():
                         )
                         # Run job in a short-lived thread to not block scheduling loop
                         t = threading.Thread(
-                            target=run_once, kwargs={"env": item["env"]}
+                            target=run_once,
+                            kwargs={"env": item["env"]},
                         )
                         t.start()
                         # schedule next

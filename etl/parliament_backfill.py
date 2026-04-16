@@ -31,7 +31,10 @@ import sys
 from datetime import datetime, timezone
 
 # Allow running as `python -m etl.parliament_backfill` from project root
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
+# Use append (not insert) so top-level etl/ is not shadowed by backend/etl/
+_backend = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend"))
+if _backend not in sys.path:
+    sys.path.append(_backend)
 
 try:
     from .entity_resolver import EntityResolver
@@ -44,8 +47,12 @@ from sqlalchemy import text
 logger = logging.getLogger(__name__)
 
 
-def run_backfill(commit: bool = False, verbose: bool = False):
-    """Re-resolve entity fields for all parliament_source_documents."""
+def run_backfill(commit: bool = False, verbose: bool = False) -> dict:
+    """Re-resolve entity fields for all parliament_source_documents.
+
+    Returns a structured summary dict with keys: total, changed, unchanged,
+    errors, categories (dict of fix-class counts).
+    """
     session = SessionLocal()
     resolver = EntityResolver()
 
@@ -254,7 +261,15 @@ def run_backfill(commit: bool = False, verbose: bool = False):
             print(f"  {k:<25} {cur:>8} {proj:>8} {d:>8}")
 
     session.close()
-    return changed, errors
+
+    summary = {
+        "total": total,
+        "changed": changed,
+        "unchanged": unchanged,
+        "errors": errors,
+        "categories": {k: v for k, v in categories.items() if v > 0},
+    }
+    return summary
 
 
 def main():

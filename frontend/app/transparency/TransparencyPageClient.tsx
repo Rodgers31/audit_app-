@@ -4,8 +4,9 @@ import DataFreshnessBadge from '@/components/DataFreshnessBadge';
 import FollowTheMoney, { YearSelector } from '@/components/FollowTheMoney';
 import PageShell from '@/components/layout/PageShell';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
-import { useAllCountiesMoneyFlow, useNationalMoneyFlow } from '@/lib/react-query/useMoneyFlow';
 import { useAvailableFiscalYears } from '@/lib/react-query';
+import { useAllCountiesMoneyFlow, useNationalMoneyFlow } from '@/lib/react-query/useMoneyFlow';
+import { generateFiscalYears } from '@/lib/utils';
 import { MoneyFlowData } from '@/types';
 import { motion } from 'framer-motion';
 import {
@@ -53,7 +54,7 @@ function fundingImpact(amount: number): string {
   return '';
 }
 
-const DEFAULT_FISCAL_YEARS = ['2024/25', '2023/24', '2022/23', '2021/22', '2020/21'];
+const DEFAULT_FISCAL_YEARS = generateFiscalYears();
 
 type SortKey = 'efficiency' | 'flagged' | 'gap' | 'name';
 type SortDir = 'asc' | 'desc';
@@ -96,14 +97,9 @@ interface CountyFlowRow {
 /* ═══════════ Mini Efficiency Bar ═══════════ */
 
 function EfficiencyBar({ score }: { score: number }) {
-  const color =
-    score >= 70 ? 'bg-emerald-500' : score >= 50 ? 'bg-amber-500' : 'bg-red-500';
+  const color = score >= 70 ? 'bg-emerald-500' : score >= 50 ? 'bg-amber-500' : 'bg-red-500';
   const textColor =
-    score >= 70
-      ? 'text-emerald-700'
-      : score >= 50
-        ? 'text-amber-700'
-        : 'text-red-700';
+    score >= 70 ? 'text-emerald-700' : score >= 50 ? 'text-amber-700' : 'text-red-700';
   return (
     <div className='flex items-center gap-2 min-w-[120px]'>
       <div className='flex-1 h-2 bg-gray-100 rounded-full overflow-hidden'>
@@ -136,8 +132,7 @@ export default function TransparencyPage() {
   const { data: allCountyFlows, isLoading: allCountyFlowsLoading } =
     useAllCountiesMoneyFlow(selectedYear);
 
-  const years =
-    fiscalYears && fiscalYears.length > 0 ? fiscalYears : DEFAULT_FISCAL_YEARS;
+  const years = fiscalYears && fiscalYears.length > 0 ? fiscalYears : DEFAULT_FISCAL_YEARS;
 
   /* ── Derived national insights ── */
   const insights = useMemo(() => {
@@ -146,7 +141,7 @@ export default function TransparencyPage() {
     const spent = nationalFlow.stages.find((s) => s.stage === 'Spent')?.amount ?? 0;
     const flagged = nationalFlow.stages.find((s) => s.stage === 'Flagged')?.amount ?? 0;
     const gap = allocated - spent;
-    const lostPct = allocated > 0 ? ((gap / allocated) * 100) : 0;
+    const lostPct = allocated > 0 ? (gap / allocated) * 100 : 0;
     return { allocated, spent, flagged, gap, lostPct, efficiency: nationalFlow.efficiency_score };
   }, [nationalFlow]);
 
@@ -160,7 +155,7 @@ export default function TransparencyPage() {
         const spentStage = flowData.stages?.find((s) => s.stage === 'Spent');
         const totalGap = (flowData.stages || []).reduce(
           (sum, s) => sum + (s.gap_from_prev && s.gap_from_prev > 0 ? s.gap_from_prev : 0),
-          0,
+          0
         );
         return {
           county_id: String(flowData.county_id),
@@ -211,7 +206,7 @@ export default function TransparencyPage() {
         setSortDir(key === 'name' ? 'asc' : 'asc');
       }
     },
-    [sortKey],
+    [sortKey]
   );
 
   const countiesWithData = countyRows.filter((r) => r.allocated != null).length;
@@ -236,15 +231,14 @@ export default function TransparencyPage() {
     <PageShell
       title='Follow the Money'
       subtitle='Trace how public funds flow from allocation to expenditure across all 47 counties'>
-      
       {/* ═══ A. NARRATIVE INTRO ═══ */}
       <Section>
         <div className='max-w-3xl'>
           <p className='text-base text-gov-dark/70 leading-relaxed'>
-            Every year, the Kenyan government allocates trillions of shillings to 47 counties.
-            But how much actually reaches citizens? This page traces the journey of public
-            money — from treasury allocation to actual spending — exposing where funds leak,
-            get stuck, or disappear.
+            Every year, the Kenyan government allocates trillions of shillings to 47 counties. But
+            how much actually reaches citizens? This page traces the journey of public money — from
+            treasury allocation to actual spending — exposing where funds leak, get stuck, or
+            disappear.
           </p>
           <button
             onClick={() => setShowGuide(!showGuide)}
@@ -263,16 +257,20 @@ export default function TransparencyPage() {
                 <strong>Allocated</strong> — How much the treasury earmarked for a county.
               </p>
               <p>
-                <strong>Released</strong> — How much was actually sent. The gap is money delayed or withheld.
+                <strong>Released</strong> — How much was actually sent. The gap is money delayed or
+                withheld.
               </p>
               <p>
-                <strong>Spent</strong> — What the county actually spent. Unspent funds are returned or rolled over.
+                <strong>Spent</strong> — What the county actually spent. Unspent funds are returned
+                or rolled over.
               </p>
               <p>
-                <strong>Flagged</strong> — Amount the Auditor General identified as irregular, unsupported, or misused.
+                <strong>Flagged</strong> — Amount the Auditor General identified as irregular,
+                unsupported, or misused.
               </p>
               <p>
-                <strong>Efficiency Score</strong> — Spent ÷ Allocated × 100. Higher is better (up to ~95%).
+                <strong>Efficiency Score</strong> — Spent ÷ Allocated × 100. Higher is better (up to
+                ~95%).
               </p>
             </motion.div>
           )}
@@ -298,7 +296,11 @@ export default function TransparencyPage() {
             <InsightCard
               label='Flagged by Auditors'
               value={fmtKES(insights.flagged)}
-              sublabel={insights.flagged > 0 ? fundingImpact(insights.flagged) || 'Irregular expenditure' : 'No flags'}
+              sublabel={
+                insights.flagged > 0
+                  ? fundingImpact(insights.flagged) || 'Irregular expenditure'
+                  : 'No flags'
+              }
               accent='red'
             />
             <InsightCard
@@ -401,96 +403,98 @@ export default function TransparencyPage() {
           ) : (
             <ResponsiveTable>
               <div className='rounded-xl border border-gray-200/60 bg-white/60'>
-              <table className='w-full text-sm'>
-                <thead>
-                  <tr className='border-b border-gray-200 bg-gray-50/50 text-left'>
-                    <th className='py-3 pl-4 pr-3 font-semibold text-gov-dark/60 text-xs uppercase tracking-wider w-8'>
-                      #
-                    </th>
-                    <SortHeader label='County' field='name' />
-                    <th className='py-3 pr-3 font-semibold text-gov-dark/60 text-xs uppercase tracking-wider text-right'>
-                      Allocated
-                    </th>
-                    <th className='py-3 pr-3 font-semibold text-gov-dark/60 text-xs uppercase tracking-wider text-right'>
-                      Spent
-                    </th>
-                    <SortHeader label='Efficiency' field='efficiency' />
-                    <SortHeader label='Flagged' field='flagged' />
-                    <SortHeader label='Gap' field='gap' />
-                    <th className='py-3 pr-4 font-semibold text-gov-dark/60 text-xs uppercase tracking-wider hidden lg:table-cell'>
-                      Impact
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedRows.map((row, i) => {
-                    const impact = row.flagged_amount ? fundingImpact(row.flagged_amount) : '';
-                    return (
-                      <tr
-                        key={row.county_id}
-                        className={`border-b border-gray-100 hover:bg-gov-forest/[0.04] transition-colors ${
-                          i % 2 === 0 ? 'bg-white/40' : 'bg-gray-50/30'
-                        }`}>
-                        <td className='py-3 pl-4 pr-3 text-gov-dark/30 font-mono text-xs'>
-                          {i + 1}
-                        </td>
-                        <td className='py-3 pr-3'>
-                          <Link
-                            href={`/counties/${row.county_id}?tab=money`}
-                            className='text-gov-forest font-medium hover:underline decoration-gov-sage/30 underline-offset-2'>
-                            {row.county_name}
-                          </Link>
-                        </td>
-                        <td className='py-3 pr-3 text-right font-mono text-xs text-gov-dark/70'>
-                          {row.allocated != null ? fmtKES(row.allocated) : '—'}
-                        </td>
-                        <td className='py-3 pr-3 text-right font-mono text-xs text-gov-dark/70'>
-                          {row.spent != null ? fmtKES(row.spent) : '—'}
-                        </td>
-                        <td className='py-3 pr-3'>
-                          {row.efficiency_score != null ? (
-                            <EfficiencyBar score={row.efficiency_score} />
-                          ) : (
-                            <span className='text-gray-300 text-xs'>—</span>
-                          )}
-                        </td>
-                        <td className='py-3 pr-3 text-right'>
-                          {row.flagged_amount != null && row.flagged_amount > 0 ? (
-                            <span className='font-mono text-xs text-red-600 font-medium'>
-                              {fmtKES(row.flagged_amount)}
-                            </span>
-                          ) : (
-                            <span className='text-gray-300 text-xs'>—</span>
-                          )}
-                        </td>
-                        <td className='py-3 pr-3 text-right'>
-                          {row.total_gap > 0 ? (
-                            <span className='font-mono text-xs text-amber-600'>
-                              {fmtKES(row.total_gap)}
-                            </span>
-                          ) : (
-                            <span className='text-gray-300 text-xs'>—</span>
-                          )}
-                        </td>
-                        <td className='py-3 pr-4 hidden lg:table-cell'>
-                          {impact && (
-                            <span className='text-[11px] text-gov-dark/40 italic'>
-                              ≈ {impact}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                <table className='w-full text-sm'>
+                  <thead>
+                    <tr className='border-b border-gray-200 bg-gray-50/50 text-left'>
+                      <th className='py-3 pl-4 pr-3 font-semibold text-gov-dark/60 text-xs uppercase tracking-wider w-8'>
+                        #
+                      </th>
+                      <SortHeader label='County' field='name' />
+                      <th className='py-3 pr-3 font-semibold text-gov-dark/60 text-xs uppercase tracking-wider text-right'>
+                        Allocated
+                      </th>
+                      <th className='py-3 pr-3 font-semibold text-gov-dark/60 text-xs uppercase tracking-wider text-right'>
+                        Spent
+                      </th>
+                      <SortHeader label='Efficiency' field='efficiency' />
+                      <SortHeader label='Flagged' field='flagged' />
+                      <SortHeader label='Gap' field='gap' />
+                      <th className='py-3 pr-4 font-semibold text-gov-dark/60 text-xs uppercase tracking-wider hidden lg:table-cell'>
+                        Impact
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedRows.map((row, i) => {
+                      const impact = row.flagged_amount ? fundingImpact(row.flagged_amount) : '';
+                      return (
+                        <tr
+                          key={row.county_id}
+                          className={`border-b border-gray-100 hover:bg-gov-forest/[0.04] transition-colors ${
+                            i % 2 === 0 ? 'bg-white/40' : 'bg-gray-50/30'
+                          }`}>
+                          <td className='py-3 pl-4 pr-3 text-gov-dark/30 font-mono text-xs'>
+                            {i + 1}
+                          </td>
+                          <td className='py-3 pr-3'>
+                            <Link
+                              href={`/counties/${row.county_id}?tab=money`}
+                              className='text-gov-forest font-medium hover:underline decoration-gov-sage/30 underline-offset-2'>
+                              {row.county_name}
+                            </Link>
+                          </td>
+                          <td className='py-3 pr-3 text-right font-mono text-xs text-gov-dark/70'>
+                            {row.allocated != null ? fmtKES(row.allocated) : '—'}
+                          </td>
+                          <td className='py-3 pr-3 text-right font-mono text-xs text-gov-dark/70'>
+                            {row.spent != null ? fmtKES(row.spent) : '—'}
+                          </td>
+                          <td className='py-3 pr-3'>
+                            {row.efficiency_score != null ? (
+                              <EfficiencyBar score={row.efficiency_score} />
+                            ) : (
+                              <span className='text-gray-300 text-xs'>—</span>
+                            )}
+                          </td>
+                          <td className='py-3 pr-3 text-right'>
+                            {row.flagged_amount != null && row.flagged_amount > 0 ? (
+                              <span className='font-mono text-xs text-red-600 font-medium'>
+                                {fmtKES(row.flagged_amount)}
+                              </span>
+                            ) : (
+                              <span className='text-gray-300 text-xs'>—</span>
+                            )}
+                          </td>
+                          <td className='py-3 pr-3 text-right'>
+                            {row.total_gap > 0 ? (
+                              <span className='font-mono text-xs text-amber-600'>
+                                {fmtKES(row.total_gap)}
+                              </span>
+                            ) : (
+                              <span className='text-gray-300 text-xs'>—</span>
+                            )}
+                          </td>
+                          <td className='py-3 pr-4 hidden lg:table-cell'>
+                            {impact && (
+                              <span className='text-[11px] text-gov-dark/40 italic'>
+                                ≈ {impact}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </ResponsiveTable>
           )}
 
           {!allCountyFlowsLoading && sortedRows.length === 0 && (
             <div className='text-center py-12 text-gov-dark/40'>
-              {searchQuery ? 'No counties match your search.' : 'No data available for this fiscal year.'}
+              {searchQuery
+                ? 'No counties match your search.'
+                : 'No data available for this fiscal year.'}
             </div>
           )}
         </div>
@@ -501,8 +505,8 @@ export default function TransparencyPage() {
         <div className='rounded-2xl bg-gradient-to-br from-gov-forest/5 to-gov-sage/5 border border-gov-forest/10 p-6 sm:p-8'>
           <h2 className='font-display text-xl text-gov-dark mb-2'>What Can You Do?</h2>
           <p className='text-sm text-gov-dark/60 mb-5 max-w-2xl'>
-            Public money transparency isn't just data — it's accountability. Here's how you
-            can turn these numbers into action.
+            Public money transparency isn't just data — it's accountability. Here's how you can turn
+            these numbers into action.
           </p>
           <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
             <ActionCard
@@ -540,8 +544,8 @@ export default function TransparencyPage() {
               Implementation Review Reports
             </p>
             <p>
-              <strong>Audit data:</strong> Office of the Auditor General (OAG) — County
-              Government Audit Reports
+              <strong>Audit data:</strong> Office of the Auditor General (OAG) — County Government
+              Audit Reports
             </p>
           </div>
           <DataFreshnessBadge sources='COB/Treasury' />
@@ -572,8 +576,7 @@ function InsightCard({
     gray: 'bg-gray-50/80 border-gray-200/50 text-gray-700',
   };
   return (
-    <div
-      className={`rounded-xl border p-4 transition-shadow hover:shadow-md ${styles[accent]}`}>
+    <div className={`rounded-xl border p-4 transition-shadow hover:shadow-md ${styles[accent]}`}>
       <div className='text-[11px] font-semibold uppercase tracking-wider opacity-60 mb-1'>
         {label}
       </div>
