@@ -69,7 +69,7 @@ export function formatNumber(value: number): string {
  */
 export const DEBT_RISK_THRESHOLDS = {
   LOW_MAX: 40,
-  MODERATE_MAX: 55,
+  MODERATE_MAX: 60,
 } as const;
 
 /**
