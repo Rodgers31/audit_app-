@@ -176,30 +176,63 @@ def _ensure_source_document(
 # These percentages approximate how county budgets are distributed
 # Source: Controller of Budget county reports 2022-2024
 COUNTY_BUDGET_SECTORS = [
-    {"category": "Health", "development_pct": 0.08, "recurrent_pct": 0.17},
+    # util_bias: sector-specific offset (percentage points) added to the county's
+    # base execution rate so that different sectors show varied utilization.
+    # Recurrent-heavy sectors (admin, assembly) tend to absorb budget easily;
+    # development-heavy sectors (roads, water) typically underspend.
+    {
+        "category": "Health",
+        "development_pct": 0.08,
+        "recurrent_pct": 0.17,
+        "util_bias": +2,
+    },
     {
         "category": "Education & Training",
         "development_pct": 0.04,
         "recurrent_pct": 0.06,
+        "util_bias": +1,
     },
-    {"category": "Roads & Transport", "development_pct": 0.10, "recurrent_pct": 0.03},
+    {
+        "category": "Roads & Transport",
+        "development_pct": 0.10,
+        "recurrent_pct": 0.03,
+        "util_bias": -6,
+    },
     {
         "category": "Agriculture & Livestock",
         "development_pct": 0.05,
         "recurrent_pct": 0.04,
+        "util_bias": -4,
     },
-    {"category": "Water & Sanitation", "development_pct": 0.06, "recurrent_pct": 0.02},
+    {
+        "category": "Water & Sanitation",
+        "development_pct": 0.06,
+        "recurrent_pct": 0.02,
+        "util_bias": -8,
+    },
     {
         "category": "Public Administration",
         "development_pct": 0.02,
         "recurrent_pct": 0.18,
+        "util_bias": +5,
     },
-    {"category": "County Assembly", "development_pct": 0.01, "recurrent_pct": 0.08},
-    {"category": "Trade & Enterprise", "development_pct": 0.02, "recurrent_pct": 0.01},
+    {
+        "category": "County Assembly",
+        "development_pct": 0.01,
+        "recurrent_pct": 0.08,
+        "util_bias": +7,
+    },
+    {
+        "category": "Trade & Enterprise",
+        "development_pct": 0.02,
+        "recurrent_pct": 0.01,
+        "util_bias": -3,
+    },
     {
         "category": "Lands & Urban Planning",
         "development_pct": 0.02,
         "recurrent_pct": 0.01,
+        "util_bias": -5,
     },
 ]
 # Remaining ~6% dev + ~1% recurrent = "Other" catch-all
@@ -209,6 +242,7 @@ def _upsert_budget_lines(
     session: Session,
     *,
     entity_id: int,
+    entity_name: str,
     period_id: int,
     source_document_id: int,
     total_allocated: Decimal,
@@ -216,6 +250,8 @@ def _upsert_budget_lines(
     pending_bills: Decimal,
 ) -> None:
     """Create multiple BudgetLine rows per county — one per sector."""
+    import hashlib
+
     provenance = [
         {
             "source": "bootstrap",
@@ -229,7 +265,7 @@ def _upsert_budget_lines(
     rec_total = total_allocated * Decimal("0.60")
 
     allocated_so_far = Decimal("0")
-    for sector in COUNTY_BUDGET_SECTORS:
+    for idx, sector in enumerate(COUNTY_BUDGET_SECTORS):
         cat = sector["category"]
         alloc = (
             dev_total * Decimal(str(sector["development_pct"] / 0.40))
@@ -240,7 +276,16 @@ def _upsert_budget_lines(
             total_allocated
             * Decimal(str(sector["development_pct"] + sector["recurrent_pct"]))
         ).quantize(Decimal("0.01"))
-        actual = (alloc * execution_rate / Decimal("100")).quantize(Decimal("0.01"))
+
+        # --- Per-sector utilization variance ---
+        # Deterministic jitter in [-3, +3] based on county name + sector index
+        seed_bytes = f"{entity_name}:{idx}".encode()
+        jitter = (int(hashlib.md5(seed_bytes).hexdigest()[:8], 16) % 7) - 3  # -3..+3
+        bias = sector.get("util_bias", 0)
+        sector_rate = execution_rate + Decimal(str(bias + jitter))
+        # Clamp to [40, 100] so values stay plausible
+        sector_rate = max(Decimal("40"), min(Decimal("100"), sector_rate))
+        actual = (alloc * sector_rate / Decimal("100")).quantize(Decimal("0.01"))
         committed = (
             (pending_bills * alloc / total_allocated).quantize(Decimal("0.01"))
             if total_allocated > 0
@@ -283,9 +328,12 @@ def _upsert_budget_lines(
     # "Other" catch-all for the remainder
     remainder = total_allocated - allocated_so_far
     if remainder > 0:
-        actual_rem = (remainder * execution_rate / Decimal("100")).quantize(
-            Decimal("0.01")
-        )
+        # Give "Other" a slight negative bias + its own jitter
+        seed_bytes = f"{entity_name}:other".encode()
+        jitter = (int(hashlib.md5(seed_bytes).hexdigest()[:8], 16) % 7) - 3
+        other_rate = execution_rate + Decimal(str(-2 + jitter))
+        other_rate = max(Decimal("40"), min(Decimal("100"), other_rate))
+        actual_rem = (remainder * other_rate / Decimal("100")).quantize(Decimal("0.01"))
         existing = (
             session.query(BudgetLine)
             .filter(
@@ -961,7 +1009,9 @@ def _seed_federal_audits(
     logger.info("Federal audit findings seeded: %d new records", seeded)
 
 
-def initialize_reference_data(code_lookup: Optional[Dict[str, str]] = None) -> None:
+def initialize_reference_data(
+    code_lookup: Optional[Dict[str, str]] = None, *, force: bool = False
+) -> None:
     """Seed canonical county + audit data into the database if missing.
 
     Performs a fast check first: if 47 county entities already exist we
@@ -969,22 +1019,25 @@ def initialize_reference_data(code_lookup: Optional[Dict[str, str]] = None) -> N
     from ~3 min to <1 s on subsequent boots.
     """
     # ── fast path: skip if data already present ──────────────────────
-    quick_session = SessionLocal()
-    try:
-        county_count = (
-            quick_session.query(Entity).filter(Entity.type == EntityType.COUNTY).count()
-        )
-        if county_count >= 47:
-            logger.info(
-                "Reference data already present (%d county entities) — skipping bootstrap",
-                county_count,
+    if not force:
+        quick_session = SessionLocal()
+        try:
+            county_count = (
+                quick_session.query(Entity)
+                .filter(Entity.type == EntityType.COUNTY)
+                .count()
             )
+            if county_count >= 47:
+                logger.info(
+                    "Reference data already present (%d county entities) — skipping bootstrap",
+                    county_count,
+                )
+                quick_session.close()
+                return
+        except Exception:
+            pass  # table might not exist yet; fall through to full seed
+        finally:
             quick_session.close()
-            return
-    except Exception:
-        pass  # table might not exist yet; fall through to full seed
-    finally:
-        quick_session.close()
 
     # ── full seed path ───────────────────────────────────────────────
     county_payload = _load_json(COUNTY_DATA_PATH)
@@ -1126,6 +1179,7 @@ def initialize_reference_data(code_lookup: Optional[Dict[str, str]] = None) -> N
             _upsert_budget_lines(
                 session,
                 entity_id=entity.id,
+                entity_name=county_name,
                 period_id=period.id,
                 source_document_id=budget_doc.id,
                 total_allocated=allocated,

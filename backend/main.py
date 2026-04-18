@@ -981,6 +981,36 @@ security = HTTPBearer()
 
 
 # Cache decorator helper
+_all_mem_caches: list = []  # registry for test cleanup
+
+
+def clear_all_caches():
+    """Clear every in-memory endpoint cache.  Called between tests."""
+    for c in _all_mem_caches:
+        c.clear()
+    # Clear both RedisCache instances (main.redis_cache and cache.redis_cache.cache)
+    for rc in _redis_cache_instances():
+        rc._memory_cache.clear()
+        if rc.client is not None:
+            try:
+                rc.client.flushdb()
+            except Exception:
+                pass
+
+
+def _redis_cache_instances():
+    """Yield all known RedisCache singletons."""
+    if redis_cache is not None:
+        yield redis_cache
+    try:
+        from cache.redis_cache import cache as _router_cache
+
+        if _router_cache is not None and _router_cache is not redis_cache:
+            yield _router_cache
+    except Exception:
+        pass
+
+
 def cached(key_prefix: str, ttl: int = 3600):
     """Decorator to cache endpoint responses.
 
@@ -992,6 +1022,7 @@ def cached(key_prefix: str, ttl: int = 3600):
     def decorator(func):
         # Module-level in-memory fallback cache (per-endpoint)
         _mem_cache: Dict[str, Dict[str, Any]] = {}
+        _all_mem_caches.append(_mem_cache)
 
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
