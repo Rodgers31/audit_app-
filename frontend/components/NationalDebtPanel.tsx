@@ -23,6 +23,11 @@ export default function NationalDebtPanel({ className = '' }: NationalDebtPanelP
     position: { x: 0, y: 0 },
     visible: false,
   });
+  const [factIndex, setFactIndex] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setFactIndex((i) => (i + 1) % 6), 15000);
+    return () => clearInterval(id);
+  }, []);
 
   // Handle loading and error states
   if (error) {
@@ -37,8 +42,8 @@ export default function NationalDebtPanel({ className = '' }: NationalDebtPanelP
     return (
       <div className={`card ${className}`}>
         <DataIntegrityBanner
-          message="National debt data is currently unavailable from the backend. No figures are displayed to avoid showing unverified numbers."
-          severity="warning"
+          message='National debt data is currently unavailable from the backend. No figures are displayed to avoid showing unverified numbers.'
+          severity='warning'
         />
       </div>
     );
@@ -107,11 +112,6 @@ export default function NationalDebtPanel({ className = '' }: NationalDebtPanelP
       ? `${Math.max(0, debtToGdpRatio! - 60).toFixed(1)} percentage points above 60% threshold.`
       : 'Cannot compute threshold gap without debt-to-GDP data.',
   ];
-  const [factIndex, setFactIndex] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setFactIndex((i) => (i + 1) % rotatingFacts.length), 15000);
-    return () => clearInterval(id);
-  }, [rotatingFacts.length]);
 
   if (isLoading) {
     return (
@@ -156,26 +156,28 @@ export default function NationalDebtPanel({ className = '' }: NationalDebtPanelP
           {/* Circular Debt to GDP Gauge */}
           <div className='flex flex-col items-center space-y-4'>
             {hasGdpRatio ? (
-            <CircularProgress
-              percentage={debtToGdpRatio!}
-              size={180}
-              strokeWidth={16}
-              color={debtToGdpRatio! < 40 ? '#10B981' : debtToGdpRatio! < 60 ? '#F59E0B' : '#EF4444'}
-              backgroundColor='#E5E7EB'
-              className='mb-2'>
-              <div className='text-center'>
-                <div className={`text-3xl font-bold ${riskColor}`}>
-                  {formatPercentage(debtToGdpRatio!)}
+              <CircularProgress
+                percentage={debtToGdpRatio!}
+                size={180}
+                strokeWidth={16}
+                color={
+                  debtToGdpRatio! < 40 ? '#10B981' : debtToGdpRatio! < 60 ? '#F59E0B' : '#EF4444'
+                }
+                backgroundColor='#E5E7EB'
+                className='mb-2'>
+                <div className='text-center'>
+                  <div className={`text-3xl font-bold ${riskColor}`}>
+                    {formatPercentage(debtToGdpRatio!)}
+                  </div>
+                  <div className='text-sm text-gray-600'>of GDP</div>
+                  <div
+                    className={`text-xs px-2 py-1 rounded-full mt-1 ${riskColor
+                      .replace('text-', 'bg-')
+                      .replace('-600', '-100')} ${riskColor}`}>
+                    {riskLevel}
+                  </div>
                 </div>
-                <div className='text-sm text-gray-600'>of GDP</div>
-                <div
-                  className={`text-xs px-2 py-1 rounded-full mt-1 ${riskColor
-                    .replace('text-', 'bg-')
-                    .replace('-600', '-100')} ${riskColor}`}>
-                  {riskLevel}
-                </div>
-              </div>
-            </CircularProgress>
+              </CircularProgress>
             ) : (
               <div className='flex items-center justify-center w-[180px] h-[180px] rounded-full border-[16px] border-gray-200 mb-2'>
                 <div className='text-center'>
@@ -228,36 +230,36 @@ export default function NationalDebtPanel({ className = '' }: NationalDebtPanelP
           )}
 
           {/* Compact Debt Breakdown */}
-          {(domestic != null || external != null) ? (
-          <div className='grid grid-cols-2 gap-3'>
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.9, duration: 0.3 }}
-              className='text-center p-3 bg-blue-50 rounded-lg'>
-              <div className='text-lg font-bold text-blue-600 mb-1'>
-                {fmtOrNA(domestic, formatCurrency)}
-              </div>
-              <div className='text-xs text-blue-700'>Domestic Debt</div>
-              <div className='text-xs text-blue-600 mt-1'>
-                {fmtOrNA(domesticPct, formatPercentage)}
-              </div>
-            </motion.div>
+          {domestic != null || external != null ? (
+            <div className='grid grid-cols-2 gap-3'>
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.9, duration: 0.3 }}
+                className='text-center p-3 bg-blue-50 rounded-lg'>
+                <div className='text-lg font-bold text-blue-600 mb-1'>
+                  {fmtOrNA(domestic, formatCurrency)}
+                </div>
+                <div className='text-xs text-blue-700'>Domestic Debt</div>
+                <div className='text-xs text-blue-600 mt-1'>
+                  {fmtOrNA(domesticPct, formatPercentage)}
+                </div>
+              </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 1, duration: 0.3 }}
-              className='text-center p-3 bg-purple-50 rounded-lg'>
-              <div className='text-lg font-bold text-purple-600 mb-1'>
-                {fmtOrNA(external, formatCurrency)}
-              </div>
-              <div className='text-xs text-purple-700'>External Debt</div>
-              <div className='text-xs text-purple-600 mt-1'>
-                {fmtOrNA(externalPct, formatPercentage)}
-              </div>
-            </motion.div>
-          </div>
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 1, duration: 0.3 }}
+                className='text-center p-3 bg-purple-50 rounded-lg'>
+                <div className='text-lg font-bold text-purple-600 mb-1'>
+                  {fmtOrNA(external, formatCurrency)}
+                </div>
+                <div className='text-xs text-purple-700'>External Debt</div>
+                <div className='text-xs text-purple-600 mt-1'>
+                  {fmtOrNA(externalPct, formatPercentage)}
+                </div>
+              </motion.div>
+            </div>
           ) : (
             <div className='text-center text-sm text-gray-400 py-3'>
               Debt composition breakdown not available.
