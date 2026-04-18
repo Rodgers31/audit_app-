@@ -52,16 +52,49 @@ export function formatNumber(value: number): string {
   return numeral(value).format('0,0');
 }
 
+/**
+ * Canonical debt-to-GDP risk thresholds used across the UI.
+ *
+ *   Low      <  40%   — roughly aligned with EAC convergence (50%).
+ *   Moderate 40\u201355%   — below the IMF LIC warning line.
+ *   High     \u2265 55%    — the IMF Debt Sustainability Analysis treats
+ *                        debt/GDP > 55% as elevated risk for
+ *                        low-income countries like Kenya. This is the
+ *                        number surfaced throughout the /debt page
+ *                        (see InfoTip "imf-threshold").
+ *
+ * Keep every UI component importing from here so thresholds never
+ * drift between widgets. If the IMF revises its guidance, update
+ * MODERATE_MAX in this one spot.
+ */
+export const DEBT_RISK_THRESHOLDS = {
+  LOW_MAX: 40,
+  MODERATE_MAX: 55,
+} as const;
+
+/**
+ * Return a short risk label ('Low' | 'Moderate' | 'High') for a given
+ * debt-to-GDP ratio. Undefined / null / NaN inputs fall through to
+ * 'Moderate' so the UI has a sensible default before data loads.
+ */
+export function classifyDebtRisk(
+  debtToGdpRatio: number | null | undefined,
+): 'Low' | 'Moderate' | 'High' {
+  if (debtToGdpRatio == null || Number.isNaN(debtToGdpRatio)) return 'Moderate';
+  if (debtToGdpRatio < DEBT_RISK_THRESHOLDS.LOW_MAX) return 'Low';
+  if (debtToGdpRatio < DEBT_RISK_THRESHOLDS.MODERATE_MAX) return 'Moderate';
+  return 'High';
+}
+
 export function getDebtRiskColor(debtToGdpRatio: number): string {
-  if (debtToGdpRatio < 40) return 'text-brand-500';
-  if (debtToGdpRatio < 60) return 'text-caution';
+  const band = classifyDebtRisk(debtToGdpRatio);
+  if (band === 'Low') return 'text-brand-500';
+  if (band === 'Moderate') return 'text-caution';
   return 'text-risk';
 }
 
 export function getDebtRiskLevel(debtToGdpRatio: number): string {
-  if (debtToGdpRatio < 40) return 'Low Risk';
-  if (debtToGdpRatio < 60) return 'Moderate Risk';
-  return 'High Risk';
+  return `${classifyDebtRisk(debtToGdpRatio)} Risk`;
 }
 
 /**

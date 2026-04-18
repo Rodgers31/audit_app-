@@ -43,7 +43,8 @@ export const glossaryTerms: GlossaryTerm[] = [
     longDef:
       "A budget is like a family's spending plan, but for the entire country or county. It shows how much money the government expects to collect (from taxes) and how they plan to spend it (on schools, hospitals, roads, etc.).",
     examples: [
-      "Kenya's FY 2024/25 national budget is approximately KES 3.9 trillion",
+      // Historical illustration — see /budget for the live current-year figure.
+      "Kenya's FY2024/25 national budget was printed at approximately KES 3.9 trillion",
       'Your county budget funds local hospitals and schools',
       'If a family earns KES 100,000, their budget shows how much goes to rent, food, etc.',
     ],
@@ -59,9 +60,10 @@ export const glossaryTerms: GlossaryTerm[] = [
     longDef:
       'Just like when you borrow money to buy a house or car, governments borrow money to build big projects like highways or hospitals. This borrowed money must be paid back with interest.',
     examples: [
-      'As of 2024, Kenya owes over KES 10 trillion to various lenders',
+      // Historical illustration — see /debt for the live current figure.
+      'By mid-2024, Kenya\u2019s public debt had surpassed KES 10 trillion (National Treasury / CBK)',
       'Money borrowed to build the SGR (Standard Gauge Railway)',
-      'Like a mortgage - you get the house now but pay monthly for years',
+      'Like a mortgage \u2014 you get the house now but pay monthly for years',
     ],
     animation: 'debt',
   },
@@ -139,7 +141,8 @@ export const glossaryTerms: GlossaryTerm[] = [
     longDef:
       'GDP measures how much economic activity happens in Kenya \u2014 all the goods and services produced. It\u2019s like adding up the value of every product made and service provided in the entire country.',
     examples: [
-      "Kenya's nominal GDP was approximately KES 14.6 trillion in 2023",
+      // Source: KNBS Economic Survey 2024. See /economy for the latest release.
+      "Kenya's nominal GDP was approximately KES 14.6 trillion in 2023 (KNBS)",
       'Includes agriculture, manufacturing, services, technology',
       'Higher GDP usually means people have better living standards',
     ],

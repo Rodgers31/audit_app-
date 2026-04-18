@@ -17,6 +17,13 @@ from typing import Any, Dict, List, Optional, Tuple
 import httpx  # For internal API calls
 import uvicorn
 from config.settings import settings
+from services.trust_guards import (
+    check_budget_sectors,
+    check_coverage_staleness,
+    check_period_nonempty,
+    check_plausible_total,
+    reconcile_debt_totals,
+)
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer
@@ -154,15 +161,72 @@ def _response_meta(
     unit: str,
     entity_scope: str,
     fiscal_period: str | None = None,
+    scope_detail: str | None = None,
+    generated_at: str | datetime.datetime | None = None,
+    source_updated_at: str | datetime.datetime | None = None,
+    covers_through: str | None = None,
+    cache_ttl_seconds: int | None = None,
+    data_quality: str | None = None,
+    quality_notes: list[str] | None = None,
 ) -> dict:
     """Build a standard ``_meta`` envelope for finance endpoints.
 
+    Core fields
+    -----------
     unit: "kes" | "billion_kes" | "percentage" | "mixed"
     entity_scope: "national" | "county" | "all"
+    scope_detail: free-text clarification of what the endpoint actually
+        measures — e.g. "National-government execution only; excludes
+        county equitable share". Surface verbatim in the UI.
+
+    Freshness fields (added April 2026)
+    -----------------------------------
+    generated_at: ISO-8601 timestamp of when *this response* was built
+        (not when data was last refreshed). If omitted, set to now().
+    source_updated_at: ISO-8601 timestamp of the most recent row that
+        contributed to this response — MAX(created_at) or
+        MAX(updated_at) across the tables queried. Tells clients how
+        fresh the underlying data is, independent of cache age.
+    covers_through: human-readable coverage label (e.g. "FY2024/25" or
+        "Q2 2025"). Distinct from *fiscal_period* only when the
+        endpoint spans multiple periods and the latest one is what
+        clients should show.
+    cache_ttl_seconds: the @cached TTL, so clients know the maximum
+        staleness they might see. Omit for uncached endpoints.
+    data_quality: one of {"official", "estimated", "projected",
+        "historical", "mixed"}. Derived from joined SourceDocument
+        rows or hardcoded when the endpoint has known provenance.
+    quality_notes: list of human-readable caveats surfaced to the UI
+        (missing categories, uniform-absorption warnings, divergence
+        between sources, etc.). Produced by ``trust_guards`` helpers.
     """
     meta: dict = {"unit": unit, "entity_scope": entity_scope}
     if fiscal_period:
         meta["fiscal_period"] = fiscal_period
+    if scope_detail:
+        meta["scope_detail"] = scope_detail
+    # Always stamp generated_at so the frontend can render a relative
+    # "Updated X ago" badge without guessing.
+    if generated_at is None:
+        generated_at = datetime.datetime.utcnow()
+    if isinstance(generated_at, datetime.datetime):
+        meta["generated_at"] = generated_at.isoformat() + "Z"
+    else:
+        meta["generated_at"] = str(generated_at)
+    if source_updated_at is not None:
+        if isinstance(source_updated_at, datetime.datetime):
+            meta["source_updated_at"] = source_updated_at.isoformat() + "Z"
+        else:
+            meta["source_updated_at"] = str(source_updated_at)
+    if covers_through:
+        meta["covers_through"] = covers_through
+    if cache_ttl_seconds is not None:
+        meta["cache_ttl_seconds"] = int(cache_ttl_seconds)
+    if data_quality:
+        meta["data_quality"] = data_quality
+    if quality_notes:
+        # Defensive copy so callers can't mutate meta post-hoc.
+        meta["quality_notes"] = list(quality_notes)
     return meta
 
 
@@ -3032,6 +3096,27 @@ async def get_audit_statistics():
                         except Exception:
                             pass
 
+            # Latest fiscal year covered by the Audit table (derived, NOT hardcoded)
+            latest_period_label = (
+                db.query(DBFiscalPeriod.label)
+                .join(DBAudit, DBAudit.period_id == DBFiscalPeriod.id)
+                .order_by(DBFiscalPeriod.start_date.desc())
+                .limit(1)
+                .scalar()
+            )
+            # Fall back: look at any period_label carried on findings text
+            fiscal_years_covered = sorted(
+                {
+                    row[0]
+                    for row in db.query(DBFiscalPeriod.label)
+                    .join(DBAudit, DBAudit.period_id == DBFiscalPeriod.id)
+                    .distinct()
+                    .all()
+                    if row[0]
+                },
+                reverse=True,
+            )
+
             return {
                 "total_findings": total,
                 "counties_audited": counties_audited,
@@ -3044,7 +3129,28 @@ async def get_audit_statistics():
                 ],
                 "recent_critical": recent_items,
                 "report_title": "Office of the Auditor General — County Audit Findings",
-                "fiscal_year": "FY 2024/25",
+                # NOTE: derived from the latest period actually present in the
+                # Audit table. Returns None when the table is empty so the UI
+                # can show an honest "no audit data yet" state instead of a
+                # stale hardcoded label.
+                "fiscal_year": latest_period_label,
+                "fiscal_years_covered": fiscal_years_covered,
+                "_meta": _response_meta(
+                    unit="kes",
+                    entity_scope="county",
+                    fiscal_period=latest_period_label,
+                    covers_through=latest_period_label,
+                    cache_ttl_seconds=3600,
+                    data_quality="official" if latest_period_label else "unknown",
+                    quality_notes=(
+                        check_period_nonempty(
+                            total,
+                            endpoint="/audits/statistics",
+                            period_label=latest_period_label,
+                        )
+                        or None
+                    ),
+                ),
                 "last_updated": datetime.datetime.now(
                     datetime.timezone.utc
                 ).isoformat(),
@@ -3208,11 +3314,84 @@ async def get_federal_audits():
                 .all()
             )
 
+            # ── Derive report metadata from the database (NOT hardcoded) ──
+            # Latest fiscal period actually present in the national-audit data.
+            latest_period_label = (
+                db.query(DBFiscalPeriod.label)
+                .join(DBAudit, DBAudit.period_id == DBFiscalPeriod.id)
+                .join(DBEntity, DBAudit.entity_id == DBEntity.id)
+                .filter(
+                    DBEntity.type.in_([EntityType.MINISTRY, EntityType.NATIONAL])
+                )
+                .order_by(DBFiscalPeriod.start_date.desc())
+                .limit(1)
+                .scalar()
+            )
+            fiscal_years_covered = sorted(
+                {
+                    row[0]
+                    for row in (
+                        db.query(DBFiscalPeriod.label)
+                        .join(DBAudit, DBAudit.period_id == DBFiscalPeriod.id)
+                        .join(DBEntity, DBAudit.entity_id == DBEntity.id)
+                        .filter(
+                            DBEntity.type.in_(
+                                [EntityType.MINISTRY, EntityType.NATIONAL]
+                            )
+                        )
+                        .distinct()
+                        .all()
+                    )
+                    if row[0]
+                },
+                reverse=True,
+            )
+
+            # Derive report title + publication date from the most recent
+            # SourceDocument attached to national/ministry audits (if any).
+            latest_source = None
+            if DBSourceDocument is not None:
+                latest_source = (
+                    db.query(DBSourceDocument)
+                    .join(DBAudit, DBAudit.source_document_id == DBSourceDocument.id)
+                    .join(DBEntity, DBAudit.entity_id == DBEntity.id)
+                    .filter(
+                        DBEntity.type.in_(
+                            [EntityType.MINISTRY, EntityType.NATIONAL]
+                        )
+                    )
+                    .order_by(DBSourceDocument.fetch_date.desc())
+                    .first()
+                )
+
+            derived_report_title = (
+                latest_source.title
+                if latest_source and latest_source.title
+                else opinion_summary.get("report_title")
+                or "Report of the Auditor General on the National Government"
+            )
+            derived_report_date = (
+                latest_source.fetch_date.date().isoformat()
+                if latest_source and latest_source.fetch_date
+                else None
+            )
+            # The sitting Auditor-General is a public officeholder, not a
+            # computed figure. Prefer the publisher name from the latest
+            # source document so the value follows the data; fall back to
+            # the office name (never a specific person's name) when no
+            # source document is available.
+            derived_auditor_general = (
+                latest_source.publisher
+                if latest_source and latest_source.publisher
+                else "Office of the Auditor General of Kenya"
+            )
+
             return {
-                "report_title": "Report of the Auditor General on the National Government — FY 2023/2024",
-                "auditor_general": "Nancy Gathungu, CPA",
-                "fiscal_year": "FY 2023/24",
-                "report_date": "2024-12-15",
+                "report_title": derived_report_title,
+                "auditor_general": derived_auditor_general,
+                "fiscal_year": latest_period_label,
+                "fiscal_years_covered": fiscal_years_covered,
+                "report_date": derived_report_date,
                 "opinion_type": opinion_summary.get("opinion_type", "Qualified"),
                 "total_findings": len(findings),
                 "total_amount_questioned": total_amount,
@@ -3230,6 +3409,22 @@ async def get_federal_audits():
                     {"ministry": name, "finding_count": count}
                     for name, count in top_ministries
                 ],
+                "_meta": _response_meta(
+                    unit="kes",
+                    entity_scope="national",
+                    fiscal_period=latest_period_label,
+                    covers_through=latest_period_label,
+                    cache_ttl_seconds=3600,
+                    data_quality="official" if latest_period_label else "unknown",
+                    quality_notes=(
+                        check_period_nonempty(
+                            len(findings),
+                            endpoint="/audits/federal",
+                            period_label=latest_period_label,
+                        )
+                        or None
+                    ),
+                ),
                 "last_updated": datetime.datetime.now(
                     datetime.timezone.utc
                 ).isoformat(),
@@ -4928,11 +5123,59 @@ async def get_national_budget_summary(fiscal_year: str = None):
                 )
                 recurrent_budget = total_allocated - dev_budget
 
+                # Resolve fiscal-period label for the response
+                period_label = None
+                resolved_pid = None
+                if fiscal_year:
+                    resolved_pid = (
+                        db.query(DBFiscalPeriod.id, DBFiscalPeriod.label)
+                        .filter(DBFiscalPeriod.label.ilike(f"%{fiscal_year}%"))
+                        .first()
+                    )
+                    if resolved_pid:
+                        period_label = resolved_pid.label
+                else:
+                    _nat_pid = _latest_national_period(db)
+                    if _nat_pid:
+                        period_label = (
+                            db.query(DBFiscalPeriod.label)
+                            .filter(DBFiscalPeriod.id == _nat_pid)
+                            .scalar()
+                        )
+
                 return {
                     "status": "success",
-                    "_meta": _response_meta(unit="kes", entity_scope="national"),
+                    "_meta": _response_meta(
+                        unit="kes",
+                        entity_scope="national",
+                        fiscal_period=period_label,
+                        # IMPORTANT honesty label — this endpoint sums
+                        # BudgetLine rows for EntityType=NATIONAL only
+                        # (CoB NG-BIRR records). It therefore represents
+                        # National-Government execution, NOT the full
+                        # consolidated national budget, which additionally
+                        # includes the county equitable share transfer
+                        # (~400B+ KES for recent years).
+                        scope_detail=(
+                            "National-Government execution only "
+                            "(CoB NG-BIRR); excludes county equitable "
+                            "share transfers."
+                        ),
+                        covers_through=period_label,
+                        cache_ttl_seconds=1800,
+                        data_quality="official",
+                        quality_notes=(
+                            check_period_nonempty(
+                                len(allocations),
+                                endpoint="/budget/national",
+                                period_label=period_label,
+                            )
+                            or None
+                        ),
+                    ),
                     "data": {
                         "total": total_allocated,
+                        "total_label": "National-Government allocation (CoB NG-BIRR)",
                         "total_spent": total_spent,
                         "execution_rate": execution_rate,
                         "development_budget": dev_budget,
@@ -5206,19 +5449,254 @@ async def get_budget_overview():
                     f"budget/overview sector {s.get('name')}",
                 )
 
+            # ── Trust-guard quality notes ───────────────────────────
+            # These surface known credibility risks for this endpoint
+            # so the UI can show a single "data quality" badge.
+            #   1. Missing Personnel Emoluments category (real county
+            #      data has this as ~50% of spend).
+            #   2. Suspiciously uniform utilization (modeled data).
+            #   3. Stale coverage relative to the current FY.
+            #   4. Divergence between summed sectors and the seed
+            #      total (caught by _check_plausibility above).
+            quality_notes: list[str] = []
+            sector_notes = check_budget_sectors(sectors)
+            quality_notes.extend(sector_notes)
+            quality_notes.extend(
+                check_period_nonempty(
+                    len(sectors),
+                    endpoint="/budget/overview",
+                    period_label=period_label,
+                )
+            )
+            # If the sector-check found Personnel Emoluments missing OR
+            # utilization uniformity, the data is demonstrably modeled
+            # regardless of whether SourceDocument.description admits
+            # it. Downgrade the default so the UI badge tints amber.
+            _sector_flagged_modeling = any(
+                "personnel emoluments" in n.lower()
+                or "suspiciously uniform" in n.lower()
+                for n in sector_notes
+            )
+            # Resolve the app's "current" FY from app settings so the
+            # staleness check uses a deploy-time truth rather than
+            # wall-clock-derived guesses.
+            from models import FiscalPeriod as _FPModel
+            _current_fp = (
+                db.query(_FPModel.label)
+                .order_by(_FPModel.start_date.desc())
+                .limit(1)
+                .scalar()
+            )
+            if _current_fp:
+                quality_notes.extend(
+                    check_coverage_staleness(
+                        period_label,
+                        current_fy_label=_current_fp,
+                        max_stale_fys=1,
+                    )
+                )
+
+            # ── Data-quality provenance ─────────────────────────────
+            # The writer (backend/seeding/domains/counties_budget/
+            # writer.py) persists data_quality into TWO places so we
+            # can probe without joining a free-text description column:
+            #   1. SourceDocument.meta["data_quality"] — authoritative
+            #      (one per source; always reflects the latest seed).
+            #   2. BudgetLine.provenance[].data_quality — per-line audit
+            #      trail, surfaced here as a tiebreaker when the source
+            #      is shared by a mix of fixture + real rows.
+            # If any county line still reports "estimated" / "projected",
+            # we downgrade the overall badge — one modeled sector taints
+            # the aggregate.
+            data_quality = "official"
+            src_updated_at: datetime.datetime | None = None
+            try:
+                from models import BudgetLine as _BL, SourceDocument as _SD
+
+                quality_q = (
+                    db.query(
+                        _SD.meta,
+                        _SD.last_seen_at,
+                        _SD.fetch_date,
+                        _SD.created_at,
+                        _BL.provenance,
+                    )
+                    .join(_BL, _BL.source_document_id == _SD.id)
+                    .join(DBEntity, _BL.entity_id == DBEntity.id)
+                    .filter(DBEntity.type == EntityType.COUNTY)
+                )
+                if county_period_id:
+                    quality_q = quality_q.filter(_BL.period_id == county_period_id)
+                quality_rows = quality_q.all()
+                if quality_rows:
+                    # Collect every data_quality token we see, from both
+                    # source meta and per-line provenance entries.
+                    tokens: set[str] = set()
+                    for src_meta, _ls, _fd, _cr, prov in quality_rows:
+                        if isinstance(src_meta, dict):
+                            t = src_meta.get("data_quality")
+                            if isinstance(t, str) and t:
+                                tokens.add(t.lower())
+                        if isinstance(prov, list):
+                            for entry in prov:
+                                if isinstance(entry, dict):
+                                    t = entry.get("data_quality")
+                                    if isinstance(t, str) and t:
+                                        tokens.add(t.lower())
+
+                    # Badge hierarchy: any "estimated"/"projected" taints
+                    # the aggregate. "official" wins only if *every* row
+                    # is official-or-unknown-but-at-least-one-official.
+                    if "estimated" in tokens or "modeled" in tokens:
+                        data_quality = "estimated"
+                        quality_notes.insert(
+                            0,
+                            "County allocations shown here are modeled on "
+                            "the CRA equitable-share formula, not sourced "
+                            "from Controller of Budget execution reports. "
+                            "Expect divergence from actual absorption.",
+                        )
+                    elif "projected" in tokens or "forecast" in tokens:
+                        data_quality = "projected"
+                    elif "official" in tokens:
+                        data_quality = "official"
+                    elif tokens:
+                        # Only "unknown"/"historical"/"mixed" surfaced.
+                        data_quality = "mixed" if len(tokens) > 1 else next(iter(tokens))
+
+                    # source_updated_at = newest timestamp we can find
+                    # across last_seen_at / fetch_date / created_at.
+                    ts_values = [
+                        t
+                        for r in quality_rows
+                        for t in (r[1], r[2], r[3])
+                        if t is not None
+                    ]
+                    if ts_values:
+                        src_updated_at = max(ts_values)
+            except Exception as _e:
+                logging.debug("budget/overview data_quality probe failed: %s", _e)
+
+            # If trust-guard sector checks flagged the data as modeled
+            # (no Personnel Emoluments, or σ<1.0 uniformity), honour
+            # that signal even if the SourceDocument probe said otherwise.
+            if _sector_flagged_modeling and data_quality == "official":
+                data_quality = "estimated"
+
+            # ── Post-activation trust checks (April-2026) ───────────
+            # These fire once the live COB ingestion path is running
+            # so we catch: stale feed (pipeline broken), Total-only
+            # extraction (scraper heuristic drift), and repeated
+            # ingestion failures (COB site outage).
+            #
+            # Conservative rule: any of these downgrades the badge
+            # from "official" → "estimated". Badge only goes green
+            # when freshness, category coverage, AND sector sanity
+            # all pass.
+            try:
+                from services.trust_guards import (
+                    check_category_coverage,
+                    check_consecutive_fetch_failures,
+                    check_source_freshness,
+                )
+
+                # Freshness: newest fetch_date across county-scope
+                # SourceDocuments. Missing = no successful fetch ever.
+                freshness_notes = check_source_freshness(
+                    src_updated_at,
+                    label="County budget feed (COB)",
+                    max_age_days=120,
+                )
+                quality_notes.extend(freshness_notes)
+
+                # Category coverage: if the DB carries only "Total"
+                # rows for counties, the scraper didn't find the
+                # sub-aggregate tables in the source PDF.
+                try:
+                    from models import BudgetLine as _BL2
+
+                    cat_rows = (
+                        db.query(_BL2.category)
+                        .join(DBEntity, _BL2.entity_id == DBEntity.id)
+                        .filter(DBEntity.type == EntityType.COUNTY)
+                    )
+                    if county_period_id:
+                        cat_rows = cat_rows.filter(_BL2.period_id == county_period_id)
+                    raw_categories = [r[0] for r in cat_rows.distinct().all()]
+                except Exception:
+                    raw_categories = []
+
+                coverage_notes = check_category_coverage(
+                    raw_categories,
+                    require_pe=True,
+                    require_recurrent_dev_split=False,
+                )
+                quality_notes.extend(coverage_notes)
+
+                # Consecutive failures: scan the recent IngestionJob
+                # history for the counties_budget domain.
+                try:
+                    from models import IngestionJob as _IJ
+
+                    recent = (
+                        db.query(_IJ.status)
+                        .filter(_IJ.domain == "counties_budget")
+                        .order_by(_IJ.started_at.desc())
+                        .limit(5)
+                        .all()
+                    )
+                    # Reverse to chronological order for the checker.
+                    statuses = [
+                        getattr(r[0], "value", str(r[0])).lower()
+                        for r in reversed(recent)
+                    ]
+                except Exception:
+                    statuses = []
+
+                failure_notes = check_consecutive_fetch_failures(
+                    statuses,
+                    domain="counties_budget",
+                    threshold=3,
+                )
+                quality_notes.extend(failure_notes)
+
+                # If any of the three guards fired, the badge cannot
+                # honestly remain "official".
+                if (
+                    (freshness_notes or coverage_notes or failure_notes)
+                    and data_quality == "official"
+                ):
+                    data_quality = "estimated"
+            except Exception as _e:
+                logging.debug(
+                    "budget/overview post-activation trust checks failed: %s", _e
+                )
+
+            scope_detail = (
+                "Sector allocations are aggregated from county-level "
+                "BudgetLine rows for the latest fiscal period with data. "
+                "Personnel Emoluments — typically ~50% of county spending "
+                "— is not broken out unless the source fixture includes "
+                "it as a category. Figures therefore reflect non-wage "
+                "allocations when the seed is CRA-formula based."
+            )
+
             return {
                 "status": "success",
                 "data_source": "database",
                 "fiscal_period": period_label,
                 "last_updated": datetime.datetime.now().isoformat(),
-                "_meta": {
-                    "summary_unit": "kes",
-                    "sectors_unit": "kes",
-                    "fiscal_history_unit": "billion_kes",
-                    "county_utilization_unit": "kes",
-                    "entity_scope": "all",
-                    "fiscal_period": period_label,
-                },
+                "_meta": _response_meta(
+                    unit="kes",
+                    entity_scope="all",
+                    fiscal_period=period_label,
+                    scope_detail=scope_detail,
+                    covers_through=period_label,
+                    cache_ttl_seconds=1800,
+                    source_updated_at=src_updated_at,
+                    data_quality=data_quality,
+                    quality_notes=quality_notes or None,
+                ),
                 "summary": {
                     "total_budget": total_allocated,
                     "total_spent": total_spent,
@@ -5476,6 +5954,8 @@ async def get_debt_timeline(db: Session = Depends(get_db)):
     Reads from the debt_timeline table, seeded from CBK Annual Reports
     and National Treasury Budget Policy Statements.
     """
+    from sqlalchemy import func  # noqa: F401 — used for reconciliation sum
+
     from models import DebtTimeline
 
     try:
@@ -5518,14 +5998,87 @@ async def get_debt_timeline(db: Session = Depends(get_db)):
         if rows[-1].updated_at:
             last_updated = rows[-1].updated_at.isoformat()
 
+        # ── Cross-check against /debt/national (Loan sum) ──
+        # Same rationale as the reciprocal check on /debt/national:
+        # surface any divergence so callers can display an honest badge.
+        reconciliation: dict = {
+            "primary_source": "debt_timeline_table",
+            "primary_value_kes": (
+                float(rows[-1].total) * 1e9 if rows and rows[-1].total else None
+            ),
+            "secondary_source": "loans_table",
+            "secondary_value_kes": None,
+            "percent_diff": None,
+            "status": "unchecked",
+            "note": "",
+        }
+        try:
+            from models import EntityType as _ET
+
+            national_entity = (
+                db.query(DBEntity).filter(DBEntity.type == _ET.NATIONAL).first()
+            )
+            if national_entity:
+                loan_sum = (
+                    db.query(func.sum(DBLoan.outstanding))
+                    .filter(DBLoan.entity_id == national_entity.id)
+                    .scalar()
+                    or 0
+                )
+                loan_sum_f = float(loan_sum)
+                reconciliation["secondary_value_kes"] = loan_sum_f
+                primary_kes = reconciliation["primary_value_kes"]
+                if primary_kes and loan_sum_f > 0:
+                    diff_pct = abs(primary_kes - loan_sum_f) / primary_kes * 100
+                    reconciliation["percent_diff"] = round(diff_pct, 2)
+                    if diff_pct > 5.0:
+                        reconciliation["status"] = "divergent"
+                        reconciliation["note"] = (
+                            "DebtTimeline and loans_table disagree by more "
+                            "than 5%. These are independent sources."
+                        )
+                        logging.warning(
+                            "/debt/timeline reconciliation divergent: "
+                            "timeline=%.0f KES, loans=%.0f KES, diff=%.2f%%",
+                            primary_kes,
+                            loan_sum_f,
+                            diff_pct,
+                        )
+                    else:
+                        reconciliation["status"] = "consistent"
+        except Exception as exc:  # pragma: no cover
+            logger.warning("timeline reconciliation failed: %s", exc)
+
+        # ── Freshness + trust metadata ──────────────────────────────
+        covers_through_label = f"{rows[-1].year}" if rows else None
+        timeline_quality_notes: list[str] = []
+        if reconciliation.get("status") == "divergent":
+            timeline_quality_notes.append(
+                reconciliation.get("note")
+                or "Debt sources diverge beyond reconciliation threshold."
+            )
+        src_updated = rows[-1].updated_at if rows and rows[-1].updated_at else None
+
         return {
             "status": "success",
             "data_source": "database",
-            "_meta": _response_meta(unit="billion_kes", entity_scope="national"),
+            "_meta": _response_meta(
+                unit="billion_kes",
+                entity_scope="national",
+                covers_through=covers_through_label,
+                cache_ttl_seconds=86400,
+                source_updated_at=src_updated,
+                data_quality=(
+                    "mixed" if reconciliation.get("status") == "divergent"
+                    else "official"
+                ),
+                quality_notes=timeline_quality_notes or None,
+            ),
             "last_updated": last_updated,
             "source": source_title,
             "years": len(timeline),
             "timeline": timeline,
+            "reconciliation": reconciliation,
         }
     except Exception as e:
         logging.error(f"Error fetching debt timeline: {e}")
@@ -6106,6 +6659,59 @@ async def get_national_debt():
                     pending_bills = categories["pending_bills"]["principal"]
                     county_debt = categories["county_guaranteed"]["principal"]
 
+                    # ── Cross-check against DebtTimeline (aggregate series) ──
+                    # The Loan table and DebtTimeline table are populated from
+                    # different source documents (Treasury QEDR / CBK vs CBK
+                    # Annual Report / BPS). They should agree within a few
+                    # percent. If they disagree substantially we log a warning
+                    # and surface the diff in the response so the UI can show
+                    # an honest "data sources disagree" badge.
+                    from models import DebtTimeline as _DT
+
+                    latest_timeline_row = (
+                        db.query(_DT).order_by(_DT.year.desc()).first()
+                    )
+                    reconciliation: dict = {
+                        "primary_source": "loans_table",
+                        "primary_value_kes": total_outstanding,
+                        "secondary_source": "debt_timeline_table",
+                        "secondary_value_kes": None,
+                        "secondary_year": None,
+                        "percent_diff": None,
+                        "status": "unchecked",
+                        "note": "",
+                    }
+                    if latest_timeline_row and latest_timeline_row.total:
+                        # DebtTimeline.total is in BILLIONS of KES.
+                        secondary_kes = float(latest_timeline_row.total) * 1e9
+                        reconciliation["secondary_value_kes"] = secondary_kes
+                        reconciliation["secondary_year"] = latest_timeline_row.year
+                        if total_outstanding > 0:
+                            diff_pct = (
+                                abs(total_outstanding - secondary_kes)
+                                / total_outstanding
+                                * 100
+                            )
+                            reconciliation["percent_diff"] = round(diff_pct, 2)
+                            if diff_pct > 5.0:
+                                reconciliation["status"] = "divergent"
+                                reconciliation["note"] = (
+                                    "Loan-sum and DebtTimeline disagree by more "
+                                    "than 5%. The two tables are seeded from "
+                                    "different source documents; the loan-level "
+                                    "sum is the authoritative value for this "
+                                    "endpoint."
+                                )
+                                logging.warning(
+                                    "/debt/national reconciliation divergent: "
+                                    "loans=%.0f KES, timeline=%.0f KES, diff=%.2f%%",
+                                    total_outstanding,
+                                    secondary_kes,
+                                    diff_pct,
+                                )
+                            else:
+                                reconciliation["status"] = "consistent"
+
                     return {
                         "status": "success",
                         "data_source": "database",
@@ -6121,6 +6727,7 @@ async def get_national_debt():
                                 if gdp_value > 0
                                 else 0
                             ),
+                            "reconciliation": reconciliation,
                             # High-level breakdown
                             "summary": {
                                 "external_debt": external_debt,
