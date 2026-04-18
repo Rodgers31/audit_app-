@@ -10,3 +10,6 @@ countries:
       oag:
         interval_hours: 24
         jitter_minutes: 30
+      # Parliament is NOT scheduled here — it is owned by APScheduler in
+      # backend/main.py (daily ingest + weekly reconcile).  Do NOT add a
+      # parliament entry to avoid duplicate execution across processes.

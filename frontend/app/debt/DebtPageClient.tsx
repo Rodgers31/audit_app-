@@ -1,6 +1,7 @@
 'use client';
 
 import DataFreshnessBadge from '@/components/DataFreshnessBadge';
+import DataIntegrityBanner from '@/components/DataIntegrityBanner';
 import InfoTip from '@/components/InfoTip';
 import PageShell from '@/components/layout/PageShell';
 import PDFExportButton from '@/components/PDFExportButton';
@@ -13,6 +14,7 @@ import {
   usePendingBillsSummary,
 } from '@/lib/react-query/useDebt';
 import { useFiscalSummary } from '@/lib/react-query/useFiscal';
+import { fmtBillionKES, fmtKES } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import {
   AlertTriangle,
@@ -59,22 +61,10 @@ import {
    Helpers
    ═══════════════════════════════════════════════════════ */
 
-function fmtKES(val: number): string {
-  if (!val || val === 0) return 'KES 0';
-  const abs = Math.abs(val);
-  if (abs >= 1e12) return `KES ${(val / 1e12).toFixed(2)}T`;
-  if (abs >= 1e9) return `KES ${(val / 1e9).toFixed(1)}B`;
-  if (abs >= 1e6) return `KES ${(val / 1e6).toFixed(1)}M`;
-  return `KES ${val.toLocaleString()}`;
-}
+// fmtKES and fmtBillionKES imported from @/lib/utils
 
-function fmtB(val: number): string {
-  if (!val) return '—';
-  if (val >= 1000) return `${(val / 1000).toFixed(2)}T`;
-  return `${val.toFixed(0)}B`;
-}
-
-function pct(val: number): string {
+function pct(val: number | null | undefined): string {
+  if (val == null) return '—';
   return `${val.toFixed(1)}%`;
 }
 
@@ -285,32 +275,34 @@ export default function NationalDebtPage() {
       .catch(() => setFetchedPopulation(null));
   }, [backendReady]);
 
-  // Derived data
+  // Derived data — null means "not available", distinct from real zero
   const d = useMemo(() => {
     const api = overview?.data || overview || {};
-    const totalDebt = api.total_outstanding || api.total_debt || 0;
-    const gdp = api.gdp || 0;
-    const gdpRatio = api.debt_to_gdp_ratio || (gdp > 0 ? (totalDebt / gdp) * 100 : 0);
+    const hasData = Object.keys(api).length > 0;
+    const totalDebt = api.total_outstanding ?? api.total_debt ?? null;
+    const gdp = api.gdp ?? null;
+    const gdpRatio = api.debt_to_gdp_ratio ?? (gdp && totalDebt ? (totalDebt / gdp) * 100 : null);
     const summary = api.summary || {};
     const categories = api.categories || {};
     const sustainability = api.debt_sustainability || {};
-    const population = fetchedPopulation || api.population || 57_500_000;
-    const perCapita = totalDebt > 0 ? totalDebt / population : 0;
+    const population = fetchedPopulation || api.population || null;
+    const perCapita = totalDebt != null && totalDebt > 0 && population ? totalDebt / population : null;
 
     return {
+      hasData,
       totalDebt,
       gdp,
       gdpRatio,
       summary,
       categories,
       sustainability,
-      loanCount: api.loan_count || 0,
+      loanCount: api.loan_count ?? null,
       perCapita,
       population,
-      externalDebt: summary.external_debt || 0,
-      domesticDebt: summary.domestic_debt || 0,
-      externalPct: summary.external_percentage || 0,
-      domesticPct: summary.domestic_percentage || 0,
+      externalDebt: summary.external_debt ?? null,
+      domesticDebt: summary.domestic_debt ?? null,
+      externalPct: summary.external_percentage ?? null,
+      domesticPct: summary.domestic_percentage ?? null,
     };
   }, [overview, fetchedPopulation]);
 
@@ -417,6 +409,14 @@ export default function NationalDebtPage() {
       {/* ── Data freshness banner ── */}
       <DataFreshnessBadge sources="CBK/Treasury" variant="banner" />
 
+      {/* ── Empty data integrity warning ── */}
+      {!d.hasData && (
+        <DataIntegrityBanner
+          message="Debt overview data returned empty from the backend. Values shown as dashes indicate unavailable data, not zero debt."
+          severity="warning"
+        />
+      )}
+
       {/* ── Export button ── */}
       <div className='flex justify-end -mb-3'>
         <PDFExportButton compact documentTitle='Kenya National Debt Report' />
@@ -428,16 +428,16 @@ export default function NationalDebtPage() {
           icon={DollarSign}
           label='Total Outstanding'
           tip='outstanding'
-          value={fmtKES(d.totalDebt)}
-          sub={`${d.loanCount} active loan facilities`}
+          value={d.totalDebt != null ? fmtKES(d.totalDebt) : '—'}
+          sub={d.loanCount != null ? `${d.loanCount} active loan facilities` : 'Loan count unavailable'}
           accent='text-red-600'
           delay={0.05}
         />
         <StatCard
           icon={Users}
           label='Per Citizen'
-          value={fmtKES(d.perCapita)}
-          sub={`Shared among ${(d.population / 1e6).toFixed(0)}M Kenyans`}
+          value={d.perCapita != null ? fmtKES(d.perCapita) : '—'}
+          sub={d.population ? `Shared among ${(d.population / 1e6).toFixed(0)}M Kenyans` : 'Population data unavailable'}
           delay={0.1}
         />
         <StatCard
@@ -445,8 +445,8 @@ export default function NationalDebtPage() {
           label='Debt-to-GDP'
           tip='debt-to-gdp'
           value={pct(d.gdpRatio)}
-          sub={d.gdpRatio > 55 ? 'Exceeds IMF 55% recommended threshold' : 'Within safe levels'}
-          accent={d.gdpRatio > 55 ? 'text-red-600' : 'text-green-600'}
+          sub={d.gdpRatio != null ? (d.gdpRatio > 55 ? 'Exceeds IMF 55% recommended threshold' : 'Within safe levels') : 'Ratio data unavailable'}
+          accent={d.gdpRatio != null && d.gdpRatio > 55 ? 'text-red-600' : d.gdpRatio != null ? 'text-green-600' : 'text-gray-400'}
           delay={0.15}
         />
         <StatCard
@@ -471,9 +471,9 @@ export default function NationalDebtPage() {
           className='flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm'>
           <ArrowUpRight className='text-red-500 flex-shrink-0' size={18} />
           <span className='text-red-800'>
-            Debt grew by <strong>KES {fmtB(yoyGrowth.amount)}</strong> (
+            Debt grew by <strong>KES {fmtBillionKES(yoyGrowth.amount)}</strong> (
             <strong>{yoyGrowth.change.toFixed(1)}%</strong>) in {yoyGrowth.year} — that&apos;s
-            roughly <strong>KES {fmtB(yoyGrowth.amount / 365)}</strong> per day.
+            roughly <strong>KES {fmtBillionKES(yoyGrowth.amount / 365)}</strong> per day.
           </span>
         </motion.div>
       )}
@@ -762,24 +762,24 @@ export default function NationalDebtPage() {
                 <FiscalRow
                   label='Appropriated Budget'
                   tip='appropriated-budget'
-                  value={`KES ${fmtB(fiscal.current.appropriated_budget)}`}
+                  value={`KES ${fmtBillionKES(fiscal.current.appropriated_budget)}`}
                 />
                 <FiscalRow
                   label='Total Revenue'
-                  value={`KES ${fmtB(fiscal.current.total_revenue)}`}
-                  sub={`Tax: ${fmtB(fiscal.current.tax_revenue)} + Non-tax: ${fmtB(fiscal.current.non_tax_revenue)}`}
+                  value={`KES ${fmtBillionKES(fiscal.current.total_revenue)}`}
+                  sub={`Tax: ${fmtBillionKES(fiscal.current.tax_revenue)} + Non-tax: ${fmtBillionKES(fiscal.current.non_tax_revenue)}`}
                 />
                 <FiscalRow
                   label='Borrowing Required'
                   tip='borrowing-vs-budget'
-                  value={`KES ${fmtB(fiscal.current.total_borrowing)}`}
+                  value={`KES ${fmtBillionKES(fiscal.current.total_borrowing)}`}
                   sub={`${fiscal.current.borrowing_pct_of_budget}% of the budget`}
                   warn
                 />
                 <FiscalRow
                   label='Debt Service Cost'
                   tip='debt-service'
-                  value={`KES ${fmtB(fiscal.current.debt_service_cost)}`}
+                  value={`KES ${fmtBillionKES(fiscal.current.debt_service_cost)}`}
                   sub={`For every KES 100 collected, KES ${fiscal.current.debt_service_per_shilling?.toFixed(0) || '—'} goes to debt`}
                   warn
                 />
@@ -788,8 +788,8 @@ export default function NationalDebtPage() {
                     <AlertTriangle size={14} className='flex-shrink-0 mt-0.5' />
                     <div>
                       <strong>Debt ceiling breached.</strong> Actual debt (KES{' '}
-                      {fmtB(fiscal.current.actual_debt)}) exceeds the PFM Act ceiling of KES{' '}
-                      {fmtB(fiscal.current.debt_ceiling)} by{' '}
+                      {fmtBillionKES(fiscal.current.actual_debt)}) exceeds the PFM Act ceiling of KES{' '}
+                      {fmtBillionKES(fiscal.current.debt_ceiling)} by{' '}
                       {pct(fiscal.current.debt_ceiling_usage_pct - 100)}.
                     </div>
                   </div>

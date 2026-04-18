@@ -1,22 +1,74 @@
 'use client';
 
+import InfoTip from '@/components/InfoTip';
+import { useAuditDashboardSummary } from '@/lib/react-query';
 import { motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-import InfoTip from '@/components/InfoTip';
 
-const auditStatusData = [
-  { name: 'Complete', value: 51, color: '#4A7C5C' },
-  { name: 'Overspending', value: 29, color: '#C94A4A' },
-  { name: 'Average', value: 29, color: '#D9A441' },
-  { name: 'Pending', value: 37, color: '#9CA3AF' },
-];
+const OPINION_COLORS: Record<string, string> = {
+  unqualified: '#4A7C5C',
+  qualified: '#D9A441',
+  adverse: '#C94A4A',
+  disclaimer: '#9CA3AF',
+};
+
+const OPINION_INFOTIP: Record<string, string> = {
+  unqualified: 'audit-clean',
+  qualified: 'audit-qualified',
+  adverse: 'audit-adverse',
+  disclaimer: 'audit-disclaimer',
+};
+
+const DEFAULT_COLOR = '#6B7280';
+
+function formatKES(billions: number): string {
+  if (billions >= 1000) return `KES ${(billions / 1000).toFixed(1)}T`;
+  return `KES ${billions.toFixed(0)}B`;
+}
 
 /**
  * Audit Transparency Reports panel.
- * Donut chart of 2024 audit statuses + issues summary.
+ * Donut chart of audit opinion distribution + issues summary.
+ * Data sourced from GET /audit/summary.
  */
 export default function AuditTransparencyCard() {
+  const { data, isLoading } = useAuditDashboardSummary();
+
+  const opinionEntries = Object.entries(data?.findings_by_opinion ?? {});
+  const totalOpinions = opinionEntries.reduce((sum, [, v]) => sum + v, 0);
+
+  const auditStatusData = opinionEntries.map(([name, value]) => ({
+    name: name.charAt(0).toUpperCase() + name.slice(1),
+    value: totalOpinions > 0 ? Math.round((value / totalOpinions) * 100) : 0,
+    color: OPINION_COLORS[name.toLowerCase()] ?? DEFAULT_COLOR,
+    infoTip: OPINION_INFOTIP[name.toLowerCase()],
+  }));
+
+  const totalIrregular =
+    (data?.total_irregular_expenditure ?? 0) + (data?.total_unsupported_expenditure ?? 0);
+  const totalFindings = data?.total_findings ?? 0;
+  const worstCountiesCount = data?.worst_counties?.length ?? 0;
+
+  if (isLoading) {
+    return (
+      <div className='glass-card p-6 sm:p-8 animate-pulse'>
+        <div className='h-6 bg-neutral-200 rounded w-48 mb-5' />
+        <div className='h-44 bg-neutral-100 rounded mb-4' />
+        <div className='h-24 bg-neutral-100 rounded' />
+      </div>
+    );
+  }
+
+  if (!opinionEntries.length) {
+    return (
+      <div className='glass-card p-6 sm:p-8'>
+        <h3 className='font-display text-xl text-gov-dark mb-5'>Audit Transparency Reports</h3>
+        <p className='text-sm text-neutral-muted'>Audit data unavailable.</p>
+      </div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
@@ -27,7 +79,7 @@ export default function AuditTransparencyCard() {
       <h3 className='font-display text-xl text-gov-dark mb-5'>Audit Transparency Reports</h3>
 
       <p className='text-xs text-neutral-muted uppercase tracking-wider mb-3 font-medium'>
-        Audit Status of 2024 Reports
+        Audit Opinion Distribution
       </p>
 
       {/* Donut chart */}
@@ -70,23 +122,7 @@ export default function AuditTransparencyCard() {
             />
             <div className='flex items-center gap-1'>
               <span className='text-xs text-neutral-muted'>{d.name}</span>
-              {(d.name === 'Complete' ||
-                d.name === 'Overspending' ||
-                d.name === 'Average' ||
-                d.name === 'Pending') && (
-                <InfoTip
-                  term={
-                    d.name === 'Complete'
-                      ? 'audit-clean'
-                      : d.name === 'Overspending'
-                        ? 'audit-adverse'
-                        : d.name === 'Average'
-                          ? 'audit-qualified'
-                          : 'audit-disclaimer'
-                  }
-                  size={10}
-                />
-              )}
+              {d.infoTip && <InfoTip term={d.infoTip} size={10} />}
             </div>
             <span className='ml-auto text-xs font-semibold tabular-nums' style={{ color: d.color }}>
               {d.value}%
@@ -102,23 +138,25 @@ export default function AuditTransparencyCard() {
           <span className='text-sm font-semibold text-gov-copper'>Unresolved Issues</span>
         </div>
         <div className='flex items-baseline gap-2'>
-          <span className='text-lg font-bold text-gov-dark tabular-nums'>KES 5.1T</span>
-          <span className='text-xs text-neutral-muted'>
-            47 flagged by auditors across all solo treasuries
+          <span className='text-lg font-bold text-gov-dark tabular-nums'>
+            {formatKES(totalIrregular)}
           </span>
+          <span className='text-xs text-neutral-muted'>{totalFindings} flagged by auditors</span>
         </div>
       </div>
 
       {/* High risk counties */}
-      <div className='flex items-center gap-2'>
-        <AlertTriangle className='w-4 h-4 text-gov-copper flex-shrink-0' />
-        <div>
-          <span className='text-sm font-semibold text-gov-dark'>High Risk Counties</span>
-          <span className='text-xs text-neutral-muted block'>
-            19 identified with major financial misappropriation
-          </span>
+      {worstCountiesCount > 0 && (
+        <div className='flex items-center gap-2'>
+          <AlertTriangle className='w-4 h-4 text-gov-copper flex-shrink-0' />
+          <div>
+            <span className='text-sm font-semibold text-gov-dark'>High Risk Counties</span>
+            <span className='text-xs text-neutral-muted block'>
+              {worstCountiesCount} identified with major financial findings
+            </span>
+          </div>
         </div>
-      </div>
+      )}
     </motion.div>
   );
 }

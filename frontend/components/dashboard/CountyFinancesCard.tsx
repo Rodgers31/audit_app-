@@ -1,13 +1,25 @@
 'use client';
 
+import { useNationalBudgetSummary } from '@/lib/react-query';
 import { motion } from 'framer-motion';
+
+function formatKES(value: number | null | undefined): string {
+  if (value == null) return '—';
+  if (value >= 1000) return `KES ${(value / 1000).toFixed(1)}T`;
+  return `KES ${value.toFixed(1)}B`;
+}
 
 /**
  * Zone 5 supplement: Explore County Finances card
  * Contains Kenya map preview, summary budget stats.
- * Sits near the LOCKED map (does NOT contain it).
+ * Data sourced from GET /budget/national.
  */
 export default function CountyFinancesCard() {
+  const { data, isLoading } = useNationalBudgetSummary();
+
+  const totalBudget = data?.total_budget ?? data?.totalBudget ?? null;
+  const totalAllocations = data?.total_allocations ?? data?.totalAllocations ?? null;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
@@ -63,19 +75,29 @@ export default function CountyFinancesCard() {
         <div>
           <div className='flex items-center gap-1.5 mb-0.5'>
             <span className='text-sm'>🇰🇪</span>
-            <span className='text-lg font-bold text-gov-dark tabular-nums'>KES 538.7B</span>
+            {isLoading ? (
+              <div className='h-6 w-24 bg-neutral-200 rounded animate-pulse' />
+            ) : (
+              <span className='text-lg font-bold text-gov-dark tabular-nums'>
+                {formatKES(totalBudget)}
+              </span>
+            )}
           </div>
-          <p className='text-xs text-neutral-muted leading-tight'>
-            County Mombasa, Anointed most budget total and allocation
-          </p>
+          <p className='text-xs text-neutral-muted leading-tight'>Total county budget</p>
         </div>
         <div>
           <div className='flex items-center gap-1.5 mb-0.5'>
             <span className='text-sm'>🇰🇪</span>
-            <span className='text-lg font-bold text-gov-dark tabular-nums'>KES 512.2B</span>
+            {isLoading ? (
+              <div className='h-6 w-24 bg-neutral-200 rounded animate-pulse' />
+            ) : (
+              <span className='text-lg font-bold text-gov-dark tabular-nums'>
+                {formatKES(totalAllocations)}
+              </span>
+            )}
           </div>
           <p className='text-xs text-neutral-muted leading-tight'>
-            Total budget allocations across all counties recalculating to bulk total
+            Total budget allocations across all counties
           </p>
         </div>
       </div>

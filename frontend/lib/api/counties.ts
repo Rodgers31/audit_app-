@@ -52,7 +52,8 @@ interface BackendCountyResponse {
 
 // Transform backend county data to frontend County type
 const transformCountyData = (bc: BackendCountyResponse): County => {
-  const coordinates: [number, number] = bc.coordinates || [36.8219, -1.2921];
+  // Use real coordinates from backend; undefined if not provided (do not default to Nairobi)
+  const coordinates: [number, number] | undefined = bc.coordinates || undefined;
   const budget = bc.total_budget || bc.budget_2025 || 0;
   const debt = bc.total_debt || bc.debt || 0;
 
@@ -89,12 +90,12 @@ const transformCountyData = (bc: BackendCountyResponse): County => {
     auditStatus,
     lastAuditDate: bc.last_audit_date || undefined,
     gdp: bc.gdp ?? 0,
-    moneyReceived: bc.money_received || bc.total_spent || 0,
-    budgetUtilization: bc.budget_utilization || 0,
-    revenueCollection: bc.revenue_collection || 0,
-    pendingBills: bc.pending_bills || 0,
-    developmentBudget: bc.development_budget || 0,
-    recurrentBudget: bc.recurrent_budget || 0,
+    moneyReceived: bc.money_received ?? bc.total_spent ?? 0,
+    budgetUtilization: bc.budget_utilization ?? 0,
+    revenueCollection: bc.revenue_collection ?? 0,
+    pendingBills: bc.pending_bills ?? 0,
+    developmentBudget: bc.development_budget || undefined,
+    recurrentBudget: bc.recurrent_budget || undefined,
     auditIssues: (bc.audit_issues || []).map((a) => ({
       id: String(a.id),
       type: 'financial' as const,

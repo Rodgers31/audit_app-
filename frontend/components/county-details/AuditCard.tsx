@@ -95,7 +95,11 @@ export default function AuditCard({ county }: AuditCardProps) {
       </div>
 
       {/* Year */}
-      <div className={`text-sm font-medium ${getTextColorClass(status)}`}>Year: 2024</div>
+      {county.lastAuditDate && (
+        <div className={`text-sm font-medium ${getTextColorClass(status)}`}>
+          Year: {new Date(county.lastAuditDate).getFullYear()}
+        </div>
+      )}
     </div>
   );
 }

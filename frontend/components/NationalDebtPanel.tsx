@@ -5,6 +5,7 @@ import { formatCurrency, formatPercentage, getDebtRiskColor, getDebtRiskLevel } 
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import CircularProgress from './CircularProgress';
+import DataIntegrityBanner from './DataIntegrityBanner';
 import Tooltip from './Tooltip';
 
 interface NationalDebtPanelProps {
@@ -22,30 +23,36 @@ export default function NationalDebtPanel({ className = '' }: NationalDebtPanelP
     position: { x: 0, y: 0 },
     visible: false,
   });
+  const [factIndex, setFactIndex] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setFactIndex((i) => (i + 1) % 6), 15000);
+    return () => clearInterval(id);
+  }, []);
 
   // Handle loading and error states
   if (error) {
     console.error('Error loading national debt data:', error);
   }
 
-  // Use API data or fallback to default values
-  const debtData = nationalDebtData?.data ||
-    nationalDebtData || {
-      total_debt: 11500,
-      debt_to_gdp_ratio: 70.2,
-      domestic_debt: 4600,
-      external_debt: 6900,
-      breakdown: {
-        external_debt: 6900,
-        domestic_debt: 4600,
-        external_percentage: 60.0,
-        domestic_percentage: 40.0,
-      },
-      debt_sustainability: {
-        risk_level: 'High',
-        debt_service_ratio: 37.0,
-      },
-    };
+  // Use API data — no fabricated fallback values
+  const debtData = nationalDebtData?.data || nationalDebtData || null;
+
+  // If the backend returned no data (and we're not loading), show integrity banner
+  if (!isLoading && !debtData) {
+    return (
+      <div className={`card ${className}`}>
+        <DataIntegrityBanner
+          message='National debt data is currently unavailable from the backend. No figures are displayed to avoid showing unverified numbers.'
+          severity='warning'
+        />
+      </div>
+    );
+  }
+
+  if (!debtData) {
+    // Still loading — handled by the skeleton below
+    return null;
+  }
 
   const handleTooltipShow = (event: React.MouseEvent, content: string) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -63,33 +70,48 @@ export default function NationalDebtPanel({ className = '' }: NationalDebtPanelP
     setTooltipData((prev) => ({ ...prev, visible: false }));
   };
 
-  const debtToGdpRatio = debtData.debt_to_gdp_ratio;
-  const riskColor = getDebtRiskColor(debtToGdpRatio);
-  const riskLevel = getDebtRiskLevel(debtToGdpRatio);
+  const debtToGdpRatio = debtData.debt_to_gdp_ratio ?? null;
+  const hasGdpRatio = debtToGdpRatio != null && !isNaN(debtToGdpRatio);
+  const riskColor = hasGdpRatio ? getDebtRiskColor(debtToGdpRatio) : 'text-gray-400';
+  const riskLevel = hasGdpRatio ? getDebtRiskLevel(debtToGdpRatio) : 'Unknown';
 
-  // Derived metrics
-  const domestic = debtData.debt_breakdown?.domestic_debt || 0;
-  const external = debtData.debt_breakdown?.external_debt || 0;
-  const domesticPct =
-    debtData.debt_breakdown?.domestic_percentage || (domestic / debtData.total_debt) * 100;
-  const externalPct =
-    debtData.debt_breakdown?.external_percentage || (external / debtData.total_debt) * 100;
-  const dsr = debtData.debt_sustainability?.debt_service_ratio || 37;
+  // Derived metrics — null means "data not available", distinct from actual zero
+  const domestic = debtData.debt_breakdown?.domestic_debt ?? null;
+  const external = debtData.debt_breakdown?.external_debt ?? null;
+  const totalDebt = debtData.total_debt ?? null;
+  const domesticPct: number | null =
+    debtData.debt_breakdown?.domestic_percentage ??
+    (domestic != null && totalDebt ? (domestic / totalDebt) * 100 : null);
+  const externalPct: number | null =
+    debtData.debt_breakdown?.external_percentage ??
+    (external != null && totalDebt ? (external / totalDebt) * 100 : null);
+  const dsr: number | null = debtData.debt_sustainability?.debt_service_ratio ?? null;
+
+  // Helper: format or show N/A
+  const fmtOrNA = (val: number | null, formatter: (v: number) => string): string =>
+    val != null ? formatter(val) : 'N/A';
 
   // Rotating facts for the "What this means" section
   const rotatingFacts = [
-    `Debt-to-GDP is ${debtToGdpRatio.toFixed(1)}% (${riskLevel} risk). Target is below 60%.`,
-    `Domestic vs External composition: ${domesticPct.toFixed(1)}% / ${externalPct.toFixed(1)}%.`,
-    `Estimated annual debt service: ${formatCurrency((2800000000000 * dsr) / 100)}.`,
-    `Domestic debt: ${formatCurrency(domestic)}; External debt: ${formatCurrency(external)}.`,
-    `${dsr.toFixed(1)} cents of every KES 1 goes to servicing debt.`,
-    `${Math.max(0, debtToGdpRatio - 60).toFixed(1)} percentage points above 60% threshold.`,
+    hasGdpRatio
+      ? `Debt-to-GDP is ${debtToGdpRatio!.toFixed(1)}% (${riskLevel} risk). Target is below 60%.`
+      : 'Debt-to-GDP ratio is not yet available.',
+    domesticPct != null && externalPct != null
+      ? `Domestic vs External composition: ${domesticPct.toFixed(1)}% / ${externalPct.toFixed(1)}%.`
+      : 'Debt composition breakdown unavailable.',
+    dsr != null && dsr > 0
+      ? `Estimated debt service ratio: ${dsr.toFixed(1)}% of revenue.`
+      : 'Debt service ratio data unavailable.',
+    domestic != null || external != null
+      ? `Domestic debt: ${fmtOrNA(domestic, formatCurrency)}; External debt: ${fmtOrNA(external, formatCurrency)}.`
+      : 'Debt breakdown by type unavailable.',
+    dsr != null && dsr > 0
+      ? `${dsr.toFixed(1)} cents of every KES 1 goes to servicing debt.`
+      : 'Debt service cost per shilling unavailable.',
+    hasGdpRatio
+      ? `${Math.max(0, debtToGdpRatio! - 60).toFixed(1)} percentage points above 60% threshold.`
+      : 'Cannot compute threshold gap without debt-to-GDP data.',
   ];
-  const [factIndex, setFactIndex] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setFactIndex((i) => (i + 1) % rotatingFacts.length), 15000);
-    return () => clearInterval(id);
-  }, [rotatingFacts.length]);
 
   if (isLoading) {
     return (
@@ -126,33 +148,44 @@ export default function NationalDebtPanel({ className = '' }: NationalDebtPanelP
             transition={{ delay: 0.2, duration: 0.3 }}
             className='text-center'>
             <div className='number-large text-primary-600 mb-2'>
-              {formatCurrency(debtData.total_debt)}
+              {totalDebt != null ? formatCurrency(totalDebt) : 'N/A'}
             </div>
             <p className='text-gray-600'>Total National Debt</p>
           </motion.div>
 
           {/* Circular Debt to GDP Gauge */}
           <div className='flex flex-col items-center space-y-4'>
-            <CircularProgress
-              percentage={debtToGdpRatio}
-              size={180}
-              strokeWidth={16}
-              color={debtToGdpRatio < 40 ? '#10B981' : debtToGdpRatio < 60 ? '#F59E0B' : '#EF4444'}
-              backgroundColor='#E5E7EB'
-              className='mb-2'>
-              <div className='text-center'>
-                <div className={`text-3xl font-bold ${riskColor}`}>
-                  {formatPercentage(debtToGdpRatio)}
+            {hasGdpRatio ? (
+              <CircularProgress
+                percentage={debtToGdpRatio!}
+                size={180}
+                strokeWidth={16}
+                color={
+                  debtToGdpRatio! < 40 ? '#10B981' : debtToGdpRatio! < 60 ? '#F59E0B' : '#EF4444'
+                }
+                backgroundColor='#E5E7EB'
+                className='mb-2'>
+                <div className='text-center'>
+                  <div className={`text-3xl font-bold ${riskColor}`}>
+                    {formatPercentage(debtToGdpRatio!)}
+                  </div>
+                  <div className='text-sm text-gray-600'>of GDP</div>
+                  <div
+                    className={`text-xs px-2 py-1 rounded-full mt-1 ${riskColor
+                      .replace('text-', 'bg-')
+                      .replace('-600', '-100')} ${riskColor}`}>
+                    {riskLevel}
+                  </div>
                 </div>
-                <div className='text-sm text-gray-600'>of GDP</div>
-                <div
-                  className={`text-xs px-2 py-1 rounded-full mt-1 ${riskColor
-                    .replace('text-', 'bg-')
-                    .replace('-600', '-100')} ${riskColor}`}>
-                  {riskLevel}
+              </CircularProgress>
+            ) : (
+              <div className='flex items-center justify-center w-[180px] h-[180px] rounded-full border-[16px] border-gray-200 mb-2'>
+                <div className='text-center'>
+                  <div className='text-2xl font-bold text-gray-400'>N/A</div>
+                  <div className='text-sm text-gray-400'>of GDP</div>
                 </div>
               </div>
-            </CircularProgress>
+            )}
 
             {/* Risk threshold indicators */}
             <div className='flex justify-center gap-4 text-xs text-gray-500'>
@@ -172,80 +205,81 @@ export default function NationalDebtPanel({ className = '' }: NationalDebtPanelP
           </div>
 
           {/* Debt Service Impact */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8, duration: 0.3 }}
-            className='bg-orange-50 p-4 rounded-lg border border-orange-200'>
-            <div className='text-center'>
-              <div className='text-2xl font-bold text-orange-600 mb-2'>
-                KES{' '}
-                {formatPercentage(
-                  ((debtData.debt_sustainability?.debt_service_ratio || 37) / 100) * 100
-                ).replace('%', '')}{' '}
-                cents
+          {dsr != null && dsr > 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8, duration: 0.3 }}
+              className='bg-orange-50 p-4 rounded-lg border border-orange-200'>
+              <div className='text-center'>
+                <div className='text-2xl font-bold text-orange-600 mb-2'>
+                  KES {dsr!.toFixed(1)} cents
+                </div>
+                <div className='text-sm text-orange-700 mb-1'>
+                  of every tax shilling goes to debt service
+                </div>
+                <div className='text-xs text-orange-600'>
+                  Debt service ratio: {formatPercentage(dsr!)}
+                </div>
               </div>
-              <div className='text-sm text-orange-700 mb-1'>
-                of every tax shilling goes to debt service
-              </div>
-              <div className='text-xs text-orange-600'>
-                Annual debt service:{' '}
-                {formatCurrency(
-                  (2800000000000 * (debtData.debt_sustainability?.debt_service_ratio || 37)) / 100
-                )}
-              </div>
+            </motion.div>
+          ) : (
+            <div className='bg-gray-50 p-4 rounded-lg border border-gray-200 text-center text-sm text-gray-500'>
+              Debt service data not yet available from backend.
             </div>
-          </motion.div>
+          )}
 
           {/* Compact Debt Breakdown */}
-          <div className='grid grid-cols-2 gap-3'>
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.9, duration: 0.3 }}
-              className='text-center p-3 bg-blue-50 rounded-lg'>
-              <div className='text-lg font-bold text-blue-600 mb-1'>
-                {formatCurrency(debtData.debt_breakdown?.domestic_debt || 0)}
-              </div>
-              <div className='text-xs text-blue-700'>Domestic Debt</div>
-              <div className='text-xs text-blue-600 mt-1'>
-                {formatPercentage(
-                  debtData.debt_breakdown?.domestic_percentage ||
-                    ((debtData.debt_breakdown?.domestic_debt || 0) / debtData.total_debt) * 100
-                )}
-              </div>
-            </motion.div>
+          {domestic != null || external != null ? (
+            <div className='grid grid-cols-2 gap-3'>
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.9, duration: 0.3 }}
+                className='text-center p-3 bg-blue-50 rounded-lg'>
+                <div className='text-lg font-bold text-blue-600 mb-1'>
+                  {fmtOrNA(domestic, formatCurrency)}
+                </div>
+                <div className='text-xs text-blue-700'>Domestic Debt</div>
+                <div className='text-xs text-blue-600 mt-1'>
+                  {fmtOrNA(domesticPct, formatPercentage)}
+                </div>
+              </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 1, duration: 0.3 }}
-              className='text-center p-3 bg-purple-50 rounded-lg'>
-              <div className='text-lg font-bold text-purple-600 mb-1'>
-                {formatCurrency(debtData.debt_breakdown?.external_debt || 0)}
-              </div>
-              <div className='text-xs text-purple-700'>External Debt</div>
-              <div className='text-xs text-purple-600 mt-1'>
-                {formatPercentage(
-                  debtData.debt_breakdown?.external_percentage ||
-                    ((debtData.debt_breakdown?.external_debt || 0) / debtData.total_debt) * 100
-                )}
-              </div>
-            </motion.div>
-          </div>
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 1, duration: 0.3 }}
+                className='text-center p-3 bg-purple-50 rounded-lg'>
+                <div className='text-lg font-bold text-purple-600 mb-1'>
+                  {fmtOrNA(external, formatCurrency)}
+                </div>
+                <div className='text-xs text-purple-700'>External Debt</div>
+                <div className='text-xs text-purple-600 mt-1'>
+                  {fmtOrNA(externalPct, formatPercentage)}
+                </div>
+              </motion.div>
+            </div>
+          ) : (
+            <div className='text-center text-sm text-gray-400 py-3'>
+              Debt composition breakdown not available.
+            </div>
+          )}
 
           {/* Key metrics aligned far left and far right */}
           <div className='flex justify-between gap-3'>
             <div className='rounded-lg border bg-white/60 p-3 text-center'>
               <div className='text-xs text-gray-600'>Debt Service Ratio</div>
-              <div className='text-lg font-bold text-gray-800'>{formatPercentage(dsr)}</div>
+              <div className='text-lg font-bold text-gray-800'>
+                {dsr != null ? formatPercentage(dsr) : 'N/A'}
+              </div>
             </div>
             <div className='rounded-lg border bg-white/60 p-3 text-center ml-auto'>
               <div className='text-xs text-gray-600'>Domestic vs External</div>
               <div className='text-lg font-bold text-gray-800'>
-                {formatPercentage(domesticPct)}
+                {fmtOrNA(domesticPct, formatPercentage)}
                 <span className='text-sm text-gray-500'> / </span>
-                {formatPercentage(externalPct)}
+                {fmtOrNA(externalPct, formatPercentage)}
               </div>
             </div>
           </div>

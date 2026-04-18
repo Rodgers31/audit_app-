@@ -1,15 +1,16 @@
 'use client';
 
+import FollowTheMoney, { YearSelector } from '@/components/FollowTheMoney';
 import PageShell from '@/components/layout/PageShell';
 import PDFExportButton from '@/components/PDFExportButton';
 import WatchButton from '@/components/WatchButton';
-import { useCountyAccountability, useCountyComprehensive } from '@/lib/react-query/useCounties';
-import { useCountyMoneyFlow } from '@/lib/react-query/useMoneyFlow';
 import { useAvailableFiscalYears } from '@/lib/react-query';
+import { useCountyAccountability, useCountyComprehensive } from '@/lib/react-query/useCounties';
 import { useCountyPendingBills } from '@/lib/react-query/useDebt';
-import { AccountabilityScorecard, CountyComprehensive } from '@/types';
+import { useCountyMoneyFlow } from '@/lib/react-query/useMoneyFlow';
+import { generateFiscalYears } from '@/lib/utils';
+import { CountyComprehensive } from '@/types';
 import { AnimatePresence, motion } from 'framer-motion';
-import FollowTheMoney, { YearSelector } from '@/components/FollowTheMoney';
 import {
   AlertTriangle,
   ArrowDown,
@@ -140,7 +141,9 @@ function GradeBadge({
       style={{ position: 'relative', zIndex: 100 }}
       aria-label={`Financial health grade: ${grade}, score: ${score.toFixed(0)} out of 100`}
       className={`inline-flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-gradient-to-r ${bg[grade] || bg.C} text-white shadow-lg cursor-pointer hover:brightness-110 hover:scale-105 transition-all group`}>
-      <span className='text-3xl font-black leading-none' aria-hidden="true">{grade}</span>
+      <span className='text-3xl font-black leading-none' aria-hidden='true'>
+        {grade}
+      </span>
       <div className='border-l border-white/30 pl-2.5'>
         <div className='text-[10px] uppercase tracking-widest opacity-70 flex items-center gap-1'>
           Health <Info size={10} className='opacity-0 group-hover:opacity-100 transition-opacity' />
@@ -325,7 +328,7 @@ function HealthScoreModal({
 
           {/* Data source note */}
           <p className='text-xs text-gray-400 text-center'>
-            Source: Office of the Auditor General &middot; FY 2024/25 county financial statements
+            Source: Office of the Auditor General &middot; County financial statements
           </p>
         </div>
       </motion.div>
@@ -463,7 +466,11 @@ function OverviewTab({ data }: { data: CountyComprehensive }) {
         ? '#f59e0b'
         : '#ef4444';
   const gradeColor: Record<string, string> = {
-    A: '#22c55e', 'B+': '#22c55e', B: '#f59e0b', 'B-': '#f97316', C: '#ef4444',
+    A: '#22c55e',
+    'B+': '#22c55e',
+    B: '#f59e0b',
+    'B-': '#f97316',
+    C: '#ef4444',
   };
 
   return (
@@ -491,7 +498,9 @@ function OverviewTab({ data }: { data: CountyComprehensive }) {
         <SummaryMetricCard
           label='Health Grade'
           value={`${financial_summary.grade} (${financial_summary.health_score.toFixed(0)})`}
-          icon={<Award size={20} style={{ color: gradeColor[financial_summary.grade] || '#ef4444' }} />}
+          icon={
+            <Award size={20} style={{ color: gradeColor[financial_summary.grade] || '#ef4444' }} />
+          }
           color={gradeColor[financial_summary.grade] || '#ef4444'}
         />
       </div>
@@ -675,10 +684,16 @@ function BudgetTab({ data }: { data: CountyComprehensive }) {
           />
           <KPI
             label='Development'
-            value={fmtKES(budget.development_budget)}
+            value={budget.development_budget ? fmtKES(budget.development_budget) : 'Unavailable'}
+            sub={budget.development_budget ? undefined : 'Not classified in source data'}
             accent='text-amber-700'
           />
-          <KPI label='Recurrent' value={fmtKES(budget.recurrent_budget)} accent='text-purple-700' />
+          <KPI
+            label='Recurrent'
+            value={budget.recurrent_budget ? fmtKES(budget.recurrent_budget) : 'Unavailable'}
+            sub={budget.recurrent_budget ? undefined : 'Not classified in source data'}
+            accent='text-purple-700'
+          />
         </div>
       </div>
 
@@ -808,42 +823,51 @@ function BudgetTab({ data }: { data: CountyComprehensive }) {
           </div>
 
           {/* Breakdown by type */}
-          {countyPendingBills?.breakdown_by_type && countyPendingBills.breakdown_by_type.length > 0 && (
-            <div className='space-y-2 mb-4'>
-              <h4 className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>By Type</h4>
-              {countyPendingBills.breakdown_by_type.map((t) => {
-                const colors: Record<string, string> = {
-                  supplier_arrears: 'bg-red-500',
-                  salary: 'bg-blue-500',
-                  pension: 'bg-purple-500',
-                  statutory: 'bg-amber-500',
-                  court_awards: 'bg-orange-500',
-                };
-                const bgColor = Object.entries(colors).find(([k]) => t.type.toLowerCase().includes(k))?.[1] || 'bg-gray-400';
-                return (
-                  <div key={t.type}>
-                    <div className='flex items-center justify-between mb-0.5'>
-                      <span className='text-xs text-gray-700'>
-                        {t.type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-                      </span>
-                      <span className='text-xs font-semibold text-gray-800'>{fmtKES(t.amount)}</span>
+          {countyPendingBills?.breakdown_by_type &&
+            countyPendingBills.breakdown_by_type.length > 0 && (
+              <div className='space-y-2 mb-4'>
+                <h4 className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>
+                  By Type
+                </h4>
+                {countyPendingBills.breakdown_by_type.map((t) => {
+                  const colors: Record<string, string> = {
+                    supplier_arrears: 'bg-red-500',
+                    salary: 'bg-blue-500',
+                    pension: 'bg-purple-500',
+                    statutory: 'bg-amber-500',
+                    court_awards: 'bg-orange-500',
+                  };
+                  const bgColor =
+                    Object.entries(colors).find(([k]) => t.type.toLowerCase().includes(k))?.[1] ||
+                    'bg-gray-400';
+                  return (
+                    <div key={t.type}>
+                      <div className='flex items-center justify-between mb-0.5'>
+                        <span className='text-xs text-gray-700'>
+                          {t.type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                        </span>
+                        <span className='text-xs font-semibold text-gray-800'>
+                          {fmtKES(t.amount)}
+                        </span>
+                      </div>
+                      <div className='h-2 bg-gray-100 rounded-full overflow-hidden'>
+                        <div
+                          className={`h-full rounded-full ${bgColor}`}
+                          style={{ width: `${Math.min(t.percentage, 100)}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className='h-2 bg-gray-100 rounded-full overflow-hidden'>
-                      <div
-                        className={`h-full rounded-full ${bgColor}`}
-                        style={{ width: `${Math.min(t.percentage, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
 
           {/* Aging buckets */}
           {countyPendingBills?.aging_buckets && countyPendingBills.aging_buckets.length > 0 && (
             <div>
-              <h4 className='text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2'>Aging</h4>
+              <h4 className='text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2'>
+                Aging
+              </h4>
               <div className='flex h-4 rounded-full overflow-hidden'>
                 {countyPendingBills.aging_buckets.map((bucket) => {
                   const colors: Record<string, string> = {
@@ -879,7 +903,9 @@ function BudgetTab({ data }: { data: CountyComprehensive }) {
                         className='w-2 h-2 rounded-full'
                         style={{ backgroundColor: colors[bucket.bucket] || '#94a3b8' }}
                       />
-                      <span>{bucket.bucket}: {fmtKES(bucket.amount)}</span>
+                      <span>
+                        {bucket.bucket}: {fmtKES(bucket.amount)}
+                      </span>
                     </div>
                   );
                 })}
@@ -1381,11 +1407,19 @@ function ProjectsTab({ data }: { data: CountyComprehensive }) {
 }
 
 /* ═══════════ Accountability Grade Colors ═══════════ */
-const ACCT_GRADE_STYLE: Record<string, { bg: string; text: string; border: string; label: string }> = {
+const ACCT_GRADE_STYLE: Record<
+  string,
+  { bg: string; text: string; border: string; label: string }
+> = {
   A: { bg: 'bg-emerald-500', text: 'text-white', border: 'border-emerald-600', label: 'Excellent' },
   B: { bg: 'bg-teal-500', text: 'text-white', border: 'border-teal-600', label: 'Good' },
   C: { bg: 'bg-yellow-400', text: 'text-yellow-900', border: 'border-yellow-500', label: 'Fair' },
-  D: { bg: 'bg-orange-500', text: 'text-white', border: 'border-orange-600', label: 'Needs Improvement' },
+  D: {
+    bg: 'bg-orange-500',
+    text: 'text-white',
+    border: 'border-orange-600',
+    label: 'Needs Improvement',
+  },
   F: { bg: 'bg-red-600', text: 'text-white', border: 'border-red-700', label: 'Poor' },
 };
 
@@ -1427,13 +1461,15 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
       {/* A. GRADE CARD */}
       <div className='bg-white rounded-xl border border-gray-100 p-6'>
         <div className='flex flex-col sm:flex-row items-center gap-6'>
-          <div className={`w-24 h-24 rounded-2xl ${gradeStyle.bg} ${gradeStyle.text} flex items-center justify-center shadow-lg`}>
+          <div
+            className={`w-24 h-24 rounded-2xl ${gradeStyle.bg} ${gradeStyle.text} flex items-center justify-center shadow-lg`}>
             <span className='text-5xl font-black'>{data.accountability_grade}</span>
           </div>
           <div className='text-center sm:text-left'>
             <h3 className='text-lg font-bold text-gray-900'>Accountability Grade</h3>
             <p className='text-sm text-gray-500 mt-1'>
-              {gradeStyle.label} — Based on audit opinions, flagged amounts, recurring findings, and budget absorption
+              {gradeStyle.label} — Based on audit opinions, flagged amounts, recurring findings, and
+              budget absorption
             </p>
           </div>
         </div>
@@ -1511,7 +1547,11 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
           {/* vs Region Average */}
           <div className='bg-gray-50 rounded-lg p-4'>
             <div className='text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2'>
-              vs {peer.region ? peer.region.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'Region'} Average
+              vs{' '}
+              {peer.region
+                ? peer.region.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+                : 'Region'}{' '}
+              Average
             </div>
             <div className='flex items-center gap-2 mb-1'>
               {isBelowRegion ? (
@@ -1519,16 +1559,15 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
               ) : (
                 <ArrowDown size={16} className='text-emerald-500' />
               )}
-              <span className={`text-sm font-bold ${isBelowRegion ? 'text-red-700' : 'text-emerald-700'}`}>
+              <span
+                className={`text-sm font-bold ${isBelowRegion ? 'text-red-700' : 'text-emerald-700'}`}>
                 {isBelowRegion ? 'Above' : 'Below'} peer average
               </span>
             </div>
             <div className='text-xs text-gray-500 space-y-0.5'>
               <div>This county: {fmtKES(data.total_flagged_amount)} flagged</div>
               <div>Region avg: {fmtKES(peer.region_avg_flagged_amount)} flagged</div>
-              {peer.region_avg_grade && (
-                <div>Region avg grade: {peer.region_avg_grade}</div>
-              )}
+              {peer.region_avg_grade && <div>Region avg grade: {peer.region_avg_grade}</div>}
             </div>
           </div>
 
@@ -1543,7 +1582,8 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
               ) : (
                 <ArrowDown size={16} className='text-emerald-500' />
               )}
-              <span className={`text-sm font-bold ${isBelowBracket ? 'text-red-700' : 'text-emerald-700'}`}>
+              <span
+                className={`text-sm font-bold ${isBelowBracket ? 'text-red-700' : 'text-emerald-700'}`}>
                 {isBelowBracket ? 'Above' : 'Below'} bracket average
               </span>
             </div>
@@ -1562,7 +1602,7 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
 }
 
 /* ═══════════ Tab: Follow the Money ═══════════ */
-const DEFAULT_FISCAL_YEARS = ['2024/25', '2023/24', '2022/23', '2021/22', '2020/21'];
+const DEFAULT_FISCAL_YEARS = generateFiscalYears();
 
 function MoneyFlowTab({ data: countyData }: { data: CountyComprehensive }) {
   const [selectedYear, setSelectedYear] = useState(DEFAULT_FISCAL_YEARS[0]);

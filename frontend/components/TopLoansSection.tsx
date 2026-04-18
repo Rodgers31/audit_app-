@@ -4,74 +4,6 @@ import { useNationalDebtOverview, useTopLoans } from '@/lib/react-query';
 import { motion } from 'framer-motion';
 import { Calendar, ExternalLink, MapPin } from 'lucide-react';
 
-const TOP_LOANS = [
-  {
-    id: 1,
-    lender: 'China Development Bank',
-    country: 'China',
-    amount: 1850,
-    purpose: 'Standard Gauge Railway (SGR)',
-    interestRate: 3.6,
-    year: 2017,
-    flag: '🇨🇳',
-    description: 'Financing for the Nairobi-Mombasa railway line',
-    status: 'Active',
-    maturity: 2037,
-  },
-  {
-    id: 2,
-    lender: 'World Bank',
-    country: 'International',
-    amount: 1200,
-    purpose: 'Infrastructure & Development',
-    interestRate: 2.1,
-    year: 2020,
-    flag: '🌍',
-    description: 'Roads, energy projects, and social programs',
-    status: 'Active',
-    maturity: 2045,
-  },
-  {
-    id: 3,
-    lender: 'African Development Bank',
-    country: 'Regional',
-    amount: 890,
-    purpose: 'Energy & Water Projects',
-    interestRate: 2.8,
-    year: 2019,
-    flag: '🌍',
-    description: 'Power generation and water infrastructure',
-    status: 'Active',
-    maturity: 2039,
-  },
-  {
-    id: 4,
-    lender: 'Japan International Cooperation',
-    country: 'Japan',
-    amount: 750,
-    purpose: 'Port Development',
-    interestRate: 1.9,
-    year: 2021,
-    flag: '🇯🇵',
-    description: 'Mombasa Port expansion and modernization',
-    status: 'Active',
-    maturity: 2051,
-  },
-  {
-    id: 5,
-    lender: 'European Investment Bank',
-    country: 'Europe',
-    amount: 650,
-    purpose: 'Renewable Energy',
-    interestRate: 2.5,
-    year: 2022,
-    flag: '🇪🇺',
-    description: 'Solar and wind power installations',
-    status: 'Active',
-    maturity: 2042,
-  },
-];
-
 export default function TopLoansSection() {
   const { data: topLoansData, isLoading: loansLoading, error: loansError } = useTopLoans(5);
   const {
@@ -101,10 +33,18 @@ export default function TopLoansSection() {
     console.error('Error loading loans data:', loansError || debtError);
   }
 
-  // Use API data or fallback to static data
-  const loans = topLoansData || TOP_LOANS;
-  const totalDebt = nationalDebtData?.total_debt || 11500;
+  const loans = topLoansData ?? [];
+  const totalDebt = nationalDebtData?.total_debt ?? 0;
   const totalTopLoans = loans.reduce((sum: number, loan: any) => sum + (loan.amount || 0), 0);
+
+  if (loans.length === 0) {
+    return (
+      <div className='bg-white rounded-2xl p-6 shadow-lg border border-gray-200'>
+        <h3 className='text-xl font-bold text-gray-800 mb-2'>Top Government Loans</h3>
+        <p className='text-sm text-gray-500'>Loan data is currently unavailable.</p>
+      </div>
+    );
+  }
 
   return (
     <div className='bg-white rounded-2xl p-6 shadow-lg border border-gray-200'>

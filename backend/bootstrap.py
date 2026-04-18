@@ -99,18 +99,19 @@ def _ensure_country(session: Session) -> Country:
 
 def _ensure_fiscal_period(session: Session, country_id: int) -> FiscalPeriod:
     """Ensure current fiscal period exists for Kenya."""
+    from seeding.utils import normalize_fiscal_label
+
+    canonical = normalize_fiscal_label(FISCAL_LABEL)
     period = (
         session.query(FiscalPeriod)
-        .filter(
-            FiscalPeriod.country_id == country_id, FiscalPeriod.label == FISCAL_LABEL
-        )
+        .filter(FiscalPeriod.country_id == country_id, FiscalPeriod.label == canonical)
         .first()
     )
     if period:
         return period
     period = FiscalPeriod(
         country_id=country_id,
-        label=FISCAL_LABEL,
+        label=canonical,
         start_date=FISCAL_START,
         end_date=FISCAL_END,
     )
@@ -175,30 +176,63 @@ def _ensure_source_document(
 # These percentages approximate how county budgets are distributed
 # Source: Controller of Budget county reports 2022-2024
 COUNTY_BUDGET_SECTORS = [
-    {"category": "Health", "development_pct": 0.08, "recurrent_pct": 0.17},
+    # util_bias: sector-specific offset (percentage points) added to the county's
+    # base execution rate so that different sectors show varied utilization.
+    # Recurrent-heavy sectors (admin, assembly) tend to absorb budget easily;
+    # development-heavy sectors (roads, water) typically underspend.
+    {
+        "category": "Health",
+        "development_pct": 0.08,
+        "recurrent_pct": 0.17,
+        "util_bias": +2,
+    },
     {
         "category": "Education & Training",
         "development_pct": 0.04,
         "recurrent_pct": 0.06,
+        "util_bias": +1,
     },
-    {"category": "Roads & Transport", "development_pct": 0.10, "recurrent_pct": 0.03},
+    {
+        "category": "Roads & Transport",
+        "development_pct": 0.10,
+        "recurrent_pct": 0.03,
+        "util_bias": -6,
+    },
     {
         "category": "Agriculture & Livestock",
         "development_pct": 0.05,
         "recurrent_pct": 0.04,
+        "util_bias": -4,
     },
-    {"category": "Water & Sanitation", "development_pct": 0.06, "recurrent_pct": 0.02},
+    {
+        "category": "Water & Sanitation",
+        "development_pct": 0.06,
+        "recurrent_pct": 0.02,
+        "util_bias": -8,
+    },
     {
         "category": "Public Administration",
         "development_pct": 0.02,
         "recurrent_pct": 0.18,
+        "util_bias": +5,
     },
-    {"category": "County Assembly", "development_pct": 0.01, "recurrent_pct": 0.08},
-    {"category": "Trade & Enterprise", "development_pct": 0.02, "recurrent_pct": 0.01},
+    {
+        "category": "County Assembly",
+        "development_pct": 0.01,
+        "recurrent_pct": 0.08,
+        "util_bias": +7,
+    },
+    {
+        "category": "Trade & Enterprise",
+        "development_pct": 0.02,
+        "recurrent_pct": 0.01,
+        "util_bias": -3,
+    },
     {
         "category": "Lands & Urban Planning",
         "development_pct": 0.02,
         "recurrent_pct": 0.01,
+        "util_bias": -5,
     },
 ]
 # Remaining ~6% dev + ~1% recurrent = "Other" catch-all
@@ -208,6 +242,7 @@ def _upsert_budget_lines(
     session: Session,
     *,
     entity_id: int,
+    entity_name: str,
     period_id: int,
     source_document_id: int,
     total_allocated: Decimal,
@@ -215,6 +250,8 @@ def _upsert_budget_lines(
     pending_bills: Decimal,
 ) -> None:
     """Create multiple BudgetLine rows per county — one per sector."""
+    import hashlib
+
     provenance = [
         {
             "source": "bootstrap",
@@ -228,7 +265,7 @@ def _upsert_budget_lines(
     rec_total = total_allocated * Decimal("0.60")
 
     allocated_so_far = Decimal("0")
-    for sector in COUNTY_BUDGET_SECTORS:
+    for idx, sector in enumerate(COUNTY_BUDGET_SECTORS):
         cat = sector["category"]
         alloc = (
             dev_total * Decimal(str(sector["development_pct"] / 0.40))
@@ -239,7 +276,16 @@ def _upsert_budget_lines(
             total_allocated
             * Decimal(str(sector["development_pct"] + sector["recurrent_pct"]))
         ).quantize(Decimal("0.01"))
-        actual = (alloc * execution_rate / Decimal("100")).quantize(Decimal("0.01"))
+
+        # --- Per-sector utilization variance ---
+        # Deterministic jitter in [-3, +3] based on county name + sector index
+        seed_bytes = f"{entity_name}:{idx}".encode()
+        jitter = (int(hashlib.md5(seed_bytes).hexdigest()[:8], 16) % 7) - 3  # -3..+3
+        bias = sector.get("util_bias", 0)
+        sector_rate = execution_rate + Decimal(str(bias + jitter))
+        # Clamp to [40, 100] so values stay plausible
+        sector_rate = max(Decimal("40"), min(Decimal("100"), sector_rate))
+        actual = (alloc * sector_rate / Decimal("100")).quantize(Decimal("0.01"))
         committed = (
             (pending_bills * alloc / total_allocated).quantize(Decimal("0.01"))
             if total_allocated > 0
@@ -282,9 +328,12 @@ def _upsert_budget_lines(
     # "Other" catch-all for the remainder
     remainder = total_allocated - allocated_so_far
     if remainder > 0:
-        actual_rem = (remainder * execution_rate / Decimal("100")).quantize(
-            Decimal("0.01")
-        )
+        # Give "Other" a slight negative bias + its own jitter
+        seed_bytes = f"{entity_name}:other".encode()
+        jitter = (int(hashlib.md5(seed_bytes).hexdigest()[:8], 16) % 7) - 3
+        other_rate = execution_rate + Decimal(str(-2 + jitter))
+        other_rate = max(Decimal("40"), min(Decimal("100"), other_rate))
+        actual_rem = (remainder * other_rate / Decimal("100")).quantize(Decimal("0.01"))
         existing = (
             session.query(BudgetLine)
             .filter(
@@ -548,28 +597,78 @@ def _seed_economic_indicators(
     # Source: KNBS Economic Survey 2025 + CBK Monthly Economic Indicators
     indicators = [
         # Inflation rates (KNBS CPI releases)
-        {"type": "inflation_rate", "date": datetime(2024, 12, 31), "value": Decimal("6.6"), "unit": "percent",
-         "source": "KNBS CPI December 2024"},
-        {"type": "inflation_rate", "date": datetime(2024, 6, 30), "value": Decimal("4.6"), "unit": "percent",
-         "source": "KNBS CPI June 2024"},
-        {"type": "inflation_rate", "date": datetime(2023, 12, 31), "value": Decimal("6.6"), "unit": "percent",
-         "source": "KNBS CPI December 2023"},
-        {"type": "inflation_rate", "date": datetime(2023, 6, 30), "value": Decimal("7.9"), "unit": "percent",
-         "source": "KNBS CPI June 2023"},
-        {"type": "inflation_rate", "date": datetime(2025, 1, 31), "value": Decimal("3.3"), "unit": "percent",
-         "source": "KNBS CPI January 2025"},
+        {
+            "type": "inflation_rate",
+            "date": datetime(2024, 12, 31),
+            "value": Decimal("6.6"),
+            "unit": "percent",
+            "source": "KNBS CPI December 2024",
+        },
+        {
+            "type": "inflation_rate",
+            "date": datetime(2024, 6, 30),
+            "value": Decimal("4.6"),
+            "unit": "percent",
+            "source": "KNBS CPI June 2024",
+        },
+        {
+            "type": "inflation_rate",
+            "date": datetime(2023, 12, 31),
+            "value": Decimal("6.6"),
+            "unit": "percent",
+            "source": "KNBS CPI December 2023",
+        },
+        {
+            "type": "inflation_rate",
+            "date": datetime(2023, 6, 30),
+            "value": Decimal("7.9"),
+            "unit": "percent",
+            "source": "KNBS CPI June 2023",
+        },
+        {
+            "type": "inflation_rate",
+            "date": datetime(2025, 1, 31),
+            "value": Decimal("3.3"),
+            "unit": "percent",
+            "source": "KNBS CPI January 2025",
+        },
         # Unemployment rates (KNBS Labour Force Survey)
-        {"type": "unemployment_rate", "date": datetime(2024, 12, 31), "value": Decimal("5.4"), "unit": "percent",
-         "source": "KNBS QLFS Q4 2024"},
-        {"type": "unemployment_rate", "date": datetime(2023, 12, 31), "value": Decimal("5.6"), "unit": "percent",
-         "source": "KNBS QLFS Q4 2023"},
-        {"type": "unemployment_rate", "date": datetime(2022, 12, 31), "value": Decimal("5.7"), "unit": "percent",
-         "source": "KNBS QLFS Q4 2022"},
+        {
+            "type": "unemployment_rate",
+            "date": datetime(2024, 12, 31),
+            "value": Decimal("5.4"),
+            "unit": "percent",
+            "source": "KNBS QLFS Q4 2024",
+        },
+        {
+            "type": "unemployment_rate",
+            "date": datetime(2023, 12, 31),
+            "value": Decimal("5.6"),
+            "unit": "percent",
+            "source": "KNBS QLFS Q4 2023",
+        },
+        {
+            "type": "unemployment_rate",
+            "date": datetime(2022, 12, 31),
+            "value": Decimal("5.7"),
+            "unit": "percent",
+            "source": "KNBS QLFS Q4 2022",
+        },
         # CPI index values
-        {"type": "CPI", "date": datetime(2025, 1, 31), "value": Decimal("143.08"), "unit": "index",
-         "source": "KNBS Consumer Price Index January 2025"},
-        {"type": "CPI", "date": datetime(2024, 12, 31), "value": Decimal("142.47"), "unit": "index",
-         "source": "KNBS Consumer Price Index December 2024"},
+        {
+            "type": "CPI",
+            "date": datetime(2025, 1, 31),
+            "value": Decimal("143.08"),
+            "unit": "index",
+            "source": "KNBS Consumer Price Index January 2025",
+        },
+        {
+            "type": "CPI",
+            "date": datetime(2024, 12, 31),
+            "value": Decimal("142.47"),
+            "unit": "index",
+            "source": "KNBS Consumer Price Index December 2024",
+        },
     ]
 
     for ind in indicators:
@@ -725,7 +824,11 @@ def _seed_national_data(
                 total_population=NATIONAL_POPULATION,
                 source_document_id=national_doc.id,
                 confidence=Decimal("0.95"),
-                meta={"source": "Kenya Census 2019", "bootstrap": True, "scope": "national"},
+                meta={
+                    "source": "Kenya Census 2019",
+                    "bootstrap": True,
+                    "scope": "national",
+                },
             )
         )
     elif existing_null_pop.total_population != NATIONAL_POPULATION:
@@ -867,7 +970,11 @@ def _seed_federal_audits(
         amount = Decimal(str(amount_value)) if amount_value > 0 else None
         status = entry.get("status")
         audit_opinion = entry.get("audit_opinion", "Qualified")
-        audit_year = int(report_meta.get("fiscal_year", "2024").split("/")[0]) if report_meta.get("fiscal_year") else 2024
+        audit_year = (
+            int(report_meta.get("fiscal_year", "2024").split("/")[0])
+            if report_meta.get("fiscal_year")
+            else 2024
+        )
 
         if existing:
             existing.severity = severity
@@ -902,7 +1009,9 @@ def _seed_federal_audits(
     logger.info("Federal audit findings seeded: %d new records", seeded)
 
 
-def initialize_reference_data(code_lookup: Optional[Dict[str, str]] = None) -> None:
+def initialize_reference_data(
+    code_lookup: Optional[Dict[str, str]] = None, *, force: bool = False
+) -> None:
     """Seed canonical county + audit data into the database if missing.
 
     Performs a fast check first: if 47 county entities already exist we
@@ -910,22 +1019,25 @@ def initialize_reference_data(code_lookup: Optional[Dict[str, str]] = None) -> N
     from ~3 min to <1 s on subsequent boots.
     """
     # ── fast path: skip if data already present ──────────────────────
-    quick_session = SessionLocal()
-    try:
-        county_count = (
-            quick_session.query(Entity).filter(Entity.type == EntityType.COUNTY).count()
-        )
-        if county_count >= 47:
-            logger.info(
-                "Reference data already present (%d county entities) — skipping bootstrap",
-                county_count,
+    if not force:
+        quick_session = SessionLocal()
+        try:
+            county_count = (
+                quick_session.query(Entity)
+                .filter(Entity.type == EntityType.COUNTY)
+                .count()
             )
+            if county_count >= 47:
+                logger.info(
+                    "Reference data already present (%d county entities) — skipping bootstrap",
+                    county_count,
+                )
+                quick_session.close()
+                return
+        except Exception:
+            pass  # table might not exist yet; fall through to full seed
+        finally:
             quick_session.close()
-            return
-    except Exception:
-        pass  # table might not exist yet; fall through to full seed
-    finally:
-        quick_session.close()
 
     # ── full seed path ───────────────────────────────────────────────
     county_payload = _load_json(COUNTY_DATA_PATH)
@@ -978,13 +1090,18 @@ def initialize_reference_data(code_lookup: Optional[Dict[str, str]] = None) -> N
                 )
 
             meta = dict(entity.meta or {})
-            metrics = dict((meta.get("metrics") or {}).get(FISCAL_LABEL, {}))
+            from seeding.utils import normalize_fiscal_label as _nlbl
+
+            _fy_key = _nlbl(FISCAL_LABEL)
+            metrics = dict((meta.get("metrics") or {}).get(_fy_key, {}))
+            _rev = info.get("revenue_2024", 0)
             metrics.update(
                 {
                     "county_code": county_code,
                     "population": info.get("population", 0),
                     "budget_2025": info.get("budget_2025", 0),
-                    "revenue_2024": info.get("revenue_2024", 0),
+                    "revenue_2024": _rev,
+                    "local_revenue": _rev,
                     "debt_outstanding": info.get("debt_outstanding", 0),
                     "pending_bills": info.get("pending_bills", 0),
                     "missing_funds": info.get("missing_funds", 0),
@@ -997,14 +1114,15 @@ def initialize_reference_data(code_lookup: Optional[Dict[str, str]] = None) -> N
                 }
             )
 
-            meta.setdefault("metrics", {})[FISCAL_LABEL] = metrics
+            meta.setdefault("metrics", {})[_fy_key] = metrics
             meta["financial_metrics"] = {
                 "budget_execution_rate": info.get("budget_execution_rate", 0),
                 "pending_bills": info.get("pending_bills", 0),
                 "financial_health_score": info.get("financial_health_score", 0),
                 "debt_outstanding": info.get("debt_outstanding", 0),
                 "missing_funds": info.get("missing_funds", 0),
-                "revenue_2024": info.get("revenue_2024", 0),
+                "revenue_2024": _rev,
+                "local_revenue": _rev,
             }
             meta["economic_profile"] = {
                 "county_type": info.get("county_type"),
@@ -1061,6 +1179,7 @@ def initialize_reference_data(code_lookup: Optional[Dict[str, str]] = None) -> N
             _upsert_budget_lines(
                 session,
                 entity_id=entity.id,
+                entity_name=county_name,
                 period_id=period.id,
                 source_document_id=budget_doc.id,
                 total_allocated=allocated,

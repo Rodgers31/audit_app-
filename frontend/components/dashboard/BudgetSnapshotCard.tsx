@@ -1,18 +1,14 @@
 'use client';
 
+import InfoTip from '@/components/InfoTip';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useNationalBudgetSummary } from '@/lib/react-query/useBudget';
+import { fmtKES } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { Banknote, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
-import InfoTip from '@/components/InfoTip';
 
-function fmtB(val: number): string {
-  if (val >= 1_000_000_000_000) return `${(val / 1_000_000_000_000).toFixed(1)}T`;
-  if (val >= 1_000_000_000) return `${(val / 1_000_000_000).toFixed(0)}B`;
-  if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(0)}M`;
-  return val.toLocaleString();
-}
+// fmtKES imported from @/lib/utils — expects raw KES input (BudgetLine data)
 
 const SECTOR_ICONS: Record<string, string> = {
   Health: '🏥',
@@ -138,7 +134,7 @@ export default function BudgetSnapshotCard() {
               </span>
             </div>
             <span className='text-lg font-bold text-gov-forest tabular-nums leading-none'>
-              KES {fmtB(total)}
+              {fmtKES(total)}
             </span>
           </div>
           <div className='flex-1 rounded-xl bg-gov-gold/[0.05] border border-neutral-border/30 px-4 py-3'>
@@ -168,14 +164,16 @@ export default function BudgetSnapshotCard() {
                     <span className='text-xs text-gov-dark font-medium truncate'>{s.sector}</span>
                     {(s.sector === 'Development' || s.sector === 'Recurrent') && (
                       <InfoTip
-                        term={s.sector === 'Development' ? 'development-spending' : 'recurrent-spending'}
+                        term={
+                          s.sector === 'Development' ? 'development-spending' : 'recurrent-spending'
+                        }
                         size={11}
                       />
                     )}
                   </div>
                   <div className='flex items-center gap-2 flex-shrink-0'>
                     <span className='text-xs font-bold text-gov-dark tabular-nums'>
-                      {fmtB(s.amount)}
+                      {fmtKES(s.amount)}
                     </span>
                     <span className='text-[10px] text-neutral-muted tabular-nums w-8 text-right'>
                       {Math.round(s.percentage * 10) / 10}%

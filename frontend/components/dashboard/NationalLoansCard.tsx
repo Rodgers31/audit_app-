@@ -1,20 +1,16 @@
 'use client';
 
+import InfoTip from '@/components/InfoTip';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { NationalLoan } from '@/lib/api/debt';
 import { useNationalLoans } from '@/lib/react-query/useDebt';
+import { fmtKES } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { ExternalLink, Landmark, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import DebtExplainerModal from './DebtExplainerModal';
-import InfoTip from '@/components/InfoTip';
 
-function fmtB(val: number): string {
-  if (val >= 1_000_000_000_000) return `${(val / 1_000_000_000_000).toFixed(1)}T`;
-  if (val >= 1_000_000_000) return `${(val / 1_000_000_000).toFixed(0)}B`;
-  if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(0)}M`;
-  return val.toLocaleString();
-}
+// fmtKES imported from @/lib/utils — expects raw KES input (Loan table data)
 
 function shortLender(name: string): string {
   return name
@@ -128,7 +124,7 @@ export default function NationalLoansCard() {
               <DebtExplainerModal context='loans' />
             </div>
             <span className='text-lg font-bold text-gov-copper tabular-nums leading-none'>
-              KES {fmtB(data.total_outstanding)}
+              {fmtKES(data.total_outstanding)}
             </span>
           </div>
           <div className='rounded-xl bg-gov-gold/[0.06] border border-neutral-border/30 px-4 py-3'>
@@ -139,7 +135,7 @@ export default function NationalLoansCard() {
               </span>
             </div>
             <span className='text-lg font-bold text-gov-gold tabular-nums leading-none'>
-              KES {fmtB(data.total_annual_service_cost)}
+              {fmtKES(data.total_annual_service_cost)}
             </span>
           </div>
         </div>
@@ -183,13 +179,13 @@ export default function NationalLoansCard() {
                   )}
                 </div>
                 <span className='text-xs font-bold text-gov-dark tabular-nums flex-shrink-0'>
-                  {fmtB(loan.outstanding_numeric)}
+                  {fmtKES(loan.outstanding_numeric)}
                 </span>
                 <span className='text-[10px] text-neutral-muted tabular-nums flex-shrink-0'>
                   {loan.interest_rate}
                 </span>
-                <span className='text-[11px] font-semibold text-gov-copper tabular-nums flex-shrink-0 w-9 text-right'>
-                  {fmtB(loan.annual_service_cost)}
+                <span className='text-[11px] font-semibold text-gov-copper tabular-nums flex-shrink-0 w-12 text-right'>
+                  {fmtKES(loan.annual_service_cost)}
                 </span>
               </motion.div>
             );

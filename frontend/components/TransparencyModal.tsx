@@ -238,8 +238,8 @@ export default function TransparencyModal({ isOpen, onClose, county }: Transpare
                                     impact.status === 'good'
                                       ? 'text-green-600'
                                       : impact.status === 'concern'
-                                      ? 'text-red-600'
-                                      : 'text-yellow-600'
+                                        ? 'text-red-600'
+                                        : 'text-yellow-600'
                                   } mt-1`}
                                 />
                                 <div className='flex-1'>
@@ -370,30 +370,30 @@ export default function TransparencyModal({ isOpen, onClose, county }: Transpare
                             amountLabel: q.amount_involved,
                           }))
                         : county.auditIssues && county.auditIssues.length > 0
-                        ? county.auditIssues
-                        : ([
-                            {
-                              id: '1',
-                              type: 'financial',
-                              severity: 'high',
-                              description: 'Unreconciled accounts detected',
-                              status: 'open',
-                            },
-                            {
-                              id: '2',
-                              type: 'compliance',
-                              severity: 'medium',
-                              description: 'Irregular procurement procedures',
-                              status: 'pending',
-                            },
-                            {
-                              id: '3',
-                              type: 'performance',
-                              severity: 'low',
-                              description: 'Delays in project completion',
-                              status: 'pending',
-                            },
-                          ] as const)
+                          ? county.auditIssues
+                          : ([
+                              {
+                                id: '1',
+                                type: 'financial',
+                                severity: 'high',
+                                description: 'Unreconciled accounts detected',
+                                status: 'open',
+                              },
+                              {
+                                id: '2',
+                                type: 'compliance',
+                                severity: 'medium',
+                                description: 'Irregular procurement procedures',
+                                status: 'pending',
+                              },
+                              {
+                                id: '3',
+                                type: 'performance',
+                                severity: 'low',
+                                description: 'Delays in project completion',
+                                status: 'pending',
+                              },
+                            ] as const)
                       ).map((issue: any) => (
                         <li key={issue.id} className='flex items-start gap-3'>
                           <span
@@ -401,10 +401,10 @@ export default function TransparencyModal({ isOpen, onClose, county }: Transpare
                               issue.severity === 'critical'
                                 ? 'bg-red-700'
                                 : issue.severity === 'high'
-                                ? 'bg-red-500'
-                                : issue.severity === 'medium'
-                                ? 'bg-yellow-500'
-                                : 'bg-gray-400'
+                                  ? 'bg-red-500'
+                                  : issue.severity === 'medium'
+                                    ? 'bg-yellow-500'
+                                    : 'bg-gray-400'
                             }`}
                           />
                           <div>
@@ -414,8 +414,8 @@ export default function TransparencyModal({ isOpen, onClose, county }: Transpare
                               {issue.amount != null
                                 ? ` • ${formatCurrency(issue.amount as number)}`
                                 : issue.amountLabel
-                                ? ` • ${issue.amountLabel}`
-                                : ''}
+                                  ? ` • ${issue.amountLabel}`
+                                  : ''}
                             </div>
                           </div>
                         </li>
@@ -474,18 +474,28 @@ export default function TransparencyModal({ isOpen, onClose, county }: Transpare
                       <div className='bg-white rounded-xl p-4 border'>
                         <div className='text-sm text-gray-500'>Development</div>
                         <div className='text-lg font-semibold'>
-                          {formatCurrency(
-                            county.developmentBudget ?? Math.round((county.budget_2025 || 0) * 0.3)
-                          )}
+                          {county.developmentBudget
+                            ? formatCurrency(county.developmentBudget)
+                            : 'Unavailable'}
                         </div>
+                        {!county.developmentBudget && (
+                          <div className='text-xs text-gray-400 mt-1'>
+                            Not classified in source data
+                          </div>
+                        )}
                       </div>
                       <div className='bg-white rounded-xl p-4 border'>
                         <div className='text-sm text-gray-500'>Recurrent</div>
                         <div className='text-lg font-semibold'>
-                          {formatCurrency(
-                            county.recurrentBudget ?? Math.round((county.budget_2025 || 0) * 0.7)
-                          )}
+                          {county.recurrentBudget
+                            ? formatCurrency(county.recurrentBudget)
+                            : 'Unavailable'}
                         </div>
+                        {!county.recurrentBudget && (
+                          <div className='text-xs text-gray-400 mt-1'>
+                            Not classified in source data
+                          </div>
+                        )}
                       </div>
                       <div className='bg-white rounded-xl p-4 border'>
                         <div className='text-sm text-gray-500'>Utilization</div>

@@ -106,17 +106,20 @@ def _ensure_period(
     country_id: int,
     record: NationalBudgetRecord,
 ) -> FiscalPeriod:
+    from ...utils import normalize_fiscal_label
+
+    canonical = normalize_fiscal_label(record.period_label)
     stmt = select(FiscalPeriod).where(
         and_(
             FiscalPeriod.country_id == country_id,
-            FiscalPeriod.label == record.period_label,
+            FiscalPeriod.label == canonical,
         )
     )
     period = session.execute(stmt).scalar_one_or_none()
     if period is None:
         period = FiscalPeriod(
             country_id=country_id,
-            label=record.period_label,
+            label=canonical,
             start_date=datetime.combine(
                 record.start_date, time.min, tzinfo=timezone.utc
             ),

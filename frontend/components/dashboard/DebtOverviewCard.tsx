@@ -1,5 +1,6 @@
 'use client';
 
+import { useDebtTimeline } from '@/lib/react-query';
 import { motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import {
@@ -13,20 +14,51 @@ import {
   YAxis,
 } from 'recharts';
 
-const debtOverviewData = [
-  { year: '2019', debt: 5800, projected: null },
-  { year: '2020', debt: 7200, projected: null },
-  { year: '2021', debt: 8200, projected: null },
-  { year: '2022', debt: 9100, projected: null },
-  { year: '2023', debt: 10200, projected: null },
-  { year: '2024', debt: 11500, projected: 11500 },
-];
-
 /**
  * Zone 6 LEFT: National Debt Overview — chart + risk emphasis.
  * Asymmetric panel, taller than audit card.
+ * Data sourced from GET /debt/timeline.
  */
 export default function DebtOverviewCard() {
+  const { data, isLoading } = useDebtTimeline();
+
+  const chartData =
+    data?.timeline?.map((entry) => ({
+      year: String(entry.year),
+      debt: entry.total,
+    })) ?? [];
+
+  const latestEntry = data?.timeline?.[data.timeline.length - 1];
+  const totalDebt = latestEntry?.total ?? 0;
+  const debtToGdp = latestEntry?.gdp_ratio ?? 0;
+  const latestYear = latestEntry?.year ?? '';
+
+  const debtLabel =
+    totalDebt >= 1000
+      ? `KES ${(totalDebt / 1000).toFixed(2)} Trillion`
+      : `KES ${totalDebt.toFixed(0)}B`;
+
+  const riskLevel = debtToGdp >= 55 ? 'High Risk' : debtToGdp >= 30 ? 'Moderate' : 'Low Risk';
+
+  if (isLoading) {
+    return (
+      <div className='glass-card p-6 sm:p-8 animate-pulse'>
+        <div className='h-6 bg-neutral-200 rounded w-48 mb-4' />
+        <div className='h-48 bg-neutral-100 rounded mb-5' />
+        <div className='h-16 bg-neutral-100 rounded' />
+      </div>
+    );
+  }
+
+  if (!data?.timeline?.length) {
+    return (
+      <div className='glass-card p-6 sm:p-8'>
+        <h3 className='font-display text-xl text-gov-dark mb-1'>National Debt Overview</h3>
+        <p className='text-sm text-neutral-muted mt-4'>Debt timeline data unavailable.</p>
+      </div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
@@ -39,9 +71,7 @@ export default function DebtOverviewCard() {
       {/* Chart */}
       <div className='h-48 mt-4 mb-5'>
         <ResponsiveContainer width='100%' height='100%'>
-          <ComposedChart
-            data={debtOverviewData}
-            margin={{ top: 4, right: 4, bottom: 0, left: -16 }}>
+          <ComposedChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -16 }}>
             <CartesianGrid strokeDasharray='3 3' stroke='#E2DDD5' vertical={false} />
             <XAxis
               dataKey='year'
@@ -89,16 +119,16 @@ export default function DebtOverviewCard() {
         <div>
           <div className='flex items-center gap-2 mb-0.5'>
             <span className='text-xl'>🇰🇪</span>
-            <span className='metric-medium text-gov-dark'>KES 11.57 Trillion</span>
+            <span className='metric-medium text-gov-dark'>{debtLabel}</span>
           </div>
-          <p className='text-xs text-neutral-muted'>Total Debt as of 2024</p>
+          <p className='text-xs text-neutral-muted'>Total Debt as of {latestYear}</p>
         </div>
         <div className='ml-auto text-right'>
           <div className='flex items-center gap-2 justify-end'>
             <AlertTriangle className='w-4 h-4 text-gov-copper' />
-            <span className='text-2xl font-bold text-gov-copper'>74%</span>
+            <span className='text-2xl font-bold text-gov-copper'>{Math.round(debtToGdp)}%</span>
           </div>
-          <p className='text-xs text-neutral-muted'>High Risk</p>
+          <p className='text-xs text-neutral-muted'>{riskLevel}</p>
           <p className='text-[10px] text-neutral-muted/60'>Debt Level</p>
         </div>
       </div>

@@ -9,13 +9,13 @@ interface DebtBreakdownChartProps {
 }
 
 export default function DebtBreakdownChart({
-  domesticDebt = 4600,
-  externalDebt = 6900,
+  domesticDebt,
+  externalDebt,
   data,
 }: DebtBreakdownChartProps) {
-  // Use props or extract from data object
-  const domestic = domesticDebt || data?.domestic_debt || data?.breakdown?.domestic_debt || 4600;
-  const external = externalDebt || data?.external_debt || data?.breakdown?.external_debt || 6900;
+  // Use props or extract from data object — no hardcoded fallbacks
+  const domestic = domesticDebt || data?.domestic_debt || data?.breakdown?.domestic_debt || 0;
+  const external = externalDebt || data?.external_debt || data?.breakdown?.external_debt || 0;
 
   const DEBT_BREAKDOWN = [
     {

@@ -1,15 +1,29 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import DataIntegrityBanner from '../DataIntegrityBanner';
 
 interface DebtTimelineChartProps {
-  data?: any;
+  data?: { years: number[]; values: number[] } | null;
 }
 
 export default function DebtTimelineChart({ data }: DebtTimelineChartProps) {
-  // Basic sparkline-style timeline using div bars for simplicity
-  const years: number[] = data?.years || [2019, 2020, 2021, 2022, 2023, 2024];
-  const values: number[] = data?.values || [8000, 8600, 9300, 10000, 10800, 11500];
+  const years: number[] = data?.years ?? [];
+  const values: number[] = data?.values ?? [];
+
+  if (years.length === 0 || values.length === 0) {
+    return (
+      <div>
+        <div className='text-sm text-gray-600 mb-3'>Total debt over time (KES Billions)</div>
+        <DataIntegrityBanner
+          message="Historical debt timeline data is not yet available."
+          severity="info"
+          inline
+        />
+      </div>
+    );
+  }
+
   const max = Math.max(...values);
 
   return (

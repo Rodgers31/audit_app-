@@ -69,6 +69,11 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 @pytest.fixture(autouse=True)
 def _setup_tables():
     """Create all tables before each test, drop them after."""
+    # Clear in-memory endpoint caches so stale responses from previous
+    # tests (which may have had different seed data) don't leak through.
+    from main import clear_all_caches
+    clear_all_caches()
+
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)

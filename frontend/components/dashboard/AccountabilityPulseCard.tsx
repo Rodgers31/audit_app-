@@ -2,16 +2,12 @@
 
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { useAuditStatistics } from '@/lib/react-query/useAudits';
+import { fmtKES } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { AlertTriangle, MapPin, ShieldAlert, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 
-function fmtB(val: number): string {
-  if (val >= 1_000_000_000_000) return `${(val / 1_000_000_000_000).toFixed(1)}T`;
-  if (val >= 1_000_000_000) return `${(val / 1_000_000_000).toFixed(1)}B`;
-  if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M`;
-  return val.toLocaleString();
-}
+// fmtKES imported from @/lib/utils — expects raw KES input
 
 export default function AccountabilityPulseCard() {
   const { data: stats, isLoading, error } = useAuditStatistics();
@@ -121,7 +117,7 @@ export default function AccountabilityPulseCard() {
             </div>
             <div>
               <span className='text-sm font-bold text-gov-dark tabular-nums'>
-                KES {fmtB(stats.total_amount_flagged)}
+                {fmtKES(stats.total_amount_flagged)}
               </span>
               <p className='text-[11px] text-neutral-muted leading-snug'>
                 in public funds flagged by auditors

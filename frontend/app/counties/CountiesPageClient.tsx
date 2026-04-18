@@ -3,6 +3,7 @@
 import DataFreshnessBadge from '@/components/DataFreshnessBadge';
 import InfoTip from '@/components/InfoTip';
 import { useCounties } from '@/lib/react-query';
+import { generateFiscalYears, getCurrentFiscalYear } from '@/lib/utils';
 import { County } from '@/types';
 import { motion } from 'framer-motion';
 import {
@@ -211,57 +212,12 @@ function getCountyRegion(name: string): string {
   return '';
 }
 
-/* Tiny sparkline SVG — decorative trend indicator */
-function Sparkline({ seed, positive }: { seed: number; positive: boolean }) {
-  const pts: number[] = [];
-  const count = 12;
-  let v = 40 + (seed % 20);
-  for (let i = 0; i < count; i++) {
-    // Add a clear trend direction + small noise
-    const trend = positive ? 1.5 : -1.2;
-    const noise = (((seed * (i + 1) * 7) % 13) - 6) * 0.6;
-    v += trend + noise;
-    v = Math.max(15, Math.min(90, v));
-    pts.push(v);
-  }
-  const w = 80;
-  const h = 40;
-  const stepX = w / (count - 1);
-  const points = pts.map((y, i) => ({
-    x: i * stepX,
-    y: h - (y / 100) * h,
-  }));
-  const linePath = points
-    .map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
-    .join(' ');
-  const areaPath = `${linePath} L${points[points.length - 1].x.toFixed(1)},${h} L0,${h} Z`;
-  const color = positive ? '#22c55e' : '#ef4444';
-  const gradId = `spark-grad-${seed}`;
+/* Trend placeholder — real sparklines require historical API data (not yet available) */
+function Sparkline({ seed: _seed, positive: _positive }: { seed: number; positive: boolean }) {
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className='w-16 h-10' preserveAspectRatio='none'>
-      <defs>
-        <linearGradient id={gradId} x1='0' y1='0' x2='0' y2='1'>
-          <stop offset='0%' stopColor={color} stopOpacity='0.3' />
-          <stop offset='100%' stopColor={color} stopOpacity='0.02' />
-        </linearGradient>
-      </defs>
-      <path d={areaPath} fill={`url(#${gradId})`} />
-      <path
-        d={linePath}
-        fill='none'
-        stroke={color}
-        strokeWidth='2'
-        strokeLinecap='round'
-        strokeLinejoin='round'
-      />
-      {/* End dot */}
-      <circle
-        cx={points[points.length - 1].x}
-        cy={points[points.length - 1].y}
-        r='2.5'
-        fill={color}
-      />
-    </svg>
+    <div className='w-16 h-10 flex items-center justify-center'>
+      <span className='text-[10px] text-gray-400'>No trend</span>
+    </div>
   );
 }
 
@@ -338,7 +294,9 @@ function KPICards({ counties }: { counties: County[] }) {
           <div className='text-2xl font-bold text-gray-900 tracking-tight'>
             KES {fmtKES(stats.totalBudget)}
           </div>
-          <div className='text-[11px] text-emerald-600 font-medium mt-0.5'>+12% vs last year</div>
+          <div className='text-[11px] text-gray-400 font-medium mt-0.5'>
+            Year-over-year change not available
+          </div>
         </div>
         <Sparkline seed={42} positive />
       </Link>
@@ -352,8 +310,8 @@ function KPICards({ counties }: { counties: County[] }) {
           <div className='text-2xl font-bold text-gray-900 tracking-tight'>
             KES {fmtKES(stats.totalDebt)}
           </div>
-          <div className='text-[11px] text-red-600 font-medium mt-0.5'>
-            <span className='text-red-500'>▲</span> 8% vs last year
+          <div className='text-[11px] text-gray-400 font-medium mt-0.5'>
+            Year-over-year change not available
           </div>
         </div>
         <Sparkline seed={99} positive={false} />
@@ -364,7 +322,9 @@ function KPICards({ counties }: { counties: County[] }) {
         className='bg-white/40 backdrop-blur-xl rounded-2xl p-5 shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/50 flex items-center justify-between hover:shadow-lg hover:scale-[1.02] transition-all cursor-pointer'
         title='See county rankings below'>
         <div>
-          <div className='text-xs font-medium text-gray-500 mb-1'>Avg. Execution Rate <InfoTip term='budget-execution' size={11} /></div>
+          <div className='text-xs font-medium text-gray-500 mb-1'>
+            Avg. Execution Rate <InfoTip term='budget-execution' size={11} />
+          </div>
           <div className='text-2xl font-bold text-gray-900 tracking-tight'>
             {stats.avgExec.toFixed(0)}%
           </div>
@@ -1364,8 +1324,8 @@ function CountyRankingsTable({
 
 export default function CountyExplorerPage() {
   // Year dropdown state (must be declared before useCounties which depends on it)
-  const YEARS = ['2025/26', '2024/25', '2023/24', '2022/23'];
-  const [selectedYear, setSelectedYear] = useState('2024/25');
+  const YEARS = generateFiscalYears(4);
+  const [selectedYear, setSelectedYear] = useState(getCurrentFiscalYear());
   const [yearOpen, setYearOpen] = useState(false);
 
   const { data: counties, isLoading, error, refetch } = useCounties({ fiscalYear: selectedYear });
@@ -1674,7 +1634,7 @@ export default function CountyExplorerPage() {
         {/* ═══ Main content ═══ */}
         <div className='max-w-[1340px] mx-auto px-5 lg:px-8 py-8'>
           {/* Data freshness banner */}
-          <DataFreshnessBadge sources="COB" variant="banner" className="mb-2" />
+          <DataFreshnessBadge sources='COB' variant='banner' className='mb-2' />
 
           {/* KPI Cards */}
           <motion.div
@@ -1741,7 +1701,7 @@ export default function CountyExplorerPage() {
           </div>
         </div>
 
-        <DataFreshnessBadge sources="COB" className="mt-4 justify-center" />
+        <DataFreshnessBadge sources='COB' className='mt-4 justify-center' />
 
         {/* Spacer so bottom scenic image peeks through */}
         <div className='h-24' />

@@ -8,10 +8,9 @@
  * Mirrors the homepage SSR pattern. On subsequent client-side navigations
  * React Query serves from its in-memory cache (staleTime 10min–1hr).
  */
-import { Metadata } from 'next';
 import {
-  getDebtTimeline,
   getDebtSustainability,
+  getDebtTimeline,
   getNationalDebtOverview,
   getNationalLoans,
   getPendingBills,
@@ -20,12 +19,13 @@ import {
 import { getFiscalSummary } from '@/lib/api/fiscal';
 import { getQueryClient } from '@/lib/react-query/getQueryClient';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
+import { Metadata } from 'next';
 import NationalDebtPage from './DebtPageClient';
 
 export const metadata: Metadata = {
   title: 'National Debt — AuditGava',
   description:
-    "Kenya's public debt stands at KES 12.5 trillion. Track external vs domestic debt, debt-to-GDP ratio, loan details, and sustainability indicators.",
+    "Track Kenya's public debt, external vs domestic debt, debt-to-GDP ratio, loan details, and sustainability indicators.",
 };
 
 const SSR_TIMEOUT_MS = 5000;

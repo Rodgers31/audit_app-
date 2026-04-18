@@ -72,11 +72,11 @@ export default function CountyMapSelector({
           </Geographies>
 
           {/* County Markers */}
-          {counties.map((county) => {
+          {counties.filter((county) => county.coordinates).map((county) => {
             const isSelected = selectedCounty?.id === county.id;
 
             return (
-              <Marker key={county.id} coordinates={county.coordinates}>
+              <Marker key={county.id} coordinates={county.coordinates!}>
                 <motion.circle
                   r={isSelected ? 8 : 5}
                   fill={isSelected ? '#ef4444' : '#3b82f6'}
