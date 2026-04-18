@@ -2,6 +2,7 @@
 
 import DataFreshnessBadge from '@/components/DataFreshnessBadge';
 import DataIntegrityBanner from '@/components/DataIntegrityBanner';
+import ResponseMetaBadge from '@/components/ResponseMetaBadge';
 import PageShell from '@/components/layout/PageShell';
 import PDFExportButton from '@/components/PDFExportButton';
 import { useBudgetEnhanced, useBudgetOverview } from '@/lib/react-query';
@@ -1005,10 +1006,20 @@ export default function BudgetSpendingPage() {
         transition={{ delay: 0.1, duration: 0.5 }}>
         <div className='bg-white rounded-xl border border-gray-100 p-5'>
           <h2 className='text-lg font-bold text-gray-900 mb-1'>Where the Money Goes</h2>
-          <p className='text-sm text-gray-500 mb-5'>
+          <p className='text-sm text-gray-500 mb-2'>
             Sector allocation from county budget lines
             {overview?.fiscal_period ? ` — ${overview.fiscal_period}` : ''}
           </p>
+          {/*
+            Surfaces data_quality + scope caveats (e.g. "CRA-formula modeled",
+            "Personnel Emoluments not broken out") from the /budget/overview
+            _meta envelope. Click to expand quality notes.
+          */}
+          <ResponseMetaBadge
+            meta={(overview as any)?._meta}
+            className='mb-5'
+          />
+
 
           <div className='grid lg:grid-cols-2 gap-6'>
             {/* Pie chart */}

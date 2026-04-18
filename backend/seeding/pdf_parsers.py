@@ -264,73 +264,151 @@ class CoBQuarterlyReportParser:
         """
         Parse CoB report and extract budget execution data.
 
+        The Consolidated County BIRR PDFs publish at least four tables
+        relevant to the Budget page:
+
+        * Aggregate: ``County | Allocated | Absorbed | Absorption Rate``
+          → emitted as ``category="Total"``.
+        * Recurrent: ``County | Allocated | Absorbed | ...`` with the
+          word "recurrent" in the header → ``category="Recurrent"``.
+        * Development: same layout with "development" in the header →
+          ``category="Development"``.
+        * Personnel Emoluments: ``County | PE | Absorbed | ...`` with
+          the header literal "Personnel Emoluments" → persisted as a
+          sub-category under Recurrent so the /budget/overview
+          Personnel Emoluments trust-guard check passes.
+
+        Tables are looked up best-effort; missing ones emit a warning
+        but don't raise, so older PDFs that only publish the aggregate
+        still produce useful output.
+
         Returns:
-            List of budget execution records with structure:
-            {
-                "county": "Nairobi",
-                "allocated": Decimal("1500000000"),
-                "absorbed": Decimal("1200000000"),
-                "absorption_rate": 80.0,
-                "quarter": "Q2",
-                "fiscal_year": "2023/24",
-                "currency": "KES"
-            }
+            List of budget execution records with structure::
+
+                {
+                    "county": "Nairobi",
+                    "category": "Total" | "Recurrent" | "Development"
+                               | "Personnel Emoluments",
+                    "subcategory": Optional[str],
+                    "allocated": Decimal("1500000000"),
+                    "absorbed": Decimal("1200000000"),
+                    "absorption_rate": 80.0,
+                    "quarter": "Q2",
+                    "fiscal_year": "2023/24",
+                    "currency": "KES"
+                }
 
         Raises:
-            TableNotFoundError: If county budget table not found
+            TableNotFoundError: If the aggregate county budget table
+                cannot be located — other categories are optional.
         """
         self.tables = extract_all_tables(self.pdf_path)
 
-        # Look for county budget execution table
+        # ── Aggregate (always required) ────────────────────────────
         budget_table = find_table_by_header(
             self.tables, ["county", "allocated", "absorbed"]
         )
-
         if not budget_table:
             raise TableNotFoundError(
                 "Could not find county budget execution table in report"
             )
 
-        records = []
-        for row in budget_table.rows:
-            try:
-                # Assuming table structure: County | Allocated | Absorbed | Rate
-                county_name = row[0].strip()
+        records: List[Dict[str, Any]] = []
+        records.extend(
+            self._rows_to_records(budget_table, category="Total")
+        )
 
-                # Skip summary/total rows
+        # ── Recurrent / Development / Personnel Emoluments ─────────
+        # Best-effort: each helper logs a warning and returns [] when
+        # the table isn't in this particular PDF.
+        records.extend(self._extract_category("Recurrent", ["recurrent"]))
+        records.extend(self._extract_category("Development", ["development"]))
+        records.extend(
+            self._extract_category(
+                "Personnel Emoluments",
+                ["personnel", "emolument"],
+                subcategory="PE",
+            )
+        )
+
+        logger.info(
+            f"Parsed {len(records)} budget execution records from CoB report",
+            extra={
+                "source": str(self.pdf_path),
+                "record_count": len(records),
+                "categories": sorted({r.get("category") for r in records}),
+            },
+        )
+
+        return records
+
+    def _extract_category(
+        self,
+        category: str,
+        header_keywords: List[str],
+        subcategory: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Locate a sub-aggregate table by header keywords and
+        convert it to the category-tagged record shape."""
+        # The sub-aggregate tables share the "county | allocated |
+        # absorbed" columns; the extra keyword disambiguates them.
+        probe = list(header_keywords) + ["county"]
+        table = find_table_by_header(self.tables, probe)
+        if not table:
+            # Some PDFs put category labels in a caption rather than
+            # the header row — fall back to scanning for an "allocated"
+            # + keyword combo without strict ordering.
+            table = find_table_by_header(self.tables, header_keywords + ["allocated"])
+        if not table:
+            logger.info(
+                "CoB PDF has no '%s' breakdown table (keywords=%s)",
+                category,
+                header_keywords,
+            )
+            return []
+        return self._rows_to_records(table, category=category, subcategory=subcategory)
+
+    def _rows_to_records(
+        self,
+        table: ExtractedTable,
+        category: str,
+        subcategory: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Shared row-parsing loop for any county×amount table."""
+        out: List[Dict[str, Any]] = []
+        for row in table.rows:
+            try:
+                county_name = (row[0] or "").strip()
+                if not county_name:
+                    continue
                 if any(
-                    keyword in county_name.lower()
-                    for keyword in ["total", "average", "summary"]
+                    kw in county_name.lower()
+                    for kw in ("total", "average", "summary", "grand total")
                 ):
                     continue
 
                 allocated, currency = parse_currency(row[1])
                 absorbed, _ = parse_currency(row[2])
-                absorption_rate = parse_percentage(row[3])
+                absorption_rate = (
+                    parse_percentage(row[3]) if len(row) > 3 else None
+                )
 
-                record = {
+                record: Dict[str, Any] = {
                     "county": county_name,
+                    "category": category,
+                    "subcategory": subcategory,
                     "allocated": allocated,
                     "absorbed": absorbed,
                     "absorption_rate": absorption_rate,
                     "currency": currency,
-                    # Extract quarter and FY from filename or text
                     "quarter": self._extract_quarter(),
                     "fiscal_year": self._extract_fiscal_year(),
                 }
-
-                records.append(record)
-
+                out.append(record)
             except (IndexError, ValueError) as e:
-                logger.warning(f"Failed to parse row {row}: {e}")
+                logger.warning("Failed to parse row %s: %s", row, e)
                 continue
-
-        logger.info(
-            f"Parsed {len(records)} budget execution records from CoB report",
-            extra={"source": str(self.pdf_path), "record_count": len(records)},
-        )
-
-        return records
+        return out
 
     def _extract_quarter(self) -> str:
         """Extract quarter from PDF filename or content."""

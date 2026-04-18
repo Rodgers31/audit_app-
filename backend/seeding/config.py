@@ -182,6 +182,27 @@ class SeedingSettings(BaseSettings):
             "When False, only fixture/configured URLs are used."
         ),
     )
+    counties_budget_prefer_live_source: bool = Field(
+        default=True,
+        description=(
+            "When True (default), the counties_budget fetcher tries the "
+            "Controller of Budget County BIRR PDFs before falling back to "
+            "the local CRA-formula fixture at seeding/real_data/"
+            "budgets.json. When False, the fixture is used unconditionally "
+            "— useful for offline development or reproducing a known state. "
+            "Independent of live_pdf_fetch_enabled: set both True for "
+            "production, both False for a fully-deterministic local run."
+        ),
+    )
+    counties_budget_cob_reports_url: str = Field(
+        default="https://cob.go.ke/publications/consolidated-county-budget-implementation-review-reports/",
+        description=(
+            "Controller of Budget Consolidated County BIRR landing page, "
+            "scraped to discover the latest quarterly and annual county "
+            "execution PDFs. Secondary candidate (tried when the primary "
+            "404s): https://cob.go.ke/publications/county-reports/."
+        ),
+    )
 
     # ── World Bank API (free, unauthenticated) ───────────────────
     worldbank_api_base_url: str = Field(

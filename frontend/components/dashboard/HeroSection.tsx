@@ -3,7 +3,7 @@
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useDebtTimeline, useNationalDebtOverview } from '@/lib/react-query/useDebt';
 import { useFiscalSummary } from '@/lib/react-query/useFiscal';
-import { fmtBillionKES } from '@/lib/utils';
+import { classifyDebtRisk, fmtBillionKES } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import DebtExplainerModal from './DebtExplainerModal';
@@ -18,7 +18,7 @@ import DebtExplainerModal from './DebtExplainerModal';
  *  │  Title: "Kenya Public Money Tracker"                    │              │
  *  │  Subtitle: "Where your taxes go, in real time"          │              │
  *  ├─ Container A (glass outer) ─────────────────────────────┤ Container C  │
- *  │  ┌ Summary strip: 🇰🇪 11.5T  74%  ● High Risk ──────┐ │  (county     │
+ *  │  ┌ Summary strip: 🇰🇪 <total>  <pct>%  ● <risk> ───┐ │  (county     │
  *  │  │                                                      │ │   overview)  │
  *  │  ├─ Container B (white inner): Kenya's National Debt ──┤ │              │
  *  │  │  [chart] + [bottom facts row]                        │ │              │
@@ -56,9 +56,11 @@ export function SummaryStrip() {
   const totalT = latest ? (latest.total / 1000).toFixed(1) : '—';
   const gdpPct = latest?.gdp_ratio ?? overviewResp?.data?.debt_to_gdp_ratio ?? '—';
   const year = latest?.year ?? '—';
+  // Trust the backend's risk_level when present (canonical source); fall back
+  // to the centralized classifier so thresholds stay consistent across the UI.
   const riskLevel =
     overviewResp?.data?.debt_sustainability?.risk_level ||
-    (Number(gdpPct) >= 70 ? 'High' : 'Moderate');
+    classifyDebtRisk(typeof gdpPct === 'number' ? gdpPct : undefined);
   const isHigh = riskLevel === 'High';
 
   return (

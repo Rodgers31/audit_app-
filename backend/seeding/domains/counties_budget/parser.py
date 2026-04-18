@@ -22,6 +22,18 @@ class BudgetRecord:
     currency: str
     dataset_id: Optional[str]
     source_url: Optional[str]
+    # April-2026 credibility pipeline fields:
+    #   data_quality: one of {"official","estimated","projected",
+    #     "historical","mixed","unknown"}. "official" is reserved for
+    #     COB/COB-equivalent sources; fixtures default to "estimated".
+    #   source_label: free-text attribution ("Controller of Budget
+    #     County BIRR FY2024/25 Annual", "CRA Equitable Share formula",
+    #     etc.). Persisted to SourceDocument.title when present.
+    #   notes: free-text notes from the source (e.g. "Q3 report uses
+    #     preliminary figures"). Persisted to BudgetLine.notes.
+    data_quality: str = "unknown"
+    source_label: Optional[str] = None
+    notes: Optional[str] = None
 
 
 def _iter_records(payload: Any) -> Iterable[Dict[str, Any]]:
@@ -101,10 +113,29 @@ def parse_budget_payload(payload: Dict[str, Any]) -> List[BudgetRecord]:
             allocated_amount=_to_decimal(
                 raw.get("allocated_amount") or raw.get("allocated")
             ),
-            actual_amount=_to_decimal(raw.get("actual_amount") or raw.get("actual")),
+            # Accept "actual_spent" too — both the fixture
+            # (seeding/real_data/budgets.json) and the DB column
+            # (BudgetLine.actual_spent) use that name, so older or
+            # externally-authored payloads often emit it.
+            actual_amount=_to_decimal(
+                raw.get("actual_amount")
+                or raw.get("actual")
+                or raw.get("actual_spent")
+            ),
             currency=str(raw.get("currency") or "KES"),
             dataset_id=raw.get("dataset_id"),
             source_url=raw.get("source_url") or raw.get("url"),
+            # April-2026: propagate credibility fields if present. Real
+            # COB payloads should set data_quality="official"; CRA/fixture
+            # payloads should set "estimated". Unknown falls back so the
+            # trust badge can still render.
+            data_quality=str(raw.get("data_quality") or "unknown").lower(),
+            source_label=(
+                raw.get("source_label")
+                or raw.get("source")
+                or raw.get("source_title")
+            ),
+            notes=raw.get("notes"),
         )
         normalized.append(record)
 

@@ -49,17 +49,31 @@ def _ensure_source_document(
     ).scalar_one_or_none()
     now = datetime.now(timezone.utc)
 
+    # April-2026 credibility: the Budget page /budget/overview endpoint
+    # reads source.meta["data_quality"] to decide whether to flip the
+    # badge from "estimated" → "official". That decision must not be
+    # frozen the first time a SourceDocument is inserted — subsequent
+    # seed runs that arrive with real COB data need to *upgrade* the
+    # existing row. So we always re-evaluate meta and title.
+    initial_meta: dict = {}
+    if record.dataset_id:
+        initial_meta["dataset_id"] = record.dataset_id
+    if record.data_quality and record.data_quality != "unknown":
+        initial_meta["data_quality"] = record.data_quality
+    if record.source_label:
+        initial_meta["source_label"] = record.source_label
+
     if source is None:
         source = SourceDocument(
             country_id=country_id,
             publisher="Controller of Budget",
-            title=settings.dataset_title("budgets"),
+            title=record.source_label or settings.dataset_title("budgets"),
             url=url,
             file_path=None,
             fetch_date=now,
             doc_type=DocumentType.BUDGET,
             md5=None,
-            meta={"dataset_id": record.dataset_id} if record.dataset_id else {},
+            meta=initial_meta,
         )
         session.add(source)
         session.flush()
@@ -67,6 +81,13 @@ def _ensure_source_document(
         meta = dict(source.meta or {})
         if record.dataset_id and "dataset_id" not in meta:
             meta["dataset_id"] = record.dataset_id
+        # Always reflect the *latest* data_quality/source_label so a COB
+        # re-seed promotes an older "estimated" fixture row to "official".
+        if record.data_quality and record.data_quality != "unknown":
+            meta["data_quality"] = record.data_quality
+        if record.source_label:
+            meta["source_label"] = record.source_label
+            source.title = record.source_label
         source.meta = meta
 
     source.status = DocumentStatus.AVAILABLE
@@ -200,11 +221,20 @@ def persist_budget_records(
         existing = session.execute(stmt).scalar_one_or_none()
 
         currency = record.currency or settings.budget_default_currency
+        # April-2026: every provenance entry carries data_quality so the
+        # /budget/overview trust probe can read it back without joining
+        # through SourceDocument. Also captured: free-text source_label
+        # (for human-readable attribution) and the ingestion job id.
         provenance_entry: dict[str, object] = {}
         if record.dataset_id:
             provenance_entry["dataset_id"] = record.dataset_id
         if context.job_id is not None:
             provenance_entry["ingestion_job_id"] = context.job_id
+        if record.data_quality and record.data_quality != "unknown":
+            provenance_entry["data_quality"] = record.data_quality
+        if record.source_label:
+            provenance_entry["source_label"] = record.source_label
+        provenance_entry["ingested_at"] = datetime.now(timezone.utc).isoformat()
 
         record_hash = _record_hash(record, currency)
 
@@ -218,6 +248,7 @@ def persist_budget_records(
                 allocated_amount=record.allocated_amount,
                 actual_spent=record.actual_amount,
                 source_document_id=source.id,
+                notes=record.notes,
                 provenance=[provenance_entry] if provenance_entry else [],
                 source_hash=record_hash,
             )
@@ -226,10 +257,26 @@ def persist_budget_records(
         else:
             if _apply_line(existing, record, currency, source.id, record_hash):
                 stats.updated += 1
+            # Update notes independently — _apply_line skips None values
+            # but we *do* want to overwrite stale notes with new ones.
+            if record.notes and existing.notes != record.notes:
+                existing.notes = record.notes
+                stats.updated += 1
 
             if provenance_entry:
                 provenance = list(existing.provenance or [])
-                if provenance_entry not in provenance:
+                # Dedupe on the non-timestamp keys so re-seeds don't
+                # bloat the array with identical entries each cron run.
+                def _dedupe_key(e: dict) -> tuple:
+                    return (
+                        e.get("dataset_id"),
+                        e.get("data_quality"),
+                        e.get("source_label"),
+                        e.get("ingestion_job_id"),
+                    )
+
+                new_key = _dedupe_key(provenance_entry)
+                if not any(_dedupe_key(p) == new_key for p in provenance):
                     provenance.append(provenance_entry)
                     existing.provenance = provenance
 

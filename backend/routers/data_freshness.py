@@ -2,6 +2,12 @@
 Data Freshness Router — reports how recent each data source is.
 
 GET /api/v1/data/freshness
+
+Both ``last_updated`` (when the ETL last successfully ran) AND
+``covers_through`` (the most recent *fiscal period / observation year*
+present in the data) are derived from the live database. No fiscal-year
+string is hardcoded so the endpoint stays truthful as the underlying
+tables grow.
 """
 
 import logging
@@ -19,7 +25,17 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
     from database import get_db
-    from models import IngestionJob, IngestionStatus, SourceDocument
+    from models import (
+        Audit,
+        BudgetLine,
+        DebtTimeline,
+        FiscalPeriod,
+        GDPData,
+        IngestionJob,
+        IngestionStatus,
+        Loan,
+        SourceDocument,
+    )
 
     DATABASE_AVAILABLE = True
 except Exception:
@@ -49,10 +65,13 @@ class FreshnessResponse(BaseModel):
     sources: List[SourceFreshness]
 
 
-# ── source config (static metadata) ─────────────────────────────
-# NOTE: covers_through reflects the latest period known to be
-# ingested.  Update these values when new ETL data is loaded,
-# or replace with dynamic queries on source_documents.title.
+# ── source config (static metadata — NOT coverage) ──────────────
+# `publisher_pattern` is used to match SourceDocument.publisher (ILIKE).
+# `domain` determines which data table we query to learn the latest
+# period covered. `update_frequency` is purely descriptive.
+#
+# `covers_through` is intentionally NOT stored here — it is computed
+# from the database so the API never lies about recency.
 
 SOURCE_CONFIG = [
     {
@@ -60,7 +79,6 @@ SOURCE_CONFIG = [
         "label": "Controller of Budget",
         "publisher_pattern": "Controller of Budget",
         "domain": "budget",
-        "covers_through": "Q2 FY2024/25",
         "update_frequency": "Quarterly",
     },
     {
@@ -68,7 +86,6 @@ SOURCE_CONFIG = [
         "label": "Office of the Auditor General",
         "publisher_pattern": "Auditor General",
         "domain": "audit",
-        "covers_through": "FY2022/23",
         "update_frequency": "Annually",
     },
     {
@@ -76,7 +93,6 @@ SOURCE_CONFIG = [
         "label": "Kenya National Bureau of Statistics",
         "publisher_pattern": "KNBS",
         "domain": "economic",
-        "covers_through": "2024",
         "update_frequency": "Annually",
     },
     {
@@ -84,7 +100,6 @@ SOURCE_CONFIG = [
         "label": "National Treasury",
         "publisher_pattern": "Treasury",
         "domain": "debt",
-        "covers_through": "Q2 FY2024/25",
         "update_frequency": "Quarterly",
     },
     {
@@ -92,7 +107,6 @@ SOURCE_CONFIG = [
         "label": "Central Bank of Kenya",
         "publisher_pattern": "Central Bank",
         "domain": "debt",
-        "covers_through": "Feb 2025",
         "update_frequency": "Monthly",
     },
     {
@@ -100,7 +114,6 @@ SOURCE_CONFIG = [
         "label": "Commission on Revenue Allocation",
         "publisher_pattern": "CRA",
         "domain": "budget",
-        "covers_through": "FY2024/25",
         "update_frequency": "Annually",
     },
 ]
@@ -118,6 +131,107 @@ def _freshness_status(last_updated: Optional[date]) -> str:
     return "outdated"
 
 
+# ── per-domain coverage lookups ──────────────────────────────────
+
+
+def _latest_period_label_for_budget(db: Session, publisher_pattern: str) -> Optional[str]:
+    """Latest fiscal-period label present in BudgetLine rows whose source
+    document was published by the given organisation."""
+    return (
+        db.query(FiscalPeriod.label)
+        .join(BudgetLine, BudgetLine.period_id == FiscalPeriod.id)
+        .join(
+            SourceDocument,
+            BudgetLine.source_document_id == SourceDocument.id,
+        )
+        .filter(SourceDocument.publisher.ilike(f"%{publisher_pattern}%"))
+        .order_by(FiscalPeriod.start_date.desc())
+        .limit(1)
+        .scalar()
+    )
+
+
+def _latest_period_label_for_audit(db: Session, publisher_pattern: str) -> Optional[str]:
+    """Latest fiscal-period label present in Audit rows for a given publisher."""
+    return (
+        db.query(FiscalPeriod.label)
+        .join(Audit, Audit.period_id == FiscalPeriod.id)
+        .join(SourceDocument, Audit.source_document_id == SourceDocument.id)
+        .filter(SourceDocument.publisher.ilike(f"%{publisher_pattern}%"))
+        .order_by(FiscalPeriod.start_date.desc())
+        .limit(1)
+        .scalar()
+    )
+
+
+def _latest_coverage_for_debt(
+    db: Session, publisher_pattern: str
+) -> Optional[str]:
+    """Latest debt observation — prefer Loan.issue_date for a given publisher,
+    fall back to max(DebtTimeline.year) which represents the aggregate
+    national debt series."""
+    loan_date = (
+        db.query(func.max(Loan.issue_date))
+        .join(SourceDocument, Loan.source_document_id == SourceDocument.id)
+        .filter(SourceDocument.publisher.ilike(f"%{publisher_pattern}%"))
+        .scalar()
+    )
+    if loan_date:
+        # Month+year is more truthful than just a year for monthly CBK data
+        dt = loan_date if isinstance(loan_date, datetime) else None
+        if dt is None and hasattr(loan_date, "year"):
+            return f"{loan_date.strftime('%b %Y')}"
+        if dt is not None:
+            return dt.strftime("%b %Y")
+
+    timeline_year = db.query(func.max(DebtTimeline.year)).scalar()
+    if timeline_year:
+        return str(timeline_year)
+    return None
+
+
+def _latest_coverage_for_economic(
+    db: Session, publisher_pattern: str
+) -> Optional[str]:
+    """Latest economic observation — max GDPData.year linked to a publisher's
+    source documents; fall back to the global max year."""
+    year = (
+        db.query(func.max(GDPData.year))
+        .join(
+            SourceDocument,
+            GDPData.source_document_id == SourceDocument.id,
+        )
+        .filter(SourceDocument.publisher.ilike(f"%{publisher_pattern}%"))
+        .scalar()
+    )
+    if year is None:
+        year = db.query(func.max(GDPData.year)).scalar()
+    return str(year) if year else None
+
+
+def _covers_through(db: Session, cfg: dict) -> Optional[str]:
+    """Dispatch to the right per-domain lookup based on cfg['domain']."""
+    domain = cfg["domain"]
+    pattern = cfg["publisher_pattern"]
+    try:
+        if domain == "budget":
+            return _latest_period_label_for_budget(db, pattern)
+        if domain == "audit":
+            return _latest_period_label_for_audit(db, pattern)
+        if domain == "debt":
+            return _latest_coverage_for_debt(db, pattern)
+        if domain == "economic":
+            return _latest_coverage_for_economic(db, pattern)
+    except Exception as exc:  # pragma: no cover — defensive; never leak DB errors
+        logger.warning(
+            "covers_through lookup failed for source=%s domain=%s: %s",
+            cfg.get("source"),
+            domain,
+            exc,
+        )
+    return None
+
+
 @router.get("/freshness", response_model=FreshnessResponse)
 async def get_data_freshness(db: Session = Depends(get_db)):
     """Return freshness information for each data source."""
@@ -126,6 +240,7 @@ async def get_data_freshness(db: Session = Depends(get_db)):
 
     for cfg in SOURCE_CONFIG:
         last_updated_date: Optional[date] = None
+        covers_through: Optional[str] = None
 
         if DATABASE_AVAILABLE and db is not None:
             # Try IngestionJob first (most accurate)
@@ -160,6 +275,10 @@ async def get_data_freshness(db: Session = Depends(get_db)):
                         doc_date.date() if isinstance(doc_date, datetime) else doc_date
                     )
 
+            # Derived coverage (replaces the old hardcoded SOURCE_CONFIG
+            # strings — stays truthful as the DB grows).
+            covers_through = _covers_through(db, cfg)
+
         results.append(
             SourceFreshness(
                 source=cfg["source"],
@@ -167,7 +286,7 @@ async def get_data_freshness(db: Session = Depends(get_db)):
                 last_updated=(
                     last_updated_date.isoformat() if last_updated_date else None
                 ),
-                covers_through=cfg["covers_through"],
+                covers_through=covers_through,
                 update_frequency=cfg["update_frequency"],
                 status=_freshness_status(last_updated_date),
             )
