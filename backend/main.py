@@ -5681,22 +5681,31 @@ async def get_budget_overview():
                 "allocations when the seed is CRA-formula based."
             )
 
+            # /budget/overview returns mixed units (sectors in KES,
+            # fiscal_history in billion KES, county_utilization in KES),
+            # so extend the standard _meta envelope with per-section unit
+            # keys — tests in test_unit_safety assert these exact fields.
+            _budget_overview_meta = _response_meta(
+                unit="mixed",
+                entity_scope="all",
+                fiscal_period=period_label,
+                scope_detail=scope_detail,
+                covers_through=period_label,
+                cache_ttl_seconds=1800,
+                source_updated_at=src_updated_at,
+                data_quality=data_quality,
+                quality_notes=quality_notes or None,
+            )
+            _budget_overview_meta["summary_unit"] = "kes"
+            _budget_overview_meta["sectors_unit"] = "kes"
+            _budget_overview_meta["fiscal_history_unit"] = "billion_kes"
+            _budget_overview_meta["county_utilization_unit"] = "kes"
             return {
                 "status": "success",
                 "data_source": "database",
                 "fiscal_period": period_label,
                 "last_updated": datetime.datetime.now().isoformat(),
-                "_meta": _response_meta(
-                    unit="kes",
-                    entity_scope="all",
-                    fiscal_period=period_label,
-                    scope_detail=scope_detail,
-                    covers_through=period_label,
-                    cache_ttl_seconds=1800,
-                    source_updated_at=src_updated_at,
-                    data_quality=data_quality,
-                    quality_notes=quality_notes or None,
-                ),
+                "_meta": _budget_overview_meta,
                 "summary": {
                     "total_budget": total_allocated,
                     "total_spent": total_spent,
