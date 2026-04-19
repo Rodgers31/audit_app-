@@ -1,17 +1,18 @@
 /**
- * Constitution search — backed by MiniSearch (BM25 + stemming + fuzzy).
+ * Constitution search — hybrid of BM25 (MiniSearch) and semantic
+ * (MiniLM embeddings). BM25 handles literal vocabulary overlap with
+ * stemming + fuzzy matching; the semantic layer catches queries whose
+ * wording doesn't appear in the Constitution ("how many terms can a
+ * president serve?" vs Article 142's "two terms"). Results are merged
+ * via Reciprocal Rank Fusion so the two score scales don't fight.
  *
  * Three recognised modes:
  *   • "Article 229"       → direct lookup via the meta index.
- *   • "term limits"       → BM25 keyword search with prefix + fuzzy matching,
- *                           scored across title / summary / explanation /
- *                           paragraphs / tags with sensible field boosts.
+ *   • keyword/question    → hybrid rank via BM25 ⊕ semantic cosine.
  *   • short fragment      → "too-short" hint shown by callers.
  *
- * No hand-curated synonym map: MiniSearch handles prefix expansion
- * (presid* → president/presidential) and typo tolerance out of the box.
- * A later revision layers semantic search on top of this to catch queries
- * whose vocabulary doesn't overlap the Constitution's formal wording.
+ * Semantic is browser-only (WASM). On the server or when the model
+ * fails to load, we silently degrade to BM25-only.
  */
 import MiniSearch, { type SearchResult } from 'minisearch';
 import { stemmer } from 'stemmer';
@@ -22,6 +23,7 @@ import type {
   ConstitutionChapter,
 } from './types';
 import { CONSTITUTION_META, findChapterForArticle, loadAllChapters } from './index';
+import { semanticSearch, type SemanticHit } from './semantic-search';
 
 /**
  * Token processor — applied identically at index and query time so the two
@@ -237,10 +239,81 @@ function pickExcerpt(
 /* ───────────────────────── Orchestrator ───────────────────────── */
 
 /**
+ * Reciprocal Rank Fusion weight. Higher `k` dampens the contribution
+ * of top-ranked items from any single source, which is good when one
+ * source is noisier than the other. 60 is the value from the original
+ * Cormack/Clarke paper and is the community default.
+ */
+const RRF_K = 60;
+
+/**
+ * Weight applied to each source before summing the RRF contributions.
+ *
+ * Semantic is worth ~1.6× BM25 because BM25 is noisy on broad lexical
+ * queries: "right to healthcare" matched "Consumer rights" (Art 46)
+ * above the actual health clause (Art 43) until semantic was given
+ * real voting power. BM25 still dominates short keyword queries
+ * ("corruption", "devolution") where the vocabulary overlap is strong,
+ * so we don't push the weight higher than this.
+ */
+const RRF_BM25_WEIGHT = 1.0;
+const RRF_SEMANTIC_WEIGHT = 1.6;
+
+interface RankMap {
+  /** rowId (`${ch}:${art}`) → zero-based rank in that source's result list. */
+  ranks: Map<string, number>;
+  /** rowId → the source's raw score, for tie-breaks and excerpting. */
+  raw: Map<string, number>;
+}
+
+/** Convert the hit array from one source into the rank/raw shape RRF needs. */
+function toRankMap(items: { id: string; score: number }[]): RankMap {
+  const ranks = new Map<string, number>();
+  const raw = new Map<string, number>();
+  items.forEach((it, i) => {
+    ranks.set(it.id, i);
+    raw.set(it.id, it.score);
+  });
+  return { ranks, raw };
+}
+
+/** Combine BM25 + semantic rankings into a single ordered list of rowIds. */
+function reciprocalRankFusion(
+  bm25: RankMap,
+  semantic: RankMap,
+  limit: number
+): { id: string; score: number; bm25Rank: number | null; semRank: number | null }[] {
+  const allIds = new Set<string>();
+  bm25.ranks.forEach((_v, k) => allIds.add(k));
+  semantic.ranks.forEach((_v, k) => allIds.add(k));
+  const fused: {
+    id: string;
+    score: number;
+    bm25Rank: number | null;
+    semRank: number | null;
+  }[] = [];
+  allIds.forEach((id) => {
+    const br = bm25.ranks.get(id);
+    const sr = semantic.ranks.get(id);
+    let score = 0;
+    if (br !== undefined) score += RRF_BM25_WEIGHT / (RRF_K + br + 1);
+    if (sr !== undefined) score += RRF_SEMANTIC_WEIGHT / (RRF_K + sr + 1);
+    fused.push({
+      id,
+      score,
+      bm25Rank: br ?? null,
+      semRank: sr ?? null,
+    });
+  });
+  fused.sort((a, b) => b.score - a.score);
+  return fused.slice(0, limit);
+}
+
+/**
  * One-shot search used by autocomplete boxes.
  *
  *   mode === 'article'     → a valid article number parsed from the query.
- *   mode === 'keyword'     → BM25 keyword match via MiniSearch.
+ *   mode === 'keyword'     → hybrid BM25 ⊕ semantic (or BM25-only on server).
  *   mode === 'too-short'   → query exists but is under 3 chars.
  *   mode === 'empty'       → query is blank.
  */
@@ -274,24 +347,65 @@ export async function runSearch(
 
   if (q.length < 3) return { mode: 'too-short', hits: [] };
 
+  // BM25 and semantic fire in parallel. Semantic is a no-op on the
+  // server and returns [] if the model fails to load — in both cases
+  // we simply fall back to BM25.
   const { mini, byId } = await getIndex();
-  const results: SearchResult[] = mini.search(q);
+  const semanticLimit = Math.max(limit, 30);
+  const [bm25Results, semResults] = await Promise.all([
+    Promise.resolve(mini.search(q) as SearchResult[]),
+    semanticSearch(q, semanticLimit).catch(() => [] as SemanticHit[]),
+  ]);
+
+  // Track matched BM25 terms per row for excerpt highlighting. Semantic
+  // hits have no explicit "matched terms" — we fall back to query tokens
+  // so the excerpt still tries to surface a relevant fragment.
+  const bm25List = bm25Results.slice(0, semanticLimit).map((r) => ({
+    id: String(r.id),
+    score: r.score,
+  }));
+  const bm25Matched = new Map<string, string[]>();
+  for (const r of bm25Results) {
+    bm25Matched.set(
+      String(r.id),
+      Object.keys(r.match ?? {}).map((s) => s.toLowerCase())
+    );
+  }
+
+  const semList = semResults.map((s) => ({
+    id: ROW_ID(s.chapterNumber, s.articleNumber),
+    score: s.score,
+  }));
+
+  const fused = reciprocalRankFusion(
+    toRankMap(bm25List),
+    toRankMap(semList),
+    limit
+  );
+
+  const queryTokens = q
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length >= 3);
+
   const hits: SearchHit[] = [];
-  for (const r of results.slice(0, limit)) {
-    const entry = byId.get(String(r.id));
+  for (const f of fused) {
+    const entry = byId.get(f.id);
     if (!entry) continue;
-    const matchedTerms = Object.keys(r.match ?? {}).map((s) => s.toLowerCase());
+    const terms = bm25Matched.get(f.id) ?? [];
+    // If BM25 didn't match this one, seed excerpt search with query tokens.
+    const excerptNeedles = terms.length ? terms : queryTokens;
     hits.push({
       chapter: entry.chapter,
       article: entry.article,
-      excerpt: pickExcerpt(entry.article, matchedTerms),
-      score: r.score,
+      excerpt: pickExcerpt(entry.article, excerptNeedles),
+      score: f.score,
     });
   }
 
-  // Safety net: if MiniSearch's AND-combine matched nothing but a chapter
-  // title obviously contains the query (e.g. "judiciary"), surface the
-  // chapter's first article so the user has a sensible click target.
+  // Safety net: neither source matched anything, but a chapter title
+  // obviously contains the query (e.g. "judiciary"). Surface its first
+  // article so the user has a sensible click target.
   if (hits.length === 0) {
     const lower = q.toLowerCase();
     for (const meta of CONSTITUTION_META) {
@@ -302,7 +416,7 @@ export async function runSearch(
             chapter: meta,
             article: first,
             excerpt: `${meta.title} — Chapter ${meta.number}`,
-            score: 1,
+            score: 1 / (RRF_K + 1),
           });
         }
       }

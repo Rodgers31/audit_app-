@@ -14,6 +14,7 @@
 
 import { CONSTITUTION_META, TOTAL_ARTICLES } from '@/data/constitution';
 import { runSearch, type SearchHit } from '@/data/constitution/search';
+import { warmSemanticIndex } from '@/data/constitution/semantic-search';
 import { POPULAR_QUESTIONS } from '@/data/popularQuestions';
 import { TOTAL_QUESTIONS } from '@/data/quizData';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -48,6 +49,16 @@ export default function LearnHero({ onSearchSubmit, onArticleSelect }: LearnHero
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  /* ── Warm the semantic index once, in the background. The model is
+     ~23MB quantized — download it after first paint so it's ready by
+     the time the user finishes typing their first query. ── */
+  useEffect(() => {
+    const id = setTimeout(() => {
+      warmSemanticIndex();
+    }, 1200);
+    return () => clearTimeout(id);
+  }, []);
 
   /* ── Debounce ── */
   useEffect(() => {
