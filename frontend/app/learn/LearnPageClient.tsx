@@ -88,10 +88,15 @@ export default function LearningHubPage() {
   const bookRef = useRef<HTMLDivElement>(null);
 
   const scrollToBook = useCallback(() => {
-    // Wait for the re-render so the seeded search is in the DOM.
-    requestAnimationFrame(() => {
+    // Small delay so that:
+    //   • React has committed the state update (bookKey bump, seeds)
+    //   • The ConstitutionBook's own re-focus/re-fetch effects have run
+    //   • The exit animation of the hero dropdown has finished its first frame
+    // Smooth scroll otherwise gets silently cancelled by those concurrent layout
+    // shifts on some browsers.
+    setTimeout(() => {
       bookRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
+    }, 60);
   }, []);
 
   const openArticle = useCallback(
@@ -99,6 +104,18 @@ export default function LearningHubPage() {
       const meta = findChapterForArticle(articleNumber);
       if (!meta) return;
       setSeedChapter(meta.number);
+      setSeedArticle(articleNumber);
+      setSeedQuery('');
+      setBookKey((k) => k + 1);
+      scrollToBook();
+    },
+    [scrollToBook]
+  );
+
+  /** Jump to a specific chapter + article (used by hero autocomplete). */
+  const jumpToArticle = useCallback(
+    (chapterNumber: number, articleNumber: number) => {
+      setSeedChapter(chapterNumber);
       setSeedArticle(articleNumber);
       setSeedQuery('');
       setBookKey((k) => k + 1);
@@ -132,7 +149,7 @@ export default function LearningHubPage() {
       title='Learning Hub'
       subtitle='Understand the rules behind every shilling — the Constitution, budgets, audits and devolution, in plain Kenyan English.'>
       {/* 1 ── Hero ─────────────────────────────────── */}
-      <LearnHero onSearchSubmit={handleHeroSearch} />
+      <LearnHero onSearchSubmit={handleHeroSearch} onArticleSelect={jumpToArticle} />
 
       {/* 2 ── Featured topics ─────────────────────── */}
       <FeaturedTopics />
