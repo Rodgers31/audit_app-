@@ -5,6 +5,7 @@ import DataIntegrityBanner from '@/components/DataIntegrityBanner';
 import InfoTip from '@/components/InfoTip';
 import PageShell from '@/components/layout/PageShell';
 import PDFExportButton from '@/components/PDFExportButton';
+import DebtSourceReconciliation from '@/components/debt/DebtSourceReconciliation';
 import LenderTreemap from '@/components/debt/LenderTreemap';
 import MaturityLadder from '@/components/debt/MaturityLadder';
 import PeerStrip from '@/components/debt/PeerStrip';
@@ -360,6 +361,8 @@ export default function NationalDebtPage() {
     const perCapita = totalDebt != null && totalDebt > 0 && population ? totalDebt / population : null;
     const asOf = api.as_of || api.last_updated || null;
     const source = api.source || 'CBK / Treasury';
+    const reconciliation = api.reconciliation || null;
+    const lastUpdated = overview?.last_updated || api.last_updated || null;
 
     return {
       hasData,
@@ -377,6 +380,8 @@ export default function NationalDebtPage() {
       domesticPct: summary.domestic_percentage ?? null,
       asOf,
       source,
+      reconciliation,
+      lastUpdated,
     };
   }, [overview, fetchedPopulation]);
 
@@ -683,6 +688,21 @@ export default function NationalDebtPage() {
           </div>
         </div>
       </motion.section>
+
+      {/* ═══════════ SECTION 1B — SOURCES & RECONCILIATION ═══════════
+          Two totals exist for Kenya's public debt:
+            • 11.85T — sum of every line item in CBK's Public Debt Bulletin
+              (live-fetched, used as the headline everywhere on this site)
+            • 12.5T — CBK/Treasury's published annual aggregate stock
+          They disagree by ~5% because of consolidation adjustments. Rather
+          than pick silently and confuse users who spot both numbers in the
+          press, we show both with their provenance and explain the gap. */}
+      {d.reconciliation && (
+        <DebtSourceReconciliation
+          reconciliation={d.reconciliation}
+          lastUpdated={d.lastUpdated}
+        />
+      )}
 
       {/* ═══════════ SECTION 2 — WHO KENYA OWES ═══════════ */}
       <motion.section
