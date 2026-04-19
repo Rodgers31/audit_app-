@@ -98,22 +98,38 @@ const SEVERITY_STYLE: Record<string, { label: string; dot: string; bg: string; t
 };
 
 /* ═══════════ Grade Badge ═══════════ */
+// Financial Health grade (budget execution, pending bills, debt sustainability — COB driven)
+const HEALTH_GRADE_BG: Record<string, string> = {
+  A: 'from-emerald-500 to-emerald-600',
+  'B+': 'from-green-500 to-green-600',
+  B: 'from-amber-500 to-amber-600',
+  'B-': 'from-orange-500 to-orange-600',
+  C: 'from-red-500 to-red-600',
+};
+// Accountability grade (audit findings, unresolved items, flagged amounts — OAG driven)
+const ACCT_GRADE_BG: Record<string, string> = {
+  A: 'from-emerald-500 to-emerald-600',
+  B: 'from-teal-500 to-teal-600',
+  C: 'from-yellow-500 to-amber-500',
+  D: 'from-orange-500 to-orange-600',
+  F: 'from-rose-500 to-red-600',
+};
+
 function GradeBadge({
   grade,
   score,
+  label,
+  title,
+  palette,
   onClick,
 }: {
   grade: string;
-  score: number;
+  score: number | null;
+  label: string;
+  title: string;
+  palette: Record<string, string>;
   onClick?: () => void;
 }) {
-  const bg: Record<string, string> = {
-    A: 'from-emerald-500 to-emerald-600',
-    'B+': 'from-green-500 to-green-600',
-    B: 'from-amber-500 to-amber-600',
-    'B-': 'from-orange-500 to-orange-600',
-    C: 'from-red-500 to-red-600',
-  };
   return (
     <button
       type='button'
@@ -121,18 +137,21 @@ function GradeBadge({
         e.stopPropagation();
         onClick?.();
       }}
-      title='Click to see how this score is calculated'
+      title={title}
       style={{ position: 'relative', zIndex: 100 }}
-      aria-label={`Financial health grade: ${grade}, score: ${score.toFixed(0)} out of 100`}
-      className={`inline-flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-gradient-to-r ${bg[grade] || bg.C} text-white shadow-lg cursor-pointer hover:brightness-110 hover:scale-105 transition-all group`}>
-      <span className='text-3xl font-black leading-none' aria-hidden='true'>
+      aria-label={`${label} grade: ${grade}${score !== null ? `, score ${score.toFixed(0)} out of 100` : ''}`}
+      className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r ${palette[grade] || palette.C || palette.F || 'from-gray-500 to-gray-600'} text-white shadow-lg cursor-pointer hover:brightness-110 hover:scale-105 transition-all group`}>
+      <span className='text-2xl font-black leading-none' aria-hidden='true'>
         {grade}
       </span>
-      <div className='border-l border-white/30 pl-2.5'>
-        <div className='text-[10px] uppercase tracking-widest opacity-70 flex items-center gap-1'>
-          Health <Info size={10} className='opacity-0 group-hover:opacity-100 transition-opacity' />
+      <div className='border-l border-white/30 pl-2 text-left'>
+        <div className='text-[9px] uppercase tracking-widest opacity-80 flex items-center gap-1'>
+          {label}
+          <Info size={9} className='opacity-0 group-hover:opacity-100 transition-opacity' />
         </div>
-        <div className='text-base font-bold leading-tight'>{score.toFixed(0)}</div>
+        <div className='text-sm font-bold leading-tight tabular-nums'>
+          {score !== null ? score.toFixed(0) : '—'}
+        </div>
       </div>
     </button>
   );
@@ -2135,6 +2154,8 @@ export default function CountyDetailPage() {
   const searchParams = useSearchParams();
   const countyId = params.id as string;
   const { data, isLoading, error } = useCountyComprehensive(countyId);
+  // Prefetch accountability so the hero can show the grade immediately
+  const { data: acctData } = useCountyAccountability(countyId);
 
   const initialTab = (searchParams.get('tab') as Tab) || 'overview';
   const validTabs: Tab[] = ['overview', 'money', 'budget', 'audit', 'accountability', 'projects'];
@@ -2234,19 +2255,36 @@ export default function CountyDetailPage() {
               )}
             </div>
 
-            {/* Actions + Grade */}
-            <div className='flex items-center gap-3 flex-shrink-0'>
+            {/* Actions + Grades */}
+            <div className='flex items-center gap-3 flex-shrink-0 flex-wrap justify-end'>
               <WatchButton itemType='county' itemId={countyId} label={`${data.name} County`} />
               <PDFExportButton
                 compact
                 documentTitle={`${data.name} County Report`}
                 className='text-white/70 hover:text-white hover:bg-white/10'
               />
-              <GradeBadge
-                grade={data.financial_summary.grade}
-                score={data.financial_summary.health_score}
-                onClick={() => setShowHealthModal(true)}
-              />
+              <div className='flex items-center gap-2'>
+                <GradeBadge
+                  grade={data.financial_summary.grade}
+                  score={data.financial_summary.health_score}
+                  label='Health'
+                  title='Financial health — budget execution, debt, pending bills. Click for methodology.'
+                  palette={HEALTH_GRADE_BG}
+                  onClick={() => setShowHealthModal(true)}
+                />
+                <GradeBadge
+                  grade={acctData?.accountability_grade || '—'}
+                  score={
+                    typeof acctData?.accountability_score === 'number'
+                      ? acctData.accountability_score
+                      : null
+                  }
+                  label='Audit'
+                  title='Accountability — audit findings, unresolved items, flagged spend. Click to view breakdown.'
+                  palette={ACCT_GRADE_BG}
+                  onClick={() => setTab('accountability')}
+                />
+              </div>
             </div>
           </div>
 
