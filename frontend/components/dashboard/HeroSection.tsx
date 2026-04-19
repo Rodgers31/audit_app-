@@ -44,22 +44,43 @@ export default function HeroSection() {
   );
 }
 
-/** Summary strip — pulls latest figures from the debt timeline API */
+/** Summary strip — headline figures from the authoritative /debt/national endpoint.
+ *
+ *  The backend exposes two debt data sources and explicitly flags which is
+ *  authoritative via a reconciliation block:
+ *    • loans_table        (loan-level register, ~11.85T) ← authoritative
+ *    • debt_timeline_table (aggregate annual snapshot, ~12.5T)
+ *
+ *  The two disagree by ~5.5% — the timeline row for the current year can
+ *  lag or include items not represented in the loan register (e.g. forex
+ *  revaluation). We surface the register value here so this strip agrees
+ *  with the /debt detail page and with the tiles in NationalDebtCard below.
+ */
 export function SummaryStrip() {
   const { data: timelineResp } = useDebtTimeline();
   const { data: overviewResp } = useNationalDebtOverview();
 
+  const apiData = overviewResp?.data ?? overviewResp;
   const latest = timelineResp?.timeline?.length
     ? timelineResp.timeline[timelineResp.timeline.length - 1]
     : null;
 
-  const totalT = latest ? (latest.total / 1000).toFixed(1) : '—';
-  const gdpPct = latest?.gdp_ratio ?? overviewResp?.data?.debt_to_gdp_ratio ?? '—';
-  const year = latest?.year ?? '—';
+  // Headline total (KES) — prefer the authoritative loans-register sum.
+  const totalKES =
+    apiData?.total_outstanding ??
+    apiData?.total_debt ??
+    (latest ? latest.total * 1_000_000_000 : null);
+  const totalT = totalKES != null ? (totalKES / 1_000_000_000_000).toFixed(2) : '—';
+
+  // Debt-to-GDP — prefer overview's canonical ratio (uses fresher GDP base
+  // than the timeline row, which can carry stale nominal-GDP figures).
+  const gdpPct = apiData?.debt_to_gdp_ratio ?? latest?.gdp_ratio ?? '—';
+  const year = apiData?.gdp_year ?? latest?.year ?? '—';
+
   // Trust the backend's risk_level when present (canonical source); fall back
   // to the centralized classifier so thresholds stay consistent across the UI.
   const riskLevel =
-    overviewResp?.data?.debt_sustainability?.risk_level ||
+    apiData?.debt_sustainability?.risk_level ||
     classifyDebtRisk(typeof gdpPct === 'number' ? gdpPct : undefined);
   const isHigh = riskLevel === 'High';
 
