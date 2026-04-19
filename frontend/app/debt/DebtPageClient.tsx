@@ -698,7 +698,7 @@ export default function NationalDebtPage() {
           </h2>
           <p className='text-sm text-neutral-muted mt-1'>
             The debt broken down by lender category — foreign creditors (external) vs. local banks
-            and pension funds (domestic). Tile size reflects outstanding amount.
+            and pension funds (domestic). Hover to compare.
           </p>
         </div>
         <LenderTreemap

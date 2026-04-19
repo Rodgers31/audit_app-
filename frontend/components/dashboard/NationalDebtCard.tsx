@@ -118,15 +118,17 @@ export default function NationalDebtCard() {
   const firstYear = debtTimeline[0];
   const lastYear = debtTimeline[debtTimeline.length - 1];
 
-  // Derive headline numbers from the latest timeline year (single source of truth)
-  const totalDebt = lastYear ? lastYear.total * 1_000_000_000 : apiData?.total_debt || 0;
-  const gdpRatio = lastYear?.gdpRatio ?? apiData?.debt_to_gdp_ratio ?? 0;
-  const externalDebt = lastYear
-    ? lastYear.external * 1_000_000_000
-    : apiData?.summary?.external_debt || 0;
-  const domesticDebt = lastYear
-    ? lastYear.domestic * 1_000_000_000
-    : apiData?.summary?.domestic_debt || 0;
+  // Derive headline numbers from the authoritative /debt/national endpoint
+  // (loans-table sum — same source /debt page uses) so home and the debt
+  // detail page agree. Fall back to the last timeline year only if the
+  // authoritative value is missing.
+  const totalDebt =
+    apiData?.total_outstanding ?? apiData?.total_debt ?? (lastYear ? lastYear.total * 1_000_000_000 : 0);
+  const gdpRatio = apiData?.debt_to_gdp_ratio ?? lastYear?.gdpRatio ?? 0;
+  const externalDebt =
+    apiData?.summary?.external_debt ?? (lastYear ? lastYear.external * 1_000_000_000 : 0);
+  const domesticDebt =
+    apiData?.summary?.domestic_debt ?? (lastYear ? lastYear.domestic * 1_000_000_000 : 0);
   const externalPct = totalDebt > 0 ? +((externalDebt / totalDebt) * 100).toFixed(1) : 0;
   const domesticPct = totalDebt > 0 ? +((domesticDebt / totalDebt) * 100).toFixed(1) : 0;
 
