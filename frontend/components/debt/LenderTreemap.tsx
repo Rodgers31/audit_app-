@@ -25,23 +25,29 @@ interface LenderTreemapProps {
 
 /* ──────────────────────────────── tokens ──────────────────────────────── */
 
-// Paired palettes — category → (base, gradStart, gradEnd)
+// Refined tonal palettes — category → (base, gradStart, gradEnd).
+// Kept within ~15% luminance range per slice to avoid a "cartoon rainbow"
+// look; each external slice is a distinct deep red, each domestic slice is a
+// distinct deep green, with the gold strictly reserved for pending bills.
 const PALETTE: Record<string, { base: string; start: string; end: string }> = {
-  external_multilateral: { base: '#B13C3C', start: '#D96868', end: '#8C2E2E' },
-  external_bilateral: { base: '#732626', start: '#A43E3E', end: '#4F1919' },
-  external_commercial: { base: '#C94A4A', start: '#E57A7A', end: '#9A3333' },
-  external_eurobond: { base: '#C94A4A', start: '#E57A7A', end: '#9A3333' },
-  domestic_bonds: { base: '#3F6D4F', start: '#6AA281', end: '#224735' },
-  domestic_bills: { base: '#6E9B7E', start: '#A3C7AF', end: '#4B7A5C' },
-  domestic_overdraft: { base: '#4A7C5C', start: '#7AA88A', end: '#2E5A3E' },
-  domestic_legacy: { base: '#2E5A3E', start: '#528E67', end: '#1E3F2B' },
-  cbk_advance: { base: '#4A7C5C', start: '#7AA88A', end: '#2E5A3E' },
-  pending_bills: { base: '#BA8B33', start: '#E7B755', end: '#8F6A1F' },
+  // External reds — burgundy → brick → rust → claret
+  external_multilateral: { base: '#9E3030', start: '#AB3A3A', end: '#7E2424' },
+  external_bilateral: { base: '#6F2222', start: '#843030', end: '#4C1616' },
+  external_commercial: { base: '#B83E3E', start: '#C54B4B', end: '#8E2A2A' },
+  external_eurobond: { base: '#A23535', start: '#AE3F3F', end: '#7A2626' },
+  // Domestic greens — deep forest → sage → moss
+  domestic_bonds: { base: '#2F6343', start: '#3B7251', end: '#1F4A30' },
+  domestic_bills: { base: '#3E7655', start: '#4B8564', end: '#295B3E' },
+  domestic_overdraft: { base: '#35684A', start: '#41785A', end: '#234C33' },
+  domestic_legacy: { base: '#234E33', start: '#2F5D40', end: '#183823' },
+  cbk_advance: { base: '#2A5A3B', start: '#366B48', end: '#1B4128' },
+  // Pending bills — muted ochre
+  pending_bills: { base: '#A6781F', start: '#B38628', end: '#7D591A' },
 };
 
-const FALLBACK_EXT = { base: '#C94A4A', start: '#E57A7A', end: '#8C2E2E' };
-const FALLBACK_DOM = { base: '#4A7C5C', start: '#7AA88A', end: '#2E5A3E' };
-const FALLBACK_GOLD = { base: '#D9A441', start: '#F0C675', end: '#8F6A1F' };
+const FALLBACK_EXT = { base: '#A23535', start: '#AE3F3F', end: '#7A2626' };
+const FALLBACK_DOM = { base: '#2F6343', start: '#3B7251', end: '#1F4A30' };
+const FALLBACK_GOLD = { base: '#A6781F', start: '#B38628', end: '#7D591A' };
 
 function paletteFor(cat: string): { base: string; start: string; end: string } {
   const key = cat.toLowerCase();
@@ -110,26 +116,16 @@ function renderActiveShape(props: any) {
   } = props;
   return (
     <g>
-      {/* Glow halo */}
+      {/* Subtle outward lift — only 3px, with a soft shadow below */}
       <Sector
         cx={cx}
         cy={cy}
         innerRadius={innerRadius}
-        outerRadius={outerRadius + 6}
+        outerRadius={outerRadius + 3}
         startAngle={startAngle}
         endAngle={endAngle}
         fill={fill}
-        opacity={0.25}
-      />
-      {/* Main slice */}
-      <Sector
-        cx={cx}
-        cy={cy}
-        innerRadius={innerRadius}
-        outerRadius={outerRadius + 2}
-        startAngle={startAngle}
-        endAngle={endAngle}
-        fill={fill}
+        style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' }}
       />
     </g>
   );
@@ -197,6 +193,40 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
     [filtered]
   );
 
+  /* Center readout: reflects the slice being hovered/clicked, else default.
+     Lookup order — outer ring (External/Domestic/Other) → inner ring
+     (per-category label) → drill-down card label → fallback to total. */
+  const centerInfo = useMemo(() => {
+    const def = {
+      eyebrow: 'Total owed',
+      value: `KES ${fmtT(totalOutstanding)}`,
+      caption: `${filtered.length} categories`,
+      accent: '#1B3A2A',
+    };
+    if (!hoverSlice) return def;
+    const outer = outerData.find((d) => d.name === hoverSlice);
+    if (outer) {
+      return {
+        eyebrow: outer.name,
+        value: `KES ${fmtT(outer.value)}`,
+        caption: `${outer.share.toFixed(1)}% of total`,
+        accent: outer.color,
+      };
+    }
+    const inner = innerData.find((d) => d.name === hoverSlice);
+    if (inner) {
+      return {
+        eyebrow: inner.name,
+        value: `KES ${fmtT(inner.value)}`,
+        caption: `${inner.share.toFixed(1)}% of total`,
+        accent: inner.color,
+      };
+    }
+    // Drill-down cards use category.label which mirrors innerData names,
+    // so the previous branch should have caught it. Keep a defensive fallback.
+    return def;
+  }, [hoverSlice, outerData, innerData, totalOutstanding, filtered.length]);
+
   if (!filtered.length) {
     return (
       <div className='rounded-2xl bg-white border border-neutral-border/40 p-8 text-center text-sm text-neutral-muted'>
@@ -262,49 +292,82 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
         <div className='grid grid-cols-1 lg:grid-cols-5 gap-6 items-center'>
           {/* Donut */}
           <div className='lg:col-span-2 relative'>
-            <div className='relative w-full h-[320px]'>
+            <div className='relative w-full h-[340px] sm:h-[360px]'>
               <ResponsiveContainer width='100%' height='100%'>
                 <PieChart>
                   <defs>
+                    {/* Radial gradients for each inner slice — subtle tonal depth
+                        rather than flashy light-to-dark. Centered brighter stop
+                        gives the slice a soft inner glow without flattening. */}
                     {innerData.map((d, i) => (
-                      <linearGradient
+                      <radialGradient
                         key={`grad-${i}`}
                         id={`donut-grad-${i}`}
-                        x1='0'
-                        y1='0'
-                        x2='1'
-                        y2='1'>
+                        cx='50%'
+                        cy='50%'
+                        r='75%'
+                        fx='40%'
+                        fy='40%'>
                         <stop offset='0%' stopColor={d.gradientStart} stopOpacity={1} />
                         <stop offset='100%' stopColor={d.gradientEnd} stopOpacity={1} />
-                      </linearGradient>
+                      </radialGradient>
                     ))}
-                    <linearGradient id='donut-outer-ext' x1='0' y1='0' x2='1' y2='1'>
-                      <stop offset='0%' stopColor='#E57A7A' stopOpacity={1} />
-                      <stop offset='100%' stopColor='#8C2E2E' stopOpacity={1} />
-                    </linearGradient>
-                    <linearGradient id='donut-outer-dom' x1='0' y1='0' x2='1' y2='1'>
-                      <stop offset='0%' stopColor='#7AA88A' stopOpacity={1} />
-                      <stop offset='100%' stopColor='#2E5A3E' stopOpacity={1} />
-                    </linearGradient>
-                    <linearGradient id='donut-outer-other' x1='0' y1='0' x2='1' y2='1'>
-                      <stop offset='0%' stopColor='#F0C675' stopOpacity={1} />
-                      <stop offset='100%' stopColor='#8F6A1F' stopOpacity={1} />
-                    </linearGradient>
+                    {/* Outer ring gradients — deeper, near-solid tones */}
+                    <radialGradient
+                      id='donut-outer-ext'
+                      cx='50%'
+                      cy='50%'
+                      r='75%'
+                      fx='40%'
+                      fy='40%'>
+                      <stop offset='0%' stopColor='#B83E3E' stopOpacity={1} />
+                      <stop offset='100%' stopColor='#7A2626' stopOpacity={1} />
+                    </radialGradient>
+                    <radialGradient
+                      id='donut-outer-dom'
+                      cx='50%'
+                      cy='50%'
+                      r='75%'
+                      fx='40%'
+                      fy='40%'>
+                      <stop offset='0%' stopColor='#3B7251' stopOpacity={1} />
+                      <stop offset='100%' stopColor='#1F4A30' stopOpacity={1} />
+                    </radialGradient>
+                    <radialGradient
+                      id='donut-outer-other'
+                      cx='50%'
+                      cy='50%'
+                      r='75%'
+                      fx='40%'
+                      fy='40%'>
+                      <stop offset='0%' stopColor='#B38628' stopOpacity={1} />
+                      <stop offset='100%' stopColor='#7D591A' stopOpacity={1} />
+                    </radialGradient>
+                    {/* Soft ambient drop shadow behind the whole donut */}
+                    <filter id='donut-shadow' x='-20%' y='-20%' width='140%' height='140%'>
+                      <feDropShadow
+                        dx='0'
+                        dy='1'
+                        stdDeviation='2.5'
+                        floodColor='#1B3A2A'
+                        floodOpacity='0.18'
+                      />
+                    </filter>
                   </defs>
-                  {/* Inner ring — categories */}
+                  {/* Inner ring — categories (thinner, refined) */}
                   <Pie
                     data={innerData}
                     dataKey='value'
                     cx='50%'
                     cy='50%'
-                    innerRadius={62}
-                    outerRadius={92}
-                    paddingAngle={2}
-                    cornerRadius={6}
+                    innerRadius={74}
+                    outerRadius={100}
+                    paddingAngle={0.8}
+                    cornerRadius={3}
                     startAngle={90}
                     endAngle={-270}
-                    stroke='#ffffff'
-                    strokeWidth={2}
+                    stroke='#FAF7F2'
+                    strokeWidth={1}
                     activeIndex={
                       hoverSlice
                         ? innerData.findIndex((d) => d.name === hoverSlice)
@@ -324,20 +387,20 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
                       />
                     ))}
                   </Pie>
-                  {/* Outer ring — External / Domestic / Other */}
+                  {/* Outer ring — External / Domestic / Other (refined stroke) */}
                   <Pie
                     data={outerData}
                     dataKey='value'
                     cx='50%'
                     cy='50%'
-                    innerRadius={100}
+                    innerRadius={107}
                     outerRadius={138}
-                    paddingAngle={1.5}
-                    cornerRadius={8}
+                    paddingAngle={0.6}
+                    cornerRadius={4}
                     startAngle={90}
                     endAngle={-270}
-                    stroke='#ffffff'
-                    strokeWidth={3}
+                    stroke='#FAF7F2'
+                    strokeWidth={1.5}
                     activeIndex={
                       hoverSlice
                         ? outerData.findIndex((d) => d.name === hoverSlice)
@@ -365,24 +428,29 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
-              {/* Center readout */}
+              {/* Center readout — constrained width so long labels never spill
+                  past the inner hole. Inner radius is 74px → 148px diameter;
+                  we clamp the text container to 130px to leave visual margin. */}
               <div className='absolute inset-0 flex items-center justify-center pointer-events-none'>
-                <div className='text-center'>
-                  <div className='text-[10px] uppercase tracking-[0.2em] text-neutral-muted font-semibold'>
-                    Total owed
+                <motion.div
+                  key={centerInfo.eyebrow + centerInfo.value}
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                  className='text-center'
+                  style={{ maxWidth: '130px' }}>
+                  <div
+                    className='text-[9px] uppercase tracking-[0.18em] font-semibold truncate'
+                    style={{ color: centerInfo.accent, opacity: 0.85 }}>
+                    {centerInfo.eyebrow}
                   </div>
-                  <div className='text-xl sm:text-2xl font-extrabold text-gov-dark tabular-nums tracking-tight mt-0.5'>
-                    KES {fmtT(totalOutstanding)}
+                  <div className='text-[17px] sm:text-[19px] font-extrabold text-gov-dark tabular-nums tracking-tight mt-0.5 leading-none'>
+                    {centerInfo.value}
                   </div>
-                  {hoverSlice && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className='text-[10px] text-gov-copper font-semibold mt-1 uppercase tracking-wider'>
-                      {hoverSlice}
-                    </motion.div>
-                  )}
-                </div>
+                  <div className='text-[9.5px] text-neutral-muted mt-1.5 leading-tight'>
+                    {centerInfo.caption}
+                  </div>
+                </motion.div>
               </div>
             </div>
           </div>
