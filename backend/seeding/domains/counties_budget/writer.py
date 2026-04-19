@@ -151,6 +151,11 @@ def _record_hash(record: BudgetRecord, currency: str) -> str:
             "actual": (
                 str(record.actual_amount) if record.actual_amount is not None else None
             ),
+            "committed": (
+                str(record.committed_amount)
+                if record.committed_amount is not None
+                else None
+            ),
             "currency": currency,
         }
     )
@@ -168,6 +173,7 @@ def _apply_line(
     for attr, value in (
         ("allocated_amount", record.allocated_amount),
         ("actual_spent", record.actual_amount),
+        ("committed_amount", record.committed_amount),
         ("currency", currency),
         ("source_document_id", source_document_id),
     ):
@@ -247,6 +253,7 @@ def persist_budget_records(
                 currency=currency,
                 allocated_amount=record.allocated_amount,
                 actual_spent=record.actual_amount,
+                committed_amount=record.committed_amount,
                 source_document_id=source.id,
                 notes=record.notes,
                 provenance=[provenance_entry] if provenance_entry else [],

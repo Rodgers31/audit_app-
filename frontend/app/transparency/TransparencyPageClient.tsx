@@ -1,7 +1,23 @@
 'use client';
 
-import DataFreshnessBadge from '@/components/DataFreshnessBadge';
-import FollowTheMoney, { YearSelector } from '@/components/FollowTheMoney';
+/**
+ * Follow the Money — narrative-first redesign.
+ *
+ * The page now mirrors the Budget and Debt pages:
+ *   1. A small intro strip
+ *   2. FiscalYearPicker drives the entire page
+ *   3. MoneyFlowHero — the centrepiece waterfall (Allocated → Released →
+ *      Spent → Flagged) with explicit gap callouts between stages
+ *   4. KPI cards — allocated / unspent / flagged / national efficiency
+ *   5. County comparison table (sortable, searchable)
+ *   6. "What can you do" action cards
+ *   7. Source reconciliation panel so every figure is traceable to an
+ *      official CoB / OAG / CRA document for the chosen fiscal year
+ */
+
+import MoneyFlowHero from '@/components/transparency/MoneyFlowHero';
+import MoneyFlowSourceReconciliation from '@/components/transparency/MoneyFlowSourceReconciliation';
+import FiscalYearPicker from '@/components/budget/FiscalYearPicker';
 import PageShell from '@/components/layout/PageShell';
 import ResponsiveTable from '@/components/ui/ResponsiveTable';
 import { useAvailableFiscalYears } from '@/lib/react-query';
@@ -13,9 +29,6 @@ import {
   AlertTriangle,
   ArrowRight,
   ArrowUpDown,
-  BookOpen,
-  ChevronDown,
-  ChevronUp,
   ExternalLink,
   GraduationCap,
   Loader2,
@@ -37,21 +50,21 @@ function fmtKES(n: number | null | undefined): string {
   return `KES ${n.toLocaleString()}`;
 }
 
-function fmtShort(n: number): string {
-  const abs = Math.abs(n);
-  if (abs >= 1e12) return `${(n / 1e12).toFixed(1)}T`;
-  if (abs >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
-  if (abs >= 1e6) return `${(n / 1e6).toFixed(0)}M`;
-  return n.toLocaleString();
-}
-
-/** Estimate what an amount could fund — makes numbers relatable */
 function fundingImpact(amount: number): string {
   if (amount >= 5e9) return `${Math.floor(amount / 10e6)} schools`;
   if (amount >= 1e9) return `${Math.floor(amount / 3e6)} classrooms`;
   if (amount >= 100e6) return `${Math.floor(amount / 500e3)} boreholes`;
   if (amount >= 10e6) return `${Math.floor(amount / 2e6)} health posts`;
   return '';
+}
+
+/** Convert a raw "YYYY/YY" string into the shape FiscalYearPicker wants. */
+function toPickerOptions(years: string[]): { fiscal_year: string; is_current?: boolean }[] {
+  if (!years || years.length === 0) return [];
+  const now = new Date();
+  const startYr = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  const currentLabel = `${startYr}/${String(startYr + 1).slice(-2)}`;
+  return years.map((y) => ({ fiscal_year: y, is_current: y === currentLabel }));
 }
 
 const DEFAULT_FISCAL_YEARS = generateFiscalYears();
@@ -121,18 +134,19 @@ function EfficiencyBar({ score }: { score: number }) {
 /* ═══════════ Page ═══════════ */
 
 export default function TransparencyPage() {
-  const [selectedYear, setSelectedYear] = useState(DEFAULT_FISCAL_YEARS[0]);
+  const { data: fiscalYearsRaw } = useAvailableFiscalYears();
+  const years = fiscalYearsRaw && fiscalYearsRaw.length > 0 ? fiscalYearsRaw : DEFAULT_FISCAL_YEARS;
+  const pickerYears = useMemo(() => toPickerOptions(years), [years]);
+
+  const defaultYear = pickerYears.find((y) => y.is_current)?.fiscal_year ?? years[0];
+  const [selectedYear, setSelectedYear] = useState(defaultYear);
   const [sortKey, setSortKey] = useState<SortKey>('efficiency');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showGuide, setShowGuide] = useState(false);
 
-  const { data: fiscalYears } = useAvailableFiscalYears();
   const { data: nationalFlow, isLoading: nationalLoading } = useNationalMoneyFlow(selectedYear);
   const { data: allCountyFlows, isLoading: allCountyFlowsLoading } =
     useAllCountiesMoneyFlow(selectedYear);
-
-  const years = fiscalYears && fiscalYears.length > 0 ? fiscalYears : DEFAULT_FISCAL_YEARS;
 
   /* ── Derived national insights ── */
   const insights = useMemo(() => {
@@ -140,12 +154,19 @@ export default function TransparencyPage() {
     const allocated = nationalFlow.stages.find((s) => s.stage === 'Allocated')?.amount ?? 0;
     const spent = nationalFlow.stages.find((s) => s.stage === 'Spent')?.amount ?? 0;
     const flagged = nationalFlow.stages.find((s) => s.stage === 'Flagged')?.amount ?? 0;
-    const gap = allocated - spent;
+    const gap = (allocated ?? 0) - (spent ?? 0);
     const lostPct = allocated > 0 ? (gap / allocated) * 100 : 0;
-    return { allocated, spent, flagged, gap, lostPct, efficiency: nationalFlow.efficiency_score };
+    return {
+      allocated: allocated ?? 0,
+      spent: spent ?? 0,
+      flagged: flagged ?? 0,
+      gap,
+      lostPct,
+      efficiency: nationalFlow.efficiency_score,
+    };
   }, [nationalFlow]);
 
-  /* ── County rows from batch endpoint ── */
+  /* ── County rows ── */
   const countyRows: CountyFlowRow[] = useMemo(() => {
     if (!allCountyFlows || allCountyFlows.length === 0) return [];
     return allCountyFlows
@@ -173,7 +194,6 @@ export default function TransparencyPage() {
       });
   }, [allCountyFlows, searchQuery]);
 
-  /* ── Sort ── */
   const sortedRows = useMemo(() => {
     const sorted = [...countyRows];
     sorted.sort((a, b) => {
@@ -230,81 +250,72 @@ export default function TransparencyPage() {
   return (
     <PageShell
       title='Follow the Money'
-      subtitle='Trace how public funds flow from allocation to expenditure across all 47 counties'>
-      {/* ═══ A. NARRATIVE INTRO ═══ */}
+      subtitle='Trace every shilling from the Treasury to citizens — and see where it leaks.'>
+      {/* ═══ 1. Narrative intro ═══ */}
       <Section>
         <div className='max-w-3xl'>
           <p className='text-base text-gov-dark/70 leading-relaxed'>
-            Every year, the Kenyan government allocates trillions of shillings to 47 counties. But
-            how much actually reaches citizens? This page traces the journey of public money — from
-            treasury allocation to actual spending — exposing where funds leak, get stuck, or
-            disappear.
+            Every year, the Treasury allocates trillions of shillings to Kenya&apos;s 47
+            counties. But how much actually reaches citizens? The waterfall below traces
+            the journey — from <strong>allocation</strong> by the Commission on Revenue
+            Allocation, to <strong>release</strong> by the Exchequer, to what counties
+            actually <strong>spent</strong>, to the portion the Auditor General
+            <strong> flagged</strong> as irregular.
           </p>
-          <button
-            onClick={() => setShowGuide(!showGuide)}
-            className='mt-3 inline-flex items-center gap-1.5 text-sm text-gov-sage hover:text-gov-forest transition-colors font-medium'>
-            <BookOpen size={14} />
-            {showGuide ? 'Hide' : 'How to read this page'}
-            {showGuide ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
-          {showGuide && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className='mt-3 p-4 rounded-xl bg-gov-forest/5 border border-gov-forest/10 text-sm text-gov-dark/70 space-y-2'>
-              <p>
-                <strong>Allocated</strong> — How much the treasury earmarked for a county.
-              </p>
-              <p>
-                <strong>Released</strong> — How much was actually sent. The gap is money delayed or
-                withheld.
-              </p>
-              <p>
-                <strong>Spent</strong> — What the county actually spent. Unspent funds are returned
-                or rolled over.
-              </p>
-              <p>
-                <strong>Flagged</strong> — Amount the Auditor General identified as irregular,
-                unsupported, or misused.
-              </p>
-              <p>
-                <strong>Efficiency Score</strong> — Spent ÷ Allocated × 100. Higher is better (up to
-                ~95%).
-              </p>
-            </motion.div>
-          )}
         </div>
       </Section>
 
-      {/* ═══ B. KEY INSIGHTS ═══ */}
-      {insights && (
-        <Section delay={0.05}>
+      {/* ═══ 2. Fiscal year picker drives the page ═══ */}
+      <Section delay={0.05}>
+        <FiscalYearPicker
+          years={pickerYears}
+          selected={selectedYear}
+          onSelect={setSelectedYear}
+        />
+      </Section>
+
+      {/* ═══ 3. The waterfall hero ═══ */}
+      <Section delay={0.08}>
+        {nationalLoading ? (
+          <div className='rounded-2xl bg-white border border-neutral-border/40 shadow-surface p-16 flex items-center justify-center'>
+            <Loader2 className='w-6 h-6 animate-spin text-gov-sage' />
+            <span className='ml-3 text-gov-dark/60 font-medium'>
+              Loading money-flow waterfall…
+            </span>
+          </div>
+        ) : (
+          <MoneyFlowHero data={nationalFlow} />
+        )}
+      </Section>
+
+      {/* ═══ 4. KPI cards ═══ */}
+      {insights && insights.allocated > 0 && (
+        <Section delay={0.12}>
           <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
             <InsightCard
-              label='Total Allocated'
+              label='Total allocated'
               value={fmtKES(insights.allocated)}
-              sublabel={`FY ${selectedYear}`}
+              sublabel={`47 counties · FY ${selectedYear.replace(/^FY\s*/, '')}`}
               accent='blue'
             />
             <InsightCard
-              label='Unspent / Lost'
+              label='Gap to spend'
               value={fmtKES(insights.gap)}
-              sublabel={`${insights.lostPct.toFixed(1)}% of allocation`}
+              sublabel={`${insights.lostPct.toFixed(1)}% of allocation never reached programmes`}
               accent='amber'
             />
             <InsightCard
-              label='Flagged by Auditors'
+              label='Flagged by Auditor General'
               value={fmtKES(insights.flagged)}
               sublabel={
                 insights.flagged > 0
-                  ? fundingImpact(insights.flagged) || 'Irregular expenditure'
-                  : 'No flags'
+                  ? `≈ ${fundingImpact(insights.flagged) || 'irregular expenditure'}`
+                  : 'No flagged findings'
               }
               accent='red'
             />
             <InsightCard
-              label='National Efficiency'
+              label='National efficiency'
               value={insights.efficiency != null ? `${insights.efficiency.toFixed(1)}%` : '—'}
               sublabel={
                 insights.efficiency != null
@@ -313,7 +324,7 @@ export default function TransparencyPage() {
                     : insights.efficiency >= 50
                       ? 'Fair — needs improvement'
                       : 'Poor — significant waste'
-                  : 'No data'
+                  : 'Execution data pending'
               }
               accent={
                 insights.efficiency != null
@@ -329,33 +340,16 @@ export default function TransparencyPage() {
         </Section>
       )}
 
-      {/* ═══ C. YEAR SELECTOR + NATIONAL WATERFALL ═══ */}
-      <Section delay={0.1}>
-        <div className='space-y-4'>
-          <div className='flex items-center justify-between'>
-            <div>
-              <h2 className='font-display text-xl text-gov-dark'>National Money Flow</h2>
-              <p className='text-sm text-gov-dark/50 mt-0.5'>All 47 counties combined</p>
-            </div>
-            <YearSelector value={selectedYear} onChange={setSelectedYear} years={years} />
-          </div>
-          <div className='bg-gradient-to-br from-white to-blue-50/30 rounded-2xl border border-gray-200/80 shadow-sm p-6'>
-            <FollowTheMoney data={nationalFlow} isLoading={nationalLoading} />
-          </div>
-        </div>
-      </Section>
-
-      {/* ═══ D. COUNTY COMPARISON ═══ */}
+      {/* ═══ 5. County comparison ═══ */}
       <Section delay={0.15}>
         <div className='space-y-4'>
-          {/* Header row */}
           <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3'>
             <div>
-              <h2 className='font-display text-xl text-gov-dark'>County-by-County Breakdown</h2>
+              <h2 className='font-display text-xl text-gov-dark'>County-by-county breakdown</h2>
               <p className='text-sm text-gov-dark/50'>
                 {countiesWithData > 0
-                  ? `${countiesWithData} of 47 counties with data for FY ${selectedYear}`
-                  : 'Loading county data...'}
+                  ? `${countiesWithData} of 47 counties have CoB + OAG data for FY ${selectedYear.replace(/^FY\s*/, '')}`
+                  : 'Loading county data…'}
               </p>
             </div>
             <div className='relative'>
@@ -365,7 +359,7 @@ export default function TransparencyPage() {
               />
               <input
                 type='text'
-                placeholder='Search county...'
+                placeholder='Search county…'
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className='pl-8 pr-3 py-2 text-sm rounded-xl border border-gray-200 bg-white/80 focus:outline-none focus:ring-2 focus:ring-gov-sage/30 focus:border-gov-sage w-60'
@@ -373,13 +367,12 @@ export default function TransparencyPage() {
             </div>
           </div>
 
-          {/* Sort chips */}
           <div className='flex flex-wrap gap-2'>
             {[
-              { key: 'efficiency' as SortKey, label: '🔻 Least Efficient' },
-              { key: 'flagged' as SortKey, label: '🚩 Most Flagged' },
-              { key: 'gap' as SortKey, label: '📉 Highest Gap' },
-              { key: 'name' as SortKey, label: '🔤 A–Z' },
+              { key: 'efficiency' as SortKey, label: 'Least efficient' },
+              { key: 'flagged' as SortKey, label: 'Most flagged' },
+              { key: 'gap' as SortKey, label: 'Highest gap' },
+              { key: 'name' as SortKey, label: 'A–Z' },
             ].map((btn) => (
               <button
                 key={btn.key}
@@ -394,11 +387,10 @@ export default function TransparencyPage() {
             ))}
           </div>
 
-          {/* Table */}
           {allCountyFlowsLoading ? (
             <div className='flex items-center justify-center py-20'>
               <Loader2 className='w-6 h-6 animate-spin text-gov-sage' />
-              <span className='ml-3 text-gov-dark/60 font-medium'>Loading county data...</span>
+              <span className='ml-3 text-gov-dark/60 font-medium'>Loading county data…</span>
             </div>
           ) : (
             <ResponsiveTable>
@@ -500,55 +492,43 @@ export default function TransparencyPage() {
         </div>
       </Section>
 
-      {/* ═══ E. WHAT CAN YOU DO? ═══ */}
-      <Section delay={0.2}>
+      {/* ═══ 6. Source reconciliation ═══ */}
+      <Section delay={0.18}>
+        <MoneyFlowSourceReconciliation fiscalYear={selectedYear} />
+      </Section>
+
+      {/* ═══ 7. What can you do? ═══ */}
+      <Section delay={0.22}>
         <div className='rounded-2xl bg-gradient-to-br from-gov-forest/5 to-gov-sage/5 border border-gov-forest/10 p-6 sm:p-8'>
-          <h2 className='font-display text-xl text-gov-dark mb-2'>What Can You Do?</h2>
+          <h2 className='font-display text-xl text-gov-dark mb-2'>What can you do?</h2>
           <p className='text-sm text-gov-dark/60 mb-5 max-w-2xl'>
-            Public money transparency isn't just data — it's accountability. Here's how you can turn
-            these numbers into action.
+            Public-money transparency isn&apos;t just data — it&apos;s accountability.
+            Here&apos;s how to turn these numbers into action.
           </p>
           <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
             <ActionCard
               icon={<Users size={20} />}
-              title='Explore Your County'
+              title='Explore your county'
               description='See how your county spends public money — budget, audit findings, and accountability grade.'
               href='/counties'
               linkText='County Explorer'
             />
             <ActionCard
               icon={<AlertTriangle size={20} />}
-              title='Check Audit Reports'
-              description='The Office of the Auditor General publishes annual reports for every county.'
+              title='Read the audit reports'
+              description='The Office of the Auditor General publishes a full report for every county each year.'
               href='https://www.oagkenya.go.ke'
-              linkText='OAG Website'
+              linkText='OAG website'
               external
             />
             <ActionCard
               icon={<GraduationCap size={20} />}
-              title='Learn How It Works'
+              title='Learn how it works'
               description='Understand how public finance works in Kenya — budgets, audits, and devolution.'
               href='/learn'
               linkText='Learning Hub'
             />
           </div>
-        </div>
-      </Section>
-
-      {/* ═══ F. DATA SOURCES ═══ */}
-      <Section delay={0.25}>
-        <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-gov-dark/40'>
-          <div className='space-y-1'>
-            <p>
-              <strong>Budget data:</strong> Controller of Budget (COB) — County Budget
-              Implementation Review Reports
-            </p>
-            <p>
-              <strong>Audit data:</strong> Office of the Auditor General (OAG) — County Government
-              Audit Reports
-            </p>
-          </div>
-          <DataFreshnessBadge sources='COB/Treasury' />
         </div>
       </Section>
     </PageShell>
