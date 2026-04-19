@@ -302,7 +302,15 @@ def _latest_national_period(db) -> Optional[int]:
 def _entity_period_budget_query(db, entity_id: int, period_id: Optional[int] = None):
     """Return BudgetLine query scoped to a single entity and (optionally) period.
 
-    If period_id is None, auto-resolves to the latest period that has data for the entity.
+    If period_id is None, auto-resolves to the latest period that has *actual
+    execution* data for the entity (sum of ``actual_spent`` > 0). This avoids
+    the pathological case where the current fiscal year has been seeded with
+    allocations but hasn't yet accumulated spending, which was rendering as
+    "0% execution" on county pages.
+
+    Falls back to the latest period by ``start_date`` when no period has
+    execution data (e.g. first-year county, seed data issues).
+
     Excludes 'Total Budget' aggregate rows.
     """
     q = db.query(DBBudgetLine).filter(
@@ -312,8 +320,24 @@ def _entity_period_budget_query(db, entity_id: int, period_id: Optional[int] = N
     if period_id:
         q = q.filter(DBBudgetLine.period_id == period_id)
     else:
-        # Find the latest period for this specific entity
-        latest = (
+        # Prefer the latest period that actually has spending (an executed FY)
+        from sqlalchemy import func as _sqlfunc
+
+        latest_executed = (
+            db.query(DBBudgetLine.period_id)
+            .join(DBFiscalPeriod, DBBudgetLine.period_id == DBFiscalPeriod.id)
+            .filter(
+                DBBudgetLine.entity_id == entity_id,
+                DBBudgetLine.category != "Total Budget",
+            )
+            .group_by(DBBudgetLine.period_id, DBFiscalPeriod.start_date)
+            .having(_sqlfunc.coalesce(_sqlfunc.sum(DBBudgetLine.actual_spent), 0) > 0)
+            .order_by(DBFiscalPeriod.start_date.desc())
+            .limit(1)
+            .scalar()
+        )
+        # Fallback: latest period by date (first-year county / missing actuals)
+        latest = latest_executed or (
             db.query(DBBudgetLine.period_id)
             .join(DBFiscalPeriod, DBBudgetLine.period_id == DBFiscalPeriod.id)
             .filter(
@@ -2067,7 +2091,7 @@ async def get_county_details(county_id: str, fiscal_year: Optional[str] = None):
     if DATABASE_AVAILABLE:
         try:
             with next(get_db()) as db:
-                name = COUNTY_MAPPING.get(county_id)
+                name = _resolve_county_name(county_id, db=db)
                 q = db.query(DBEntity).filter(DBEntity.type == EntityType.COUNTY)
                 if name:
                     q = q.filter(DBEntity.canonical_name == f"{name} County")
@@ -2284,7 +2308,7 @@ async def get_county_details(county_id: str, fiscal_year: Optional[str] = None):
 
     # Fallback: Enhanced API
     try:
-        county_name = COUNTY_MAPPING.get(county_id)
+        county_name = _resolve_county_name(county_id)
         if not county_name:
             raise HTTPException(status_code=404, detail="County not found")
         backend_data = await InternalAPIClient.get_county_data(county_name)
@@ -2337,10 +2361,23 @@ async def get_county_comprehensive(county_id: str):
                 .first()
             )
 
-            # --- Budget lines (scoped to latest FY for this entity) ---
+            # --- Budget lines (scoped to latest executed FY for this entity) ---
             budget_lines = _entity_period_budget_query(db, entity.id).all()
             total_allocated = sum(float(b.allocated_amount or 0) for b in budget_lines)
             total_spent = sum(float(b.actual_spent or 0) for b in budget_lines)
+
+            # Resolve the fiscal year label so the frontend can display
+            # "Budget FY2024/25" (e.g. if we selected the latest executed FY
+            # because the current one has no spending yet).
+            budget_fy_label: Optional[str] = None
+            if budget_lines:
+                _fp = (
+                    db.query(DBFiscalPeriod)
+                    .filter(DBFiscalPeriod.id == budget_lines[0].period_id)
+                    .first()
+                )
+                if _fp:
+                    budget_fy_label = _fp.label
 
             # Sector breakdown from real budget line categories
             sector_breakdown = {}
@@ -2598,6 +2635,7 @@ async def get_county_comprehensive(county_id: str):
                     "recurrent_budget": recurrent_total,
                     "per_capita_budget": per_capita_budget,
                     "sector_breakdown": sector_breakdown,
+                    "fiscal_year": budget_fy_label,
                 },
                 # Revenue
                 "revenue": {
@@ -2724,7 +2762,7 @@ async def get_county_financial_data(county_id: str):
     """Get financial data for a specific county"""
     try:
         # Convert frontend ID to backend name
-        county_name = COUNTY_MAPPING.get(county_id)
+        county_name = _resolve_county_name(county_id)
         if not county_name:
             raise HTTPException(status_code=404, detail="County not found")
 
@@ -2759,7 +2797,7 @@ async def get_county_budget(county_id: str):
     if DATABASE_AVAILABLE:
         try:
             with next(get_db()) as db:
-                name = COUNTY_MAPPING.get(county_id)
+                name = _resolve_county_name(county_id, db=db)
                 e = (
                     db.query(DBEntity)
                     .filter(DBEntity.type == EntityType.COUNTY)
@@ -2794,7 +2832,7 @@ async def get_county_budget(county_id: str):
 
     # Fallback: Enhanced County Analytics API
     try:
-        county_name = COUNTY_MAPPING.get(county_id)
+        county_name = _resolve_county_name(county_id)
         if not county_name:
             raise HTTPException(status_code=404, detail="County not found")
 
@@ -2853,7 +2891,7 @@ async def get_county_debt(county_id: str):
             from sqlalchemy import func
 
             with next(get_db()) as db:
-                name = COUNTY_MAPPING.get(county_id)
+                name = _resolve_county_name(county_id, db=db)
                 if not name:
                     raise HTTPException(status_code=404, detail="County not found")
 
@@ -3434,7 +3472,7 @@ async def get_federal_audits():
 @cached(key_prefix="county:audits", ttl=3600)  # Cache for 1 hour
 async def get_county_audits(county_id: str):
     """Get audit information for a specific county from database."""
-    county_name = COUNTY_MAPPING.get(county_id)
+    county_name = _resolve_county_name(county_id)
     if not county_name:
         raise HTTPException(status_code=404, detail="County not found")
 
@@ -3680,7 +3718,7 @@ async def get_county_audits(county_id: str):
 async def get_county_audits_history(county_id: str):
     """Historical audit queries grouped by fiscal year with quick aggregates."""
     try:
-        county_name = COUNTY_MAPPING.get(county_id)
+        county_name = _resolve_county_name(county_id)
         if not county_name:
             raise HTTPException(status_code=404, detail="County not found")
 
@@ -3743,7 +3781,7 @@ async def list_county_audits(
 ):
     """Paginated audit queries with filters. DB-backed when available; falls back to Enhanced API."""
     try:
-        county_name = COUNTY_MAPPING.get(county_id)
+        county_name = _resolve_county_name(county_id)
         if not county_name:
             raise HTTPException(status_code=404, detail="County not found")
 
@@ -4134,7 +4172,7 @@ async def get_county_accountability(county_id: str):
     if not DATABASE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Database unavailable")
 
-    county_name = COUNTY_MAPPING.get(county_id)
+    county_name = _resolve_county_name(county_id)
     if not county_name:
         raise HTTPException(status_code=404, detail="County not found")
 
@@ -4167,7 +4205,7 @@ async def get_county_summary(county_id: str):
     if not DATABASE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Database unavailable")
 
-    county_name = COUNTY_MAPPING.get(county_id)
+    county_name = _resolve_county_name(county_id)
     if not county_name:
         raise HTTPException(status_code=404, detail="County not found")
 
@@ -7362,6 +7400,53 @@ async def get_pending_bills_by_county(county_id: str, db: Session = Depends(get_
     except Exception as e:
         logging.error(f"Pending bills county lookup failed: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+def _resolve_county_name(county_id: str, db: "Optional[Session]" = None) -> Optional[str]:
+    """Resolve any ID shape to a short county name (e.g. "Mombasa").
+
+    Endpoints that only need a name (to call downstream InternalAPIClient
+    or build a canonical_name filter) use this helper. It tries the fast
+    COUNTY_MAPPING dict first, then falls back to a quick DB lookup for
+    raw row ids / slugs. Returns None if the id cannot be resolved.
+
+    When called from within an endpoint that already holds an open
+    ``with next(get_db())`` session, pass ``db=<that session>`` so we
+    reuse it instead of opening (and leaking) a second connection.
+    """
+    if not county_id:
+        return None
+
+    # Fast path: direct COUNTY_MAPPING lookup (zero-padded codes)
+    direct = COUNTY_MAPPING.get(county_id)
+    if direct:
+        return direct
+
+    # Numeric shapes: try zero-padding to match COUNTY_MAPPING keys
+    cid = str(county_id).strip()
+    if cid.isdigit():
+        padded = cid.zfill(3)
+        if padded in COUNTY_MAPPING:
+            return COUNTY_MAPPING[padded]
+
+    # Fallback to DB for raw DB ids / slugs / names
+    if not DATABASE_AVAILABLE:
+        return None
+    try:
+        if db is not None:
+            entity = _resolve_county_entity(db, county_id)
+            if entity:
+                name = (entity.canonical_name or "").replace(" County", "").strip()
+                return name or None
+            return None
+        with next(get_db()) as _db:
+            entity = _resolve_county_entity(_db, county_id)
+            if entity:
+                name = (entity.canonical_name or "").replace(" County", "").strip()
+                return name or None
+    except Exception as e:
+        logging.warning(f"_resolve_county_name fallback failed for {county_id}: {e}")
+    return None
 
 
 def _resolve_county_entity(db: Session, county_id: str):

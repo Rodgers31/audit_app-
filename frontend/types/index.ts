@@ -63,6 +63,10 @@ export interface CountyComprehensive {
     recurrent_budget: number;
     per_capita_budget: number;
     sector_breakdown: Record<string, { allocated: number; spent: number }>;
+    /** Fiscal year these budget numbers refer to (e.g. "FY2024/25").
+     * Set by the backend to the latest FY with actual execution data,
+     * not necessarily the current FY. */
+    fiscal_year?: string | null;
   };
   revenue: {
     total_revenue: number;

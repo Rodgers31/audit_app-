@@ -474,83 +474,120 @@ function OverviewTab({ data }: { data: CountyComprehensive }) {
   };
 
   return (
-    <div className='space-y-5'>
-      {/* At-a-glance summary cards */}
-      <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>
-        <SummaryMetricCard
-          label='Total Budget'
-          value={fmtKES(budget.total_allocated)}
-          icon={<CircleDollarSign size={20} style={{ color: '#3b82f6' }} />}
-          color='#3b82f6'
-        />
-        <SummaryMetricCard
-          label='Budget Utilization'
-          value={pct(budget.utilization_rate)}
-          icon={<CheckCircle2 size={20} style={{ color: utilColor }} />}
-          color={utilColor}
-        />
-        <SummaryMetricCard
-          label='Audit Findings'
-          value={String(audit.findings_count)}
-          icon={<ShieldAlert size={20} style={{ color: '#ef4444' }} />}
-          color='#ef4444'
-        />
-        <SummaryMetricCard
-          label='Health Grade'
-          value={`${financial_summary.grade} (${financial_summary.health_score.toFixed(0)})`}
-          icon={
-            <Award size={20} style={{ color: gradeColor[financial_summary.grade] || '#ef4444' }} />
-          }
-          color={gradeColor[financial_summary.grade] || '#ef4444'}
-        />
-      </div>
-
-      {/* Key indicators row */}
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-        {/* Budget execution */}
-        <div className='bg-white rounded-xl border border-gray-100 p-5 flex items-center gap-5'>
-          <CircleProgress value={budget.utilization_rate} />
-          <div>
-            <div className='text-sm font-semibold text-gray-800 mb-1'>Budget Execution</div>
-            <div className='text-xs text-gray-500'>
-              {fmtKES(budget.total_spent)} of {fmtKES(budget.total_allocated)}
+    <div className='space-y-6'>
+      {/* Hero row: Budget execution as a magazine-style feature */}
+      <div className='grid grid-cols-1 lg:grid-cols-5 gap-5'>
+        {/* Budget execution — large, editorial */}
+        <div className='lg:col-span-3 rounded-2xl bg-gradient-to-br from-white via-white to-gov-sage/5 border border-gray-100 p-6 shadow-sm'>
+          <div className='flex items-start gap-6'>
+            <CircleProgress value={budget.utilization_rate} />
+            <div className='min-w-0 flex-1'>
+              <div className='text-[11px] uppercase tracking-widest font-semibold text-gray-400 mb-1'>
+                Budget Execution
+              </div>
+              <div className='text-2xl font-bold text-gray-900 mb-2'>
+                {pct(budget.utilization_rate)}
+                <span className='text-sm font-normal text-gray-500 ml-2'>utilized</span>
+              </div>
+              <div className='text-sm text-gray-600 leading-relaxed'>
+                <span className='font-semibold tabular-nums'>
+                  {fmtKES(budget.total_spent)}
+                </span>{' '}
+                spent of{' '}
+                <span className='font-semibold tabular-nums'>
+                  {fmtKES(budget.total_allocated)}
+                </span>{' '}
+                allocated
+              </div>
+              {budget.fiscal_year && (
+                <div className='mt-2 text-[11px] text-gray-400'>
+                  Source: Controller of Budget · {budget.fiscal_year}
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Debt sustainability */}
-        <div className='bg-white rounded-xl border border-gray-100 p-5'>
-          <div className='flex items-center gap-2 mb-2'>
-            <sust.Icon size={16} className={sust.color} />
-            <span className={`text-sm font-semibold ${sust.color}`}>{sust.text}</span>
+        {/* Debt sustainability — minimal, gradient tinted */}
+        <div
+          className={`lg:col-span-2 rounded-2xl border p-6 shadow-sm ${
+            financial_summary.debt_sustainability === 'sustainable'
+              ? 'bg-gradient-to-br from-emerald-50/70 to-white border-emerald-100'
+              : financial_summary.debt_sustainability === 'at_risk'
+                ? 'bg-gradient-to-br from-rose-50/70 to-white border-rose-100'
+                : 'bg-gradient-to-br from-amber-50/70 to-white border-amber-100'
+          }`}>
+          <div className='flex items-center gap-2 mb-3'>
+            <sust.Icon size={18} className={sust.color} />
+            <span className={`text-sm font-semibold ${sust.color}`}>
+              {sust.text}
+            </span>
           </div>
-          <div className='text-xs text-gray-500 space-y-1'>
-            <div>Total debt: {fmtKES(debt.total_debt)}</div>
-            <div>Debt-to-budget: {pct(debt.debt_to_budget_ratio)}</div>
-            <div>Pending bills: {fmtKES(debt.pending_bills)}</div>
+          <div className='text-[11px] uppercase tracking-widest font-semibold text-gray-400 mb-2'>
+            Debt Position
+          </div>
+          <div className='space-y-1.5 text-sm'>
+            <div className='flex justify-between'>
+              <span className='text-gray-500'>Total debt</span>
+              <span className='font-semibold text-gray-800 tabular-nums'>
+                {fmtKES(debt.total_debt)}
+              </span>
+            </div>
+            <div className='flex justify-between'>
+              <span className='text-gray-500'>Debt-to-budget</span>
+              <span className='font-semibold text-gray-800 tabular-nums'>
+                {pct(debt.debt_to_budget_ratio)}
+              </span>
+            </div>
+            <div className='flex justify-between'>
+              <span className='text-gray-500'>Pending bills</span>
+              <span className='font-semibold text-gray-800 tabular-nums'>
+                {fmtKES(debt.pending_bills)}
+              </span>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Audit snapshot */}
-        <div className='bg-white rounded-xl border border-gray-100 p-5'>
-          <div className='text-sm font-semibold text-gray-800 mb-2'>Audit Snapshot</div>
-          <div className='flex items-center gap-4 mb-2'>
-            {(['critical', 'warning', 'info'] as const).map((sev) => {
-              const count = audit.by_severity[sev] || 0;
-              const s = SEVERITY_STYLE[sev];
-              return (
-                <div key={sev} className='flex items-center gap-1.5'>
-                  <div className={`w-2 h-2 rounded-full ${s.dot}`} />
-                  <span className='text-xs text-gray-600'>
-                    {count} {s.label.toLowerCase()}
-                  </span>
-                </div>
-              );
-            })}
+      {/* Audit snapshot — wide banner */}
+      <div className='relative rounded-2xl bg-white border border-gray-100 p-5 overflow-hidden'>
+        <div
+          aria-hidden
+          className={`absolute inset-y-0 left-0 w-1 ${
+            audit.findings_count === 0
+              ? 'bg-emerald-400'
+              : (audit.by_severity.critical || 0) > 0
+                ? 'bg-rose-500'
+                : 'bg-amber-400'
+          }`}
+        />
+        <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3 pl-2'>
+          <div>
+            <div className='text-[11px] uppercase tracking-widest font-semibold text-gray-400 mb-1'>
+              Audit Snapshot
+            </div>
+            <div className='flex items-center gap-4 flex-wrap'>
+              {(['critical', 'warning', 'info'] as const).map((sev) => {
+                const count = audit.by_severity[sev] || 0;
+                const s = SEVERITY_STYLE[sev];
+                return (
+                  <div key={sev} className='flex items-center gap-1.5'>
+                    <div className={`w-2 h-2 rounded-full ${s.dot}`} />
+                    <span className='text-sm text-gray-700'>
+                      <span className='font-semibold tabular-nums'>{count}</span>{' '}
+                      {s.label.toLowerCase()}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
           {audit.total_amount_involved > 0 && (
-            <div className='text-xs text-gray-500'>
-              {fmtKES(audit.total_amount_involved)} total amount involved
+            <div className='text-right'>
+              <div className='text-xs text-gray-500'>Total amount involved</div>
+              <div className='text-base font-bold text-rose-700 tabular-nums'>
+                {fmtKES(audit.total_amount_involved)}
+              </div>
             </div>
           )}
         </div>
@@ -1457,46 +1494,89 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
   const isBelowBracket = data.total_flagged_amount > peer.population_bracket_avg;
 
   return (
-    <div className='space-y-5'>
-      {/* A. GRADE CARD */}
-      <div className='bg-white rounded-xl border border-gray-100 p-6'>
-        <div className='flex flex-col sm:flex-row items-center gap-6'>
+    <div className='space-y-6'>
+      {/* A. GRADE — editorial hero */}
+      <div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-white to-gov-sage/5 border border-gray-100 p-6'>
+        <div
+          aria-hidden
+          className={`absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl opacity-30 ${
+            data.accountability_grade === 'A' || data.accountability_grade === 'B+'
+              ? 'bg-emerald-300'
+              : data.accountability_grade === 'B' || data.accountability_grade === 'B-'
+                ? 'bg-amber-300'
+                : 'bg-rose-300'
+          }`}
+        />
+        <div className='relative flex flex-col sm:flex-row items-center sm:items-start gap-6'>
           <div
-            className={`w-24 h-24 rounded-2xl ${gradeStyle.bg} ${gradeStyle.text} flex items-center justify-center shadow-lg`}>
+            className={`w-24 h-24 rounded-2xl ${gradeStyle.bg} ${gradeStyle.text} flex items-center justify-center shadow-xl flex-shrink-0`}>
             <span className='text-5xl font-black'>{data.accountability_grade}</span>
           </div>
-          <div className='text-center sm:text-left'>
-            <h3 className='text-lg font-bold text-gray-900'>Accountability Grade</h3>
-            <p className='text-sm text-gray-500 mt-1'>
-              {gradeStyle.label} — Based on audit opinions, flagged amounts, recurring findings, and
-              budget absorption
+          <div className='text-center sm:text-left flex-1'>
+            <div className='text-[11px] uppercase tracking-widest font-semibold text-gray-400 mb-1'>
+              Accountability Grade
+            </div>
+            <h3 className='text-2xl font-bold text-gray-900 mb-1'>{gradeStyle.label}</h3>
+            <p className='text-sm text-gray-600 max-w-lg'>
+              Derived from audit opinions, flagged amounts, recurring findings, and budget
+              absorption over the past 3 fiscal years.
             </p>
           </div>
         </div>
       </div>
 
-      {/* C. KEY METRICS — 4 stat cards */}
+      {/* C. KEY METRICS — stat strip with colour accent */}
       <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
-        <div className='bg-white rounded-xl border border-gray-100 p-4 text-center'>
-          <div className='text-2xl font-bold text-red-700'>
-            {data.total_flagged_amount > 0 ? fmtKES(data.total_flagged_amount) : 'KES 0'}
-          </div>
-          <div className='text-[11px] text-gray-500 mt-0.5'>Total Flagged Amount</div>
-        </div>
-        <div className='bg-white rounded-xl border border-gray-100 p-4 text-center'>
-          <div className='text-2xl font-bold text-amber-700'>{data.recurring_findings_count}</div>
-          <div className='text-[11px] text-gray-500 mt-0.5'>Recurring Findings</div>
-        </div>
-        <div className='bg-white rounded-xl border border-gray-100 p-4 text-center'>
-          <div className='text-2xl font-bold text-orange-700'>{data.unresolved_findings_count}</div>
-          <div className='text-[11px] text-gray-500 mt-0.5'>Unresolved Findings</div>
-        </div>
-        <div className='bg-white rounded-xl border border-gray-100 p-4 text-center'>
-          <div className='text-2xl font-bold text-blue-700'>
-            {data.absorption_rate !== null ? `${(data.absorption_rate * 100).toFixed(1)}%` : 'N/A'}
-          </div>
-          <div className='text-[11px] text-gray-500 mt-0.5'>Absorption Rate</div>
-        </div>
+        {[
+          {
+            value:
+              data.total_flagged_amount > 0 ? fmtKES(data.total_flagged_amount) : 'KES 0',
+            label: 'Total Flagged',
+            Icon: FileWarning,
+            tone: 'rose' as const,
+          },
+          {
+            value: String(data.recurring_findings_count),
+            label: 'Recurring Findings',
+            Icon: AlertTriangle,
+            tone: 'amber' as const,
+          },
+          {
+            value: String(data.unresolved_findings_count),
+            label: 'Unresolved',
+            Icon: Clock,
+            tone: 'orange' as const,
+          },
+          {
+            value:
+              data.absorption_rate !== null
+                ? `${(data.absorption_rate * 100).toFixed(1)}%`
+                : 'N/A',
+            label: 'Absorption Rate',
+            Icon: TrendingUp,
+            tone: 'blue' as const,
+          },
+        ].map((m) => {
+          const toneCls = {
+            rose: 'border-l-rose-400 text-rose-700',
+            amber: 'border-l-amber-400 text-amber-700',
+            orange: 'border-l-orange-400 text-orange-700',
+            blue: 'border-l-blue-400 text-blue-700',
+          }[m.tone];
+          return (
+            <div
+              key={m.label}
+              className={`bg-white rounded-xl border border-gray-100 border-l-4 ${toneCls} p-4`}>
+              <div className='flex items-center gap-2 mb-1'>
+                <m.Icon size={14} />
+                <div className='text-[10px] uppercase tracking-widest font-semibold text-gray-400'>
+                  {m.label}
+                </div>
+              </div>
+              <div className='text-xl font-bold tabular-nums text-gray-900'>{m.value}</div>
+            </div>
+          );
+        })}
       </div>
 
       {/* B. AUDIT OPINION HISTORY */}
@@ -1540,61 +1620,99 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
         </div>
       )}
 
-      {/* D. PEER COMPARISON */}
-      <div className='bg-white rounded-xl border border-gray-100 p-5'>
-        <h3 className='text-sm font-semibold text-gray-800 mb-4'>Peer Comparison</h3>
+      {/* D. PEER COMPARISON — side-by-side with better visual cues */}
+      <div>
+        <div className='flex items-center gap-2 mb-3'>
+          <div className='h-5 w-1 rounded-full bg-gov-forest' />
+          <h3 className='text-base font-semibold text-gray-900'>Peer Comparison</h3>
+        </div>
         <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-          {/* vs Region Average */}
-          <div className='bg-gray-50 rounded-lg p-4'>
-            <div className='text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2'>
+          {/* vs Region */}
+          <div
+            className={`rounded-2xl border p-5 ${
+              isBelowRegion
+                ? 'bg-gradient-to-br from-rose-50/60 to-white border-rose-100'
+                : 'bg-gradient-to-br from-emerald-50/60 to-white border-emerald-100'
+            }`}>
+            <div className='text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-3'>
               vs{' '}
               {peer.region
                 ? peer.region.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
                 : 'Region'}{' '}
               Average
             </div>
-            <div className='flex items-center gap-2 mb-1'>
+            <div className='flex items-center gap-2 mb-3'>
               {isBelowRegion ? (
-                <ArrowUp size={16} className='text-red-500' />
+                <ArrowUp size={20} className='text-rose-500' />
               ) : (
-                <ArrowDown size={16} className='text-emerald-500' />
+                <ArrowDown size={20} className='text-emerald-500' />
               )}
               <span
-                className={`text-sm font-bold ${isBelowRegion ? 'text-red-700' : 'text-emerald-700'}`}>
+                className={`text-lg font-bold ${isBelowRegion ? 'text-rose-700' : 'text-emerald-700'}`}>
                 {isBelowRegion ? 'Above' : 'Below'} peer average
               </span>
             </div>
-            <div className='text-xs text-gray-500 space-y-0.5'>
-              <div>This county: {fmtKES(data.total_flagged_amount)} flagged</div>
-              <div>Region avg: {fmtKES(peer.region_avg_flagged_amount)} flagged</div>
-              {peer.region_avg_grade && <div>Region avg grade: {peer.region_avg_grade}</div>}
+            <div className='space-y-1 text-sm'>
+              <div className='flex justify-between'>
+                <span className='text-gray-500'>This county</span>
+                <span className='font-semibold text-gray-800 tabular-nums'>
+                  {fmtKES(data.total_flagged_amount)}
+                </span>
+              </div>
+              <div className='flex justify-between'>
+                <span className='text-gray-500'>Region avg</span>
+                <span className='font-semibold text-gray-800 tabular-nums'>
+                  {fmtKES(peer.region_avg_flagged_amount)}
+                </span>
+              </div>
+              {peer.region_avg_grade && (
+                <div className='flex justify-between'>
+                  <span className='text-gray-500'>Region avg grade</span>
+                  <span className='font-semibold text-gray-800'>{peer.region_avg_grade}</span>
+                </div>
+              )}
             </div>
           </div>
 
           {/* vs Population Bracket */}
-          <div className='bg-gray-50 rounded-lg p-4'>
-            <div className='text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2'>
+          <div
+            className={`rounded-2xl border p-5 ${
+              isBelowBracket
+                ? 'bg-gradient-to-br from-rose-50/60 to-white border-rose-100'
+                : 'bg-gradient-to-br from-emerald-50/60 to-white border-emerald-100'
+            }`}>
+            <div className='text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-3'>
               vs {peer.population_bracket || 'Population Bracket'} Average
             </div>
-            <div className='flex items-center gap-2 mb-1'>
+            <div className='flex items-center gap-2 mb-3'>
               {isBelowBracket ? (
-                <ArrowUp size={16} className='text-red-500' />
+                <ArrowUp size={20} className='text-rose-500' />
               ) : (
-                <ArrowDown size={16} className='text-emerald-500' />
+                <ArrowDown size={20} className='text-emerald-500' />
               )}
               <span
-                className={`text-sm font-bold ${isBelowBracket ? 'text-red-700' : 'text-emerald-700'}`}>
+                className={`text-lg font-bold ${isBelowBracket ? 'text-rose-700' : 'text-emerald-700'}`}>
                 {isBelowBracket ? 'Above' : 'Below'} bracket average
               </span>
             </div>
-            <div className='text-xs text-gray-500 space-y-0.5'>
-              <div>This county: {fmtKES(data.total_flagged_amount)} flagged</div>
-              <div>Bracket avg: {fmtKES(peer.population_bracket_avg)} flagged</div>
+            <div className='space-y-1 text-sm'>
+              <div className='flex justify-between'>
+                <span className='text-gray-500'>This county</span>
+                <span className='font-semibold text-gray-800 tabular-nums'>
+                  {fmtKES(data.total_flagged_amount)}
+                </span>
+              </div>
+              <div className='flex justify-between'>
+                <span className='text-gray-500'>Bracket avg</span>
+                <span className='font-semibold text-gray-800 tabular-nums'>
+                  {fmtKES(peer.population_bracket_avg)}
+                </span>
+              </div>
             </div>
           </div>
         </div>
-        <p className='text-[11px] text-gray-400 mt-3'>
-          Higher flagged amounts indicate more audit issues relative to peers. Lower is better.
+        <p className='text-[11px] text-gray-400 mt-3 italic'>
+          Higher flagged amounts indicate more audit issues. Lower is better.
         </p>
       </div>
     </div>
@@ -1612,19 +1730,25 @@ function MoneyFlowTab({ data: countyData }: { data: CountyComprehensive }) {
   const years = fiscalYears && fiscalYears.length > 0 ? fiscalYears : DEFAULT_FISCAL_YEARS;
 
   return (
-    <div className='space-y-4'>
-      <div className='bg-white rounded-xl border border-gray-100 p-5'>
-        <div className='flex items-center justify-between mb-4'>
-          <div>
-            <h3 className='text-sm font-semibold text-gray-800'>Follow the Money</h3>
-            <p className='text-xs text-gray-500 mt-0.5'>
-              Trace how public funds flow from allocation to expenditure
-            </p>
+    <div className='space-y-5'>
+      {/* Section header — no nested card, just typography */}
+      <div className='flex flex-col sm:flex-row sm:items-end justify-between gap-3 pb-1'>
+        <div>
+          <div className='flex items-center gap-2 mb-1'>
+            <div className='h-6 w-1 rounded-full bg-gov-forest' />
+            <h3 className='text-base font-semibold text-gray-900'>
+              Follow the Money · {countyData.name}
+            </h3>
           </div>
-          <YearSelector value={selectedYear} onChange={setSelectedYear} years={years} />
+          <p className='text-xs text-gray-500 ml-3'>
+            Trace how public funds flow from allocation to expenditure · {selectedYear}
+          </p>
         </div>
-        <FollowTheMoney data={data} isLoading={isLoading} />
+        <YearSelector value={selectedYear} onChange={setSelectedYear} years={years} />
       </div>
+
+      {/* The visualization itself renders its own cards — no wrapper */}
+      <FollowTheMoney data={data} isLoading={isLoading} />
     </div>
   );
 }
@@ -1739,17 +1863,42 @@ export default function CountyDetailPage() {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className='bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden'>
-          {/* Top band with grade */}
-          <div className='bg-gradient-to-r from-gov-dark to-gov-forest px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4'>
-            <div>
-              <h1 className='text-xl font-bold text-white'>{data.name} County</h1>
-              <p className='text-sm text-white/70 mt-0.5'>
-                {fmtPop(data.demographics.population)} residents &middot;{' '}
+          className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-gov-dark via-gov-forest to-gov-forest text-white shadow-lg'>
+          {/* Decorative blurred blobs for depth */}
+          <div
+            aria-hidden
+            className='pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl'
+          />
+          <div
+            aria-hidden
+            className='pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-sky-400/10 blur-3xl'
+          />
+
+          <div className='relative px-6 pt-6 pb-5 flex flex-col lg:flex-row lg:items-start justify-between gap-6'>
+            {/* Identity */}
+            <div className='min-w-0'>
+              <div className='flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-white/60 mb-2'>
+                <Landmark size={12} />
+                County Government · Kenya
+              </div>
+              <h1 className='text-2xl sm:text-3xl font-bold tracking-tight'>
+                {data.name} County
+              </h1>
+              <p className='text-sm text-white/75 mt-1.5 max-w-md'>
+                {fmtPop(data.demographics.population)} residents ·{' '}
                 {fmtLabel(data.economic_profile.economic_base)} economy
+                {data.governor ? ` · Gov. ${data.governor}` : ''}
               </p>
+              {data.budget.fiscal_year && (
+                <div className='mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur-sm px-3 py-1 text-[11px] font-medium text-white/90 border border-white/10'>
+                  <Clock size={10} />
+                  Financial data from {data.budget.fiscal_year}
+                </div>
+              )}
             </div>
-            <div className='flex items-center gap-3'>
+
+            {/* Actions + Grade */}
+            <div className='flex items-center gap-3 flex-shrink-0'>
               <WatchButton itemType='county' itemId={countyId} label={`${data.name} County`} />
               <PDFExportButton
                 compact
@@ -1764,39 +1913,69 @@ export default function CountyDetailPage() {
             </div>
           </div>
 
-          {/* Quick KPIs */}
-          <div className='grid grid-cols-3 sm:grid-cols-6 divide-x divide-gray-100'>
+          {/* Quick KPIs — glassy strip */}
+          <div className='relative grid grid-cols-3 sm:grid-cols-6 bg-black/15 backdrop-blur-sm border-t border-white/10'>
             {[
-              { label: 'Budget', value: fmtKES(data.budget.total_allocated) },
-              { label: 'Execution', value: pct(data.budget.utilization_rate) },
-              { label: 'Total Debt', value: fmtKES(data.debt.total_debt) },
-              { label: 'Pending Bills', value: fmtKES(data.debt.pending_bills) },
-              { label: 'Audit Issues', value: String(data.audit.findings_count) },
-              { label: 'Stalled', value: String(data.stalled_projects.count) },
-            ].map((kpi) => (
-              <div key={kpi.label} className='px-4 py-3 text-center'>
-                <div className='text-sm font-bold text-gray-900 tabular-nums'>{kpi.value}</div>
-                <div className='text-[10px] text-gray-500'>{kpi.label}</div>
+              { label: 'Budget', value: fmtKES(data.budget.total_allocated), accent: 'text-white' },
+              {
+                label: 'Execution',
+                value: pct(data.budget.utilization_rate),
+                accent:
+                  data.budget.utilization_rate >= 70
+                    ? 'text-emerald-300'
+                    : data.budget.utilization_rate >= 40
+                      ? 'text-amber-300'
+                      : 'text-rose-300',
+              },
+              { label: 'Total Debt', value: fmtKES(data.debt.total_debt), accent: 'text-white' },
+              {
+                label: 'Pending Bills',
+                value: fmtKES(data.debt.pending_bills),
+                accent: 'text-white',
+              },
+              {
+                label: 'Audit Issues',
+                value: String(data.audit.findings_count),
+                accent: data.audit.findings_count > 0 ? 'text-rose-300' : 'text-white',
+              },
+              {
+                label: 'Stalled',
+                value: String(data.stalled_projects.count),
+                accent: data.stalled_projects.count > 0 ? 'text-amber-300' : 'text-white',
+              },
+            ].map((kpi, i, arr) => (
+              <div
+                key={kpi.label}
+                className={`px-4 py-3.5 ${i < arr.length - 1 ? 'border-r border-white/10' : ''} text-center`}>
+                <div className={`text-sm font-bold tabular-nums ${kpi.accent}`}>{kpi.value}</div>
+                <div className='text-[10px] uppercase tracking-wider text-white/55 mt-0.5'>
+                  {kpi.label}
+                </div>
               </div>
             ))}
           </div>
         </motion.div>
 
-        {/* ── Tabs ── */}
-        <div className='flex items-center gap-1 bg-white rounded-xl border border-gray-200 p-1 shadow-sm overflow-x-auto'>
+        {/* ── Tabs ── underline style, no nested box */}
+        <div className='flex items-center gap-1 border-b border-gray-200 overflow-x-auto -mb-px'>
           {TABS.map((t) => {
             const active = tab === t.id;
             return (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                  active
-                    ? 'bg-gov-forest text-white shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap ${
+                  active ? 'text-gov-forest' : 'text-gray-500 hover:text-gray-800'
                 }`}>
-                <t.icon size={14} />
+                <t.icon size={14} className={active ? 'text-gov-forest' : 'text-gray-400'} />
                 {t.label}
+                {active && (
+                  <motion.div
+                    layoutId='county-tab-underline'
+                    className='absolute left-3 right-3 -bottom-px h-0.5 rounded-full bg-gov-forest'
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  />
+                )}
               </button>
             );
           })}
