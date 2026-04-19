@@ -1693,13 +1693,17 @@ export default function CountyDetailPage() {
 
   /* Error */
   if (error || !data) {
+    const from = searchParams.get('from');
+    const backHref = from === 'transparency' ? '/transparency' : '/counties';
+    const backLabel =
+      from === 'transparency' ? 'Back to Follow the Money' : 'Back to County Explorer';
     return (
       <PageShell title='County Details'>
         <div className='text-center py-16'>
           <ShieldAlert size={40} className='mx-auto text-red-400 mb-3' />
           <p className='text-red-600 mb-4'>Failed to load county data</p>
-          <Link href='/counties' className='text-sm text-gov-forest hover:underline'>
-            &larr; Back to County Explorer
+          <Link href={backHref} className='text-sm text-gov-forest hover:underline'>
+            &larr; {backLabel}
           </Link>
         </div>
       </PageShell>
@@ -1716,15 +1720,19 @@ export default function CountyDetailPage() {
     projects: ProjectsTab,
   }[tab];
 
+  const fromParam = searchParams.get('from');
+  const topBackHref = fromParam === 'transparency' ? '/transparency' : '/counties';
+  const topBackLabel = fromParam === 'transparency' ? 'Follow the Money' : 'All Counties';
+
   return (
     <>
       <PageShell title={`${data.name} County`} subtitle='County government transparency report'>
         {/* Back */}
         <Link
-          href='/counties'
+          href={topBackHref}
           className='inline-flex items-center gap-1.5 text-sm text-gov-forest hover:text-gov-dark transition-colors'>
           <ArrowLeft size={14} />
-          All Counties
+          {topBackLabel}
         </Link>
 
         {/* ── Hero ── */}

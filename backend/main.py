@@ -28,6 +28,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Req
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse, Response
 
@@ -2309,25 +2310,18 @@ async def get_county_comprehensive(county_id: str):
     if not DATABASE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Database unavailable")
 
-    county_name = COUNTY_MAPPING.get(county_id)
-    if not county_name:
-        raise HTTPException(status_code=404, detail="County not found")
-
+    # Accept any reasonable id form: raw numeric ("4"), zero-padded code
+    # ("004"), slug ("tana-river-county"), or name ("Tana River"). The
+    # money-flow and counties-list endpoints return different shapes, so
+    # this page gets linked with all of them.
     try:
         with next(get_db()) as db:
-            entity = (
-                db.query(DBEntity)
-                .filter(DBEntity.type == EntityType.COUNTY)
-                .filter(DBEntity.canonical_name == f"{county_name} County")
-                .first()
-            )
+            entity = _resolve_county_entity(db, county_id)
             if not entity:
-                slug = county_name.lower().replace(" ", "-") + "-county"
-                entity = db.query(DBEntity).filter(DBEntity.slug == slug).first()
-            if not entity:
-                raise HTTPException(
-                    status_code=404, detail="County entity not found in database"
-                )
+                raise HTTPException(status_code=404, detail="County not found")
+            county_name = (entity.canonical_name or "").replace(" County", "").strip()
+            if not county_name:
+                county_name = COUNTY_MAPPING.get(county_id, "")
 
             meta = entity.meta or {}
             metrics = _resolve_fy_metrics(meta)
@@ -7371,45 +7365,66 @@ async def get_pending_bills_by_county(county_id: str, db: Session = Depends(get_
 
 
 def _resolve_county_entity(db: Session, county_id: str):
-    """Resolve county by numeric ID, slug, or name."""
-    # Try by entity table id
-    if county_id.isdigit():
+    """Resolve a county by numeric ID, zero-padded code, slug, or name.
+
+    The codebase exposes three ID shapes for counties:
+      * raw DB row id (``4``)
+      * 3-digit county code (``001``..``047``) used in COUNTY_MAPPING
+      * slug (``nairobi-county``) or short name (``Nairobi``)
+
+    Different endpoints return different shapes, so we normalise here.
+    """
+    if not county_id:
+        return None
+    cid = str(county_id).strip()
+
+    # 1. Raw numeric DB id
+    if cid.isdigit():
         entity = (
             db.query(DBEntity)
-            .filter(DBEntity.id == int(county_id), DBEntity.type == EntityType.COUNTY)
+            .filter(DBEntity.id == int(cid), DBEntity.type == EntityType.COUNTY)
             .first()
         )
         if entity:
             return entity
 
-    # Try by slug
+    # 2. Slug
     entity = (
         db.query(DBEntity)
-        .filter(DBEntity.slug == county_id.lower(), DBEntity.type == EntityType.COUNTY)
+        .filter(DBEntity.slug == cid.lower(), DBEntity.type == EntityType.COUNTY)
         .first()
     )
     if entity:
         return entity
 
-    # Try by COUNTY_MAPPING
-    county_name = COUNTY_MAPPING.get(county_id)
-    if county_name:
+    # 3. 3-digit code via COUNTY_MAPPING → resolve to either
+    #    "Nairobi" or "Nairobi County" in the DB
+    code = cid.zfill(3) if cid.isdigit() else cid
+    mapped = COUNTY_MAPPING.get(code) or COUNTY_MAPPING.get(cid)
+    if mapped:
         entity = (
             db.query(DBEntity)
             .filter(
-                DBEntity.canonical_name == county_name,
                 DBEntity.type == EntityType.COUNTY,
+                or_(
+                    DBEntity.canonical_name == mapped,
+                    DBEntity.canonical_name == f"{mapped} County",
+                    DBEntity.slug == f"{mapped.lower().replace(' ', '-')}-county",
+                ),
             )
             .first()
         )
         if entity:
             return entity
 
-    # Try by name (case-insensitive)
+    # 4. Case-insensitive name match
     entity = (
         db.query(DBEntity)
         .filter(
-            DBEntity.canonical_name.ilike(county_id),
+            or_(
+                DBEntity.canonical_name.ilike(cid),
+                DBEntity.canonical_name.ilike(f"{cid} County"),
+            ),
             DBEntity.type == EntityType.COUNTY,
         )
         .first()
