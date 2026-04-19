@@ -240,13 +240,13 @@ export default function BudgetFlowHero({ data }: Props) {
               </div>
               <div>
                 <div className='text-[10px] uppercase tracking-wider font-semibold text-gov-copper'>
-                  Before any program runs
+                  Treasury APDMR · {fy}
                 </div>
                 <div className='font-display text-xl text-gov-dark leading-tight tabular-nums'>
-                  {debtServiceCents}¢
+                  KES {debtServiceCents.toFixed(1)}
                 </div>
                 <div className='text-[11px] text-neutral-muted leading-tight'>
-                  of every shilling collected goes to debt service
+                  of every KES 100 of revenue services the debt (interest + principal)
                 </div>
               </div>
             </div>
@@ -296,10 +296,11 @@ export default function BudgetFlowHero({ data }: Props) {
         <div className='flex items-start gap-2 text-[11px] text-neutral-muted/90 leading-relaxed border-t border-neutral-border/40 pt-3'>
           <Info size={13} className='mt-0.5 flex-shrink-0 text-gov-forest/70' />
           <span>
-            Figures are the Appropriation Act&apos;s approved estimates for {fy}. Year-end
-            actuals arrive from the Controller of Budget in the National Government Budget
-            Implementation Review Report — see the execution panel below for sector-level
-            spend versus plan.
+            Debt-service figure follows the National Treasury <em>Annual Public Debt
+            Management Report</em> definition — interest payments{' '}
+            <strong>plus</strong> principal redemptions, domestic + external — as a share
+            of tax + non-tax revenue. Year-end actuals arrive from the Controller of
+            Budget in the National Government Budget Implementation Review Report.
           </span>
         </div>
       </div>

@@ -16,7 +16,15 @@
  */
 
 import { motion } from 'framer-motion';
-import { BookOpen, Database, FileText, GitCompareArrows, Info } from 'lucide-react';
+import {
+  BookOpen,
+  Database,
+  ExternalLink,
+  FileText,
+  GitCompareArrows,
+  Info,
+  Landmark,
+} from 'lucide-react';
 
 export interface BudgetMeta {
   data_quality?: string;
@@ -31,6 +39,35 @@ interface Props {
   lastUpdated?: string | null;
   fiscalPeriod?: string | null;
 }
+
+/**
+ * Per-FY links to the authoritative Treasury debt-management document.
+ * The "debt service as % of revenue" headline on this page is taken from the
+ * corresponding row of the linked report; keeping these visible means a
+ * reader can trace any headline number back to a primary PDF.
+ */
+const APDMR_BY_FY: Array<{ fy: string; title: string; url: string }> = [
+  {
+    fy: 'FY 2022/23',
+    title: 'Annual Public Debt Report 2022/2023',
+    url: 'https://www.treasury.go.ke/wp-content/uploads/2024/01/Annual-Public-Debt-Report-2022-2023-Sept-2023.pdf',
+  },
+  {
+    fy: 'FY 2023/24',
+    title: 'Annual Public Debt Management Report 2023/2024',
+    url: 'https://www.treasury.go.ke/wp-content/uploads/2024/11/Annual-Public-Debt-Management-Report-.pdf',
+  },
+  {
+    fy: 'FY 2024/25',
+    title: 'Annual Public Debt Report 2024/2025',
+    url: 'https://www.treasury.go.ke/wp-content/uploads/2025/11/Annual-Public-Debt-Report-2024-2025.pdf',
+  },
+  {
+    fy: 'FY 2025/26',
+    title: '2025 Budget Policy Statement (budgeted; APDMR due Nov 2026)',
+    url: 'https://www.treasury.go.ke/wp-content/uploads/2025/02/2025-Budget-Policy-Statement...pdf',
+  },
+];
 
 function fmtDate(iso?: string | null): string {
   if (!iso) return '—';
@@ -154,6 +191,53 @@ export default function BudgetSourceReconciliation({
               </dd>
             </div>
           </dl>
+        </div>
+      </div>
+
+      {/* APDMR per-FY source strip — makes the debt-service headline traceable */}
+      <div className='border-t border-neutral-border/40 bg-white/60 px-5 sm:px-7 py-4'>
+        <div className='flex items-start gap-3'>
+          <div className='rounded-lg bg-gov-copper/10 text-gov-copper p-2 mt-0.5 flex-shrink-0'>
+            <Landmark size={16} />
+          </div>
+          <div className='flex-1 min-w-0'>
+            <div className='flex items-baseline justify-between flex-wrap gap-x-3 gap-y-0.5'>
+              <span className='text-sm font-semibold text-gov-dark'>
+                Debt-service headline: source by fiscal year
+              </span>
+              <span className='text-[10px] uppercase tracking-wider text-gov-copper/80 font-semibold'>
+                Treasury APDMR
+              </span>
+            </div>
+            <p className='text-[11.5px] text-neutral-muted mt-1 leading-relaxed'>
+              &quot;Debt service as % of revenue&quot; on this page follows the National
+              Treasury <em>Annual Public Debt Management Report</em>: interest +
+              principal redemptions (domestic + external), divided by tax + non-tax
+              revenue. Click an FY to open the primary source.
+            </p>
+            <ul className='mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-1.5'>
+              {APDMR_BY_FY.map((r) => (
+                <li key={r.fy}>
+                  <a
+                    href={r.url}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='group flex items-center justify-between gap-2 rounded-md border border-neutral-border/40 bg-white px-2.5 py-1.5 text-[11px] hover:border-gov-copper/50 hover:bg-gov-copper/5 transition-colors'>
+                    <span className='flex items-center gap-2 min-w-0'>
+                      <span className='font-semibold text-gov-dark tabular-nums flex-shrink-0'>
+                        {r.fy.replace('FY ', '')}
+                      </span>
+                      <span className='text-neutral-muted truncate'>{r.title}</span>
+                    </span>
+                    <ExternalLink
+                      size={11}
+                      className='text-neutral-muted group-hover:text-gov-copper flex-shrink-0'
+                    />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
 

@@ -34,6 +34,7 @@ import CountyUtilizationStrip from '@/components/budget/CountyUtilizationStrip';
 import EconomicContextStrip from '@/components/budget/EconomicContextStrip';
 import ExecutionAuditLens from '@/components/budget/ExecutionAuditLens';
 import FiscalTrendStrip from '@/components/budget/FiscalTrendStrip';
+import FiscalYearPicker from '@/components/budget/FiscalYearPicker';
 import RevenueMix from '@/components/budget/RevenueMix';
 import SpendDonut from '@/components/budget/SpendDonut';
 import { useBudgetEnhanced, useBudgetOverview } from '@/lib/react-query';
@@ -197,7 +198,9 @@ export default function BudgetSpendingPage() {
   const isError = errorOverview || errorFiscal;
 
   /* ── Derived data ── */
-  const fiscalHistoryRaw = overview?.fiscal_history ?? fiscal?.history ?? [];
+  // Prefer the fiscal endpoint's history — it carries debt_service_per_shilling
+  // (the Treasury APDMR ratio) which the budget/overview endpoint doesn't surface.
+  const fiscalHistoryRaw = fiscal?.history ?? overview?.fiscal_history ?? [];
   const fiscalHistory = useMemo(
     () =>
       fiscalHistoryRaw.filter((f: any) =>
@@ -212,13 +215,57 @@ export default function BudgetSpendingPage() {
     [fiscalHistoryRaw]
   );
 
-  // Latest fiscal-year row drives the hero narrative.
-  const latestFiscal: FlowHeroInput | null = useMemo(() => {
+  // Row for the current fiscal year — comes from fiscal.current.
+  const currentFiscal: FlowHeroInput | null = useMemo(() => {
     const cur = fiscal?.current as Record<string, any> | undefined;
     if (cur && cur.fiscal_year) return cur as FlowHeroInput;
-    const last = fiscalHistory[fiscalHistory.length - 1];
-    return last ?? null;
+    return fiscalHistory[fiscalHistory.length - 1] ?? null;
   }, [fiscal, fiscalHistory]);
+
+  // Unique list of fiscal years available for the picker — most recent first.
+  const availableYears = useMemo(() => {
+    const byYear = new Map<string, { fiscal_year: string; is_current: boolean }>();
+    for (const row of fiscalHistory) {
+      if (!row?.fiscal_year) continue;
+      byYear.set(row.fiscal_year, {
+        fiscal_year: row.fiscal_year,
+        is_current: row.fiscal_year === currentFiscal?.fiscal_year,
+      });
+    }
+    if (currentFiscal?.fiscal_year && !byYear.has(currentFiscal.fiscal_year)) {
+      byYear.set(currentFiscal.fiscal_year, {
+        fiscal_year: currentFiscal.fiscal_year,
+        is_current: true,
+      });
+    }
+    return Array.from(byYear.values()).sort((a, b) =>
+      a.fiscal_year < b.fiscal_year ? 1 : -1
+    );
+  }, [fiscalHistory, currentFiscal]);
+
+  // User-selected fiscal year — defaults to the current FY once data arrives.
+  const [selectedFY, setSelectedFY] = useState<string | null>(null);
+  useEffect(() => {
+    if (!selectedFY && currentFiscal?.fiscal_year) {
+      setSelectedFY(currentFiscal.fiscal_year);
+    }
+  }, [selectedFY, currentFiscal]);
+
+  // Row matching the user's selection — falls back to current.
+  const selectedFiscal: FlowHeroInput | null = useMemo(() => {
+    if (!selectedFY) return currentFiscal;
+    const match = fiscalHistory.find((r: any) => r.fiscal_year === selectedFY);
+    if (match) return match as FlowHeroInput;
+    if (currentFiscal?.fiscal_year === selectedFY) return currentFiscal;
+    return currentFiscal;
+  }, [selectedFY, fiscalHistory, currentFiscal]);
+
+  // The selected year controls hero + donut. Sector-level execution +
+  // county utilisation come from the overview endpoint which is pinned to
+  // the current fiscal period, so those chapters always reflect the most
+  // recent available data.
+  const viewingCurrentFY =
+    !selectedFY || selectedFY === currentFiscal?.fiscal_year;
 
   const sectors = overview?.sectors ?? [];
   const countyUtil = overview?.county_utilization ?? {};
@@ -293,8 +340,15 @@ export default function BudgetSpendingPage() {
         </button>
       </div>
 
+      {/* ─── Fiscal-year picker ─── */}
+      <FiscalYearPicker
+        years={availableYears}
+        selected={selectedFY}
+        onSelect={setSelectedFY}
+      />
+
       {/* ─── 1. Hero flow ─── */}
-      <BudgetFlowHero data={latestFiscal} />
+      <BudgetFlowHero data={selectedFiscal} />
 
       {/* ─── 2. Multi-year trend strip ─── */}
       <FiscalTrendStrip history={fiscalHistory} />
@@ -302,13 +356,13 @@ export default function BudgetSpendingPage() {
       {/* ─── 3. Where the money goes (donut) ─── */}
       <SpendDonut
         data={{
-          fiscal_year: latestFiscal?.fiscal_year ?? undefined,
-          appropriated_budget: latestFiscal?.appropriated_budget ?? null,
-          recurrent_spending: latestFiscal?.recurrent_spending ?? null,
-          debt_service_cost: latestFiscal?.debt_service_cost ?? null,
-          development_spending: latestFiscal?.development_spending ?? null,
-          county_allocation: latestFiscal?.county_allocation ?? null,
-          sectors: sectors as any,
+          fiscal_year: selectedFiscal?.fiscal_year ?? undefined,
+          appropriated_budget: selectedFiscal?.appropriated_budget ?? null,
+          recurrent_spending: selectedFiscal?.recurrent_spending ?? null,
+          debt_service_cost: selectedFiscal?.debt_service_cost ?? null,
+          development_spending: selectedFiscal?.development_spending ?? null,
+          county_allocation: selectedFiscal?.county_allocation ?? null,
+          sectors: (viewingCurrentFY ? sectors : []) as any,
         }}
       />
 
@@ -316,14 +370,36 @@ export default function BudgetSpendingPage() {
       <RevenueMix revenueBySource={revenueBySource as any} />
 
       {/* ─── 5. The audit lens: execution by sector ─── */}
-      <ExecutionAuditLens rows={executionBySector as any} />
+      {viewingCurrentFY && (
+        <ExecutionAuditLens rows={executionBySector as any} />
+      )}
 
       {/* ─── 6. County best/worst absorbers ─── */}
-      <CountyUtilizationStrip
-        top={countyUtil?.top_5 ?? []}
-        bottom={countyUtil?.bottom_5 ?? []}
-        average={countyUtil?.average}
-      />
+      {viewingCurrentFY && (
+        <CountyUtilizationStrip
+          top={countyUtil?.top_5 ?? []}
+          bottom={countyUtil?.bottom_5 ?? []}
+          average={countyUtil?.average}
+        />
+      )}
+
+      {/* Notice if viewing a historical year without sector-level detail */}
+      {!viewingCurrentFY && (
+        <div className='rounded-xl border border-neutral-border/40 bg-gov-sand/30 px-5 py-4 flex items-start gap-3 text-[12px] text-neutral-muted'>
+          <Info size={15} className='mt-0.5 text-gov-forest/70 flex-shrink-0' />
+          <span>
+            Sector-level execution and county utilisation are only published for
+            the current fiscal period by the Controller of Budget. Switch back
+            to{' '}
+            <button
+              onClick={() => currentFiscal?.fiscal_year && setSelectedFY(currentFiscal.fiscal_year)}
+              className='font-semibold text-gov-forest hover:underline'>
+              {currentFiscal?.fiscal_year ?? 'the current FY'}
+            </button>{' '}
+            to see those panels.
+          </span>
+        </div>
+      )}
 
       {/* ─── 7. Economic context ─── */}
       <EconomicContextStrip ctx={economicContext} />
