@@ -35,7 +35,7 @@ function bandForDebtToGdp(ratio: number): {
   if (ratio >= IMF_THRESHOLD)
     return {
       tone: 'text-gov-copper',
-      label: 'Above IMF 55%',
+      label: 'Above 55% anchor',
       bg: 'from-gov-copper/12 to-gov-copper/4',
       border: 'border-gov-copper/30',
     };

@@ -116,6 +116,7 @@ function RingGauge({
   color = '#C94A4A',
   track = 'rgba(31,58,42,0.10)',
   threshold,
+  thresholdLabel = 'IMF',
   label,
   subLabel,
 }: {
@@ -126,6 +127,7 @@ function RingGauge({
   color?: string;
   track?: string;
   threshold?: number;
+  thresholdLabel?: string;
   label: string;
   subLabel?: string;
 }) {
@@ -176,7 +178,7 @@ function RingGauge({
         <div className='absolute inset-0 flex flex-col items-center justify-center'>
           <span className='text-2xl font-bold text-gov-dark tabular-nums'>{value.toFixed(1)}%</span>
           {threshold != null && (
-            <span className='text-[10px] text-neutral-muted'>IMF {threshold}%</span>
+            <span className='text-[10px] text-neutral-muted'>{thresholdLabel} {threshold}%</span>
           )}
         </div>
       </div>
@@ -643,7 +645,7 @@ export default function NationalDebtPage() {
                 <span className='text-2xl sm:text-3xl font-bold text-white tabular-nums'>
                   {pct(d.gdpRatio)}
                 </span>
-                <span className='text-[11px] text-white/50'>vs IMF 55%</span>
+                <span className='text-[11px] text-white/50'>vs PFM Act 55%</span>
               </div>
               {d.gdpRatio != null && (
                 <div className='mt-2 h-1.5 w-full rounded-full bg-white/10 overflow-hidden'>
@@ -751,8 +753,9 @@ export default function NationalDebtPage() {
                 value={debtSustainability.debt_to_gdp}
                 color={debtSustainability.debt_to_gdp >= 55 ? '#C94A4A' : '#4A7C5C'}
                 threshold={55}
+                thresholdLabel='PFM Act'
                 label='Debt-to-GDP'
-                subLabel='Total debt as % of the economy'
+                subLabel='Total debt as % of the economy (PFM Act anchor, PV)'
               />
               <RingGauge
                 value={debtSustainability.debt_service_to_revenue}
@@ -796,7 +799,7 @@ export default function NationalDebtPage() {
                     />
                     <ReferenceLine y={55} stroke='#C94A4A' strokeDasharray='4 4'>
                       <text x='90%' y={-4} fill='#C94A4A' fontSize={10} fontWeight={600}>
-                        IMF 55%
+                        PFM Act 55%
                       </text>
                     </ReferenceLine>
                     <Line

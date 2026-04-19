@@ -19,7 +19,7 @@ const GLOSSARY: Record<string, { title: string; body: string }> = {
   // ── Debt terms ────────────────────────────────────────
   'debt-to-gdp': {
     title: 'Debt-to-GDP Ratio',
-    body: 'This shows the country\'s total debt as a percentage of its annual economic output (GDP). A higher ratio means the country owes more relative to what it earns. The IMF considers 55% a warning threshold for countries like Kenya.',
+    body: 'This shows the country\'s total debt as a percentage of its annual economic output (GDP). A higher ratio means the country owes more relative to what it earns. Kenya\'s PFM Act anchors public debt at 55% of GDP in present-value terms — a ceiling aligned with the IMF\'s LIC-DSF benchmark for medium-capacity performers.',
   },
   'debt-service': {
     title: 'Debt Service Cost',
