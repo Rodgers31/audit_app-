@@ -1,0 +1,131 @@
+{
+  "number": 11,
+  "title": "Devolved Government",
+  "summary": "Chapter 11 created the 47 counties, the structures that govern them, and the principle that service delivery must happen as close to the people as possible.",
+  "articles": [
+    {
+      "number": 174,
+      "title": "Objects of the devolution of government",
+      "paragraphs": [
+        "The objects of the devolution of government are— (a) to promote democratic and accountable exercise of power; (b) to foster national unity by recognising diversity; (c) to give powers of self-governance to the people and enhance the participation of the people in the exercise of the powers of the State and in making decisions affecting them; (d) to recognise the right of communities to manage their own affairs and to further their development; (e) to protect and promote the interests and rights of minorities and marginalised communities; (f) to promote social and economic development and the provision of proximate, easily accessible services throughout Kenya; (g) to ensure equitable sharing of national and local resources throughout Kenya; (h) to facilitate the decentralisation of State organs, their functions and services, from the capital of Kenya; and (i) to enhance checks and balances and the separation of powers."
+      ],
+      "summary": "Devolution is not decoration. Its objects are real: accountability, participation, equitable resource sharing, and services close to every Kenyan.",
+      "explanation": "Every county dashboard on AuditGava is a direct response to Article 174 — devolution without transparency is just decentralised opacity.",
+      "tags": ["devolution", "objects"]
+    },
+    {
+      "number": 175,
+      "title": "Principles of devolved government",
+      "paragraphs": [
+        "County governments established under this Constitution shall reflect the following principles— (a) county governments shall be based on democratic principles and the separation of powers; (b) county governments shall have reliable sources of revenue to enable them to govern and deliver services effectively; and (c) no more than two-thirds of the members of representative bodies in each county government shall be of the same gender."
+      ],
+      "tags": ["devolution", "principles", "gender"]
+    },
+    {
+      "number": 176,
+      "title": "County governments",
+      "paragraphs": [
+        "(1) There shall be a county government for each county, consisting of a county assembly and a county executive.",
+        "(2) Every county government shall decentralise its functions and the provision of its services to the extent that it is efficient and practicable to do so."
+      ],
+      "summary": "Every county has two arms: an assembly (lawmakers) and an executive (doers). They in turn must decentralise further to the sub-counties and wards.",
+      "tags": ["county", "structure"]
+    },
+    {
+      "number": 177,
+      "title": "Membership of the county assembly",
+      "paragraphs": [
+        "(1) A county assembly consists of— (a) members elected by the registered voters of the wards, each ward constituting a single member constituency; (b) the number of special seat members necessary to ensure that no more than two-thirds of the membership of the assembly are of the same gender; (c) the number of members of marginalised groups, including persons with disabilities and the youth, prescribed by an Act of Parliament; and (d) the Speaker, who is an ex officio member.",
+        "(2) The members contemplated in clause (1)(a), (b) and (c) shall be elected on the basis of proportional representation by use of party lists.",
+        "(3) The filling of special seats under clause (1)(b) shall be determined after declaration of elected members from each ward.",
+        "(4) A county assembly is elected for a term of five years."
+      ],
+      "tags": ["assembly", "elections"]
+    },
+    {
+      "number": 179,
+      "title": "County executive committees",
+      "paragraphs": [
+        "(1) The executive authority of the county is vested in, and exercised by, a county executive committee.",
+        "(2) The county executive committee consists of— (a) the county governor and the deputy county governor; and (b) members appointed by the county governor, with the approval of the assembly, from among persons who are not members of the assembly.",
+        "(3) The number of members appointed under clause (2)(b) shall not exceed— (a) one-third of the number of members of the county assembly, if the assembly has less than thirty members; or (b) ten, if the assembly has thirty or more members.",
+        "(4) The county governor and the deputy county governor are the chief executive and deputy chief executive of the county, respectively."
+      ],
+      "tags": ["executive", "governor"]
+    },
+    {
+      "number": 180,
+      "title": "Election of county governors and deputy county governors",
+      "paragraphs": [
+        "(1) The county governor shall be directly elected by the voters registered in the county, on the same day as a general election of Members of Parliament, being the second Tuesday in August, in every fifth year.",
+        "(2) To be eligible for election as county governor, a person must be eligible for election as a member of the county assembly.",
+        "(3) If only one candidate for county governor is nominated, that candidate shall be declared elected.",
+        "(4) If two or more candidates are nominated, an election shall be held in the county and the candidate who receives the greatest number of the votes cast shall be declared elected.",
+        "(5) Each candidate for election as county governor shall nominate a person who is qualified for nomination for election as county governor as a candidate for deputy governor."
+      ],
+      "tags": ["governor", "elections"]
+    },
+    {
+      "number": 185,
+      "title": "Legislative authority of county assemblies",
+      "paragraphs": [
+        "(1) The legislative authority of a county is vested in, and exercised by, its county assembly.",
+        "(2) A county assembly may make any laws that are necessary for, or incidental to, the effective performance of the functions and exercise of the powers of the county government under the Fourth Schedule.",
+        "(3) A county assembly, while respecting the principle of the separation of powers, may exercise oversight over the county executive committee and any other county executive organs.",
+        "(4) A county assembly may receive and approve plans and policies for— (a) the management and exploitation of the county's resources; and (b) the development and management of its infrastructure and institutions."
+      ],
+      "summary": "The county assembly makes county laws and, crucially, watches the county executive.",
+      "explanation": "If a county MCA does not read the audit report, they cannot oversight what they do not see. Article 185 is why county assembly performance matters as much as the governor's.",
+      "tags": ["assembly", "oversight"]
+    },
+    {
+      "number": 186,
+      "title": "Functions and powers of national and county governments",
+      "paragraphs": [
+        "(1) Except as otherwise provided by this Constitution, the functions and powers of the national government and the county governments, respectively, are as set out in the Fourth Schedule.",
+        "(2) A function or power that is conferred on more than one level of government is a function or power within the concurrent jurisdiction of each of those levels of government.",
+        "(3) A function or power not assigned by this Constitution or national legislation to a county is a function or power of the national government.",
+        "(4) For greater certainty, Parliament may legislate for the Republic on any matter."
+      ],
+      "tags": ["functions", "powers", "Fourth-Schedule"]
+    },
+    {
+      "number": 187,
+      "title": "Transfer of functions and powers between levels of government",
+      "paragraphs": [
+        "(1) A function or power of government at one level may be transferred to a government at the other level by agreement between the governments if— (a) the function or power would be more effectively performed or exercised by the receiving government; and (b) the transfer of the function or power is not prohibited by the legislation under which it is to be performed or exercised.",
+        "(2) If a function or power is transferred from a government at one level to a government at the other level— (a) arrangements shall be put in place to ensure that the resources necessary for the performance of the function or exercise of the power are transferred; and (b) constitutional responsibility for the performance of the function or exercise of the power shall remain with the government to which it is assigned by the Fourth Schedule."
+      ],
+      "tags": ["transfer", "functions"]
+    },
+    {
+      "number": 189,
+      "title": "Cooperation between national and county governments",
+      "paragraphs": [
+        "(1) Government at either level shall— (a) perform its functions, and exercise its powers, in a manner that respects the functional and institutional integrity of government at the other level, and respects the constitutional status and institutions of government at the other level; (b) assist, support and consult and, as appropriate, implement the legislation of the other level of government; and (c) liaise with government at the other level for the purpose of exchanging information, coordinating policies and administration and enhancing capacity.",
+        "(2) Government at each level, and different governments at the county level, shall cooperate in the performance of functions and exercise of powers and, for that purpose, may set up joint committees and joint authorities.",
+        "(3) In any dispute between governments, the governments shall make every reasonable effort to settle the dispute, including by means of procedures provided under national legislation."
+      ],
+      "tags": ["cooperation", "intergovernmental"]
+    },
+    {
+      "number": 193,
+      "title": "Qualifications for election as member of county assembly",
+      "paragraphs": [
+        "(1) Unless disqualified under clause (2), a person is eligible for election as a member of a county assembly if the person— (a) is registered as a voter; (b) satisfies any educational, moral and ethical requirements prescribed by this Constitution or by an Act of Parliament; and (c) is either— (i) nominated by a political party; or (ii) an independent candidate supported by at least five hundred registered voters in the ward concerned.",
+        "(2) A person is disqualified from being elected a member of a county assembly if the person— (a) is a State officer or other public officer, other than a member of the county assembly; (b) has, at any time within the five years immediately before the date of election, held office as a member of the Independent Electoral and Boundaries Commission; (c) has not been a citizen of Kenya for at least the ten years immediately preceding the date of election; (d) is of unsound mind; (e) is an undischarged bankrupt; (f) is subject to a sentence of imprisonment of at least six months; or (g) is found, in accordance with any law, to have misused or abused a State office or public office or in any way to have contravened Chapter Six."
+      ],
+      "summary": "Candidates for county assembly must be citizens of at least ten years' standing, of sound mind, not bankrupt, and — crucially — must not have breached Chapter 6.",
+      "tags": ["assembly", "qualifications", "Chapter-6"]
+    },
+    {
+      "number": 200,
+      "title": "Legislation on devolved government",
+      "paragraphs": [
+        "(1) Parliament shall enact legislation providing for all matters necessary or convenient to give effect to this Chapter.",
+        "(2) In particular, the legislation shall provide for— (a) governance at the county level, including the system of governance most appropriate for the administration of areas centred around major cities; (b) the transfer of functions and powers by one level of government to another, including the transfer of legislative powers from the national government to county governments; (c) the manner of election or appointment of persons to, and their removal from, offices in county governments, including the qualifications of voters and candidates; (d) the procedure of assemblies and executive committees including the chairing and frequency of meetings, quorums and voting; and (e) the suspension of assemblies and executive committees."
+      ],
+      "tags": ["legislation", "devolution"]
+    }
+  ]
+}
