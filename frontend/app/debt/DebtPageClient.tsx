@@ -292,7 +292,12 @@ export default function NationalDebtPage() {
     };
   }, [rawPendingBillsSummary]);
 
-  /* ── Normalize sustainability indicators ── */
+  /* ── Normalize sustainability indicators ──
+     The /debt/sustainability endpoint returns two different sets of
+     figures for Kenya (top-level Treasury-based vs. regional_peers
+     IMF-WEO-based). For a coherent on-page comparison, we override
+     the Kenya peer row with the top-level authoritative values so the
+     EAC panel doesn't contradict the sustainability ring gauges. */
   const debtSustainability = useMemo(() => {
     if (!rawDebtSustainability) return null;
     const raw = rawDebtSustainability as any;
@@ -302,18 +307,28 @@ export default function NationalDebtPage() {
       if (typeof field === 'object' && field.value != null) return Number(field.value);
       return null;
     };
+    const topDebtToGdp = extractNum(raw.debt_to_gdp) ?? 0;
+    const topServiceToRev = extractNum(raw.debt_service_to_revenue) ?? 0;
+    const topExternalShare = extractNum(raw.external_debt_share) ?? 0;
     return {
       ...raw,
-      debt_to_gdp: extractNum(raw.debt_to_gdp) ?? 0,
-      debt_service_to_revenue: extractNum(raw.debt_service_to_revenue) ?? 0,
-      external_debt_share: extractNum(raw.external_debt_share) ?? 0,
+      debt_to_gdp: topDebtToGdp,
+      debt_service_to_revenue: topServiceToRev,
+      external_debt_share: topExternalShare,
       projections: raw.projections || [],
-      regional_peers: (raw.regional_peers || []).map((p: any) => ({
-        ...p,
-        debt_to_gdp: extractNum(p.debt_to_gdp) ?? 0,
-        debt_service_to_revenue: extractNum(p.debt_service_to_revenue) ?? 0,
-        external_debt_share: extractNum(p.external_debt_share) ?? 0,
-      })),
+      regional_peers: (raw.regional_peers || []).map((p: any) => {
+        const isKenya = p.country === 'Kenya';
+        return {
+          ...p,
+          debt_to_gdp: isKenya ? topDebtToGdp : extractNum(p.debt_to_gdp) ?? 0,
+          debt_service_to_revenue: isKenya
+            ? topServiceToRev
+            : extractNum(p.debt_service_to_revenue) ?? 0,
+          external_debt_share: isKenya
+            ? topExternalShare
+            : extractNum(p.external_debt_share) ?? 0,
+        };
+      }),
     };
   }, [rawDebtSustainability]);
 
@@ -443,7 +458,13 @@ export default function NationalDebtPage() {
     return { level: 'Low', tone: 'text-gov-sage', bg: 'bg-gov-sage/15', pill: 'pill-safe' };
   }, [d.gdpRatio]);
 
-  /* ── Debt service allocation (KES 100 breakdown) ── */
+  /* ── Revenue allocation (per KES 100 of revenue — authoritative) ──
+     Uses backend's debt_service_per_shilling (Treasury figure).
+     Framed as "per 100 of revenue" because:
+       – Revenue doesn't fund the whole budget (borrowing covers the gap)
+       – Debt service is a first-call charge BEFORE anything else
+       – Revenue-based framing lets citizens see how much of their taxes
+         the debt actually consumes before a single school is funded. */
   const taxAllocation = useMemo(() => {
     if (!fiscal?.current) return null;
     const c: any = fiscal.current;
@@ -453,16 +474,35 @@ export default function NationalDebtPage() {
     const rec = Math.max((c.recurrent_spending || 0) - ds, 0);
     const dev = c.development_spending || 0;
     const counties = c.county_allocation || 0;
-    const total = ds + rec + dev + counties;
-    const scale = total > 0 ? 100 / total : 0;
+    const budget = c.appropriated_budget || ds + rec + dev + counties;
+    const borrowing = Math.max(budget - rev, 0);
+
+    // Authoritative: use backend-provided debt_service_per_shilling where available.
+    const debtServicePerRev =
+      c.debt_service_per_shilling != null
+        ? c.debt_service_per_shilling
+        : rev > 0
+          ? (ds / rev) * 100
+          : 0;
+
+    const recPerRev = rev > 0 ? (rec / rev) * 100 : 0;
+    const devPerRev = rev > 0 ? (dev / rev) * 100 : 0;
+    const countiesPerRev = rev > 0 ? (counties / rev) * 100 : 0;
+    const allocatedPerRev =
+      debtServicePerRev + recPerRev + devPerRev + countiesPerRev;
+    const borrowingPerRev = Math.max(allocatedPerRev - 100, 0);
+
     return {
-      debtService: ds * scale,
-      recurrent: rec * scale,
-      development: dev * scale,
-      counties: counties * scale,
       rev,
+      budget,
       ds,
-      debtServicePct: rev > 0 ? (ds / rev) * 100 : 0,
+      borrowing,
+      debtServicePerRev, // e.g. 47.7
+      recPerRev,
+      devPerRev,
+      countiesPerRev,
+      borrowingPerRev, // how much extra per 100 of rev is funded by borrowing
+      fiscalYear: c.fiscal_year,
     };
   }, [fiscal]);
 
@@ -776,7 +816,7 @@ export default function NationalDebtPage() {
         </motion.section>
       )}
 
-      {/* ═══════════ SECTION 6 — TAX SHILLING ALLOCATION ═══════════ */}
+      {/* ═══════════ SECTION 6 — REVENUE ALLOCATION ═══════════ */}
       {taxAllocation && (
         <motion.section
           initial={{ opacity: 0, y: 20 }}
@@ -787,70 +827,193 @@ export default function NationalDebtPage() {
           <div>
             <h2 className='font-display text-2xl sm:text-3xl text-gov-dark flex items-center gap-2'>
               <CircleDollarSign className='text-gov-forest' size={24} />
-              Where every KES 100 of tax goes
+              Where every KES 100 of revenue goes
             </h2>
             <p className='text-sm text-neutral-muted mt-1'>
-              How each shilling of revenue is spent — debt service comes{' '}
-              <span className='font-semibold text-gov-copper'>first</span> by law before anything
-              else.
+              Kenya&rsquo;s revenue ({taxAllocation.fiscalYear}) doesn&rsquo;t cover the whole
+              budget — debt service is a <span className='font-semibold text-gov-copper'>first-call
+              charge</span>, paid before anything else. What&rsquo;s left funds the rest; the
+              shortfall is borrowed.
             </p>
           </div>
-          <div className='rounded-xl bg-white/70 border border-white/70 shadow-surface p-5'>
-            <div className='flex items-baseline gap-3 mb-4'>
-              <div>
-                <div className='text-[11px] uppercase tracking-wider text-neutral-muted'>
-                  Debt service eats
+
+          <div className='rounded-2xl bg-white border border-neutral-border/40 shadow-surface overflow-hidden'>
+            {/* Headline row */}
+            <div className='grid grid-cols-1 lg:grid-cols-[1.1fr_1.4fr]'>
+              {/* Left: dramatic headline */}
+              <div className='relative p-6 sm:p-8 bg-gradient-to-br from-gov-copper/12 via-gov-copper/6 to-white border-b lg:border-b-0 lg:border-r border-neutral-border/40'>
+                <div className='text-[11px] uppercase tracking-[0.2em] font-semibold text-gov-copper mb-2'>
+                  Debt service takes
                 </div>
-                <div className='metric-large text-gov-copper'>
-                  KES {taxAllocation.debtService.toFixed(0)}
+                <div className='flex items-baseline gap-2 leading-none'>
+                  <span className='text-[64px] sm:text-[88px] font-extrabold text-gov-copper tabular-nums tracking-tight'>
+                    {taxAllocation.debtServicePerRev.toFixed(0)}
+                  </span>
+                  <span className='text-2xl sm:text-3xl font-bold text-gov-copper/70'>KES</span>
                 </div>
-                <div className='text-[11px] text-neutral-muted'>
-                  out of every KES 100 in spending
+                <div className='text-sm text-gov-dark font-medium mt-2'>
+                  out of every <span className='font-bold'>KES 100</span> collected in tax &amp; non-tax revenue
+                </div>
+                <div className='mt-4 flex items-center gap-2 text-xs text-neutral-muted'>
+                  <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gov-copper/10 text-gov-copper font-semibold'>
+                    <AlertTriangle size={12} />
+                    Above IMF 30% ceiling
+                  </span>
+                </div>
+                <p className='text-[11px] text-neutral-muted mt-3 leading-relaxed max-w-sm'>
+                  Source: National Treasury Budget Policy Statement {taxAllocation.fiscalYear}.
+                  Includes interest + principal redemption on Consolidated Fund Services.
+                </p>
+              </div>
+
+              {/* Right: coin split visual */}
+              <div className='p-6 sm:p-8'>
+                <div className='text-[11px] uppercase tracking-[0.2em] font-semibold text-neutral-muted mb-4'>
+                  Your 100-shilling coin, split
+                </div>
+
+                {/* 10 coins grid — each coin = 10% */}
+                <div className='flex flex-wrap gap-1.5 mb-4'>
+                  {Array.from({ length: 10 }).map((_, i) => {
+                    const filledPct = Math.min(
+                      10,
+                      Math.max(0, taxAllocation.debtServicePerRev - i * 10)
+                    );
+                    const partial = filledPct / 10;
+                    return (
+                      <motion.div
+                        key={i}
+                        initial={{ scale: 0, opacity: 0 }}
+                        whileInView={{ scale: 1, opacity: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: i * 0.04, duration: 0.3 }}
+                        className='relative w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-gov-copper/30 bg-gov-cream overflow-hidden flex items-center justify-center shadow-sm'>
+                        {/* Filled portion for debt service */}
+                        <div
+                          className='absolute inset-0 bg-gradient-to-br from-gov-copper to-[#8C2E2E]'
+                          style={{
+                            clipPath: `inset(${100 - partial * 100}% 0 0 0)`,
+                          }}
+                        />
+                        <span
+                          className={`relative text-[10px] sm:text-xs font-bold ${
+                            partial > 0.5 ? 'text-white' : 'text-gov-copper'
+                          }`}>
+                          {i * 10 + 10}
+                        </span>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+
+                <div className='flex items-center gap-2 text-[11px]'>
+                  <span className='inline-block w-3 h-3 rounded-full bg-gov-copper' />
+                  <span className='text-neutral-muted'>
+                    Filled = shillings lost to debt service before anything else is funded
+                  </span>
                 </div>
               </div>
             </div>
-            <div className='flex w-full h-12 rounded-lg overflow-hidden border border-neutral-border/40'>
-              <div
-                className='flex items-center justify-center bg-gov-copper text-white text-xs font-bold'
-                style={{ width: `${taxAllocation.debtService}%` }}
-                title={`Debt service: KES ${taxAllocation.debtService.toFixed(1)}`}>
-                {taxAllocation.debtService > 8 ? `${taxAllocation.debtService.toFixed(0)}%` : ''}
+
+            {/* Breakdown bar */}
+            <div className='px-6 sm:px-8 pb-6 sm:pb-8 pt-4 border-t border-neutral-border/30'>
+              <div className='flex items-center justify-between mb-2'>
+                <span className='text-xs font-semibold text-gov-dark'>
+                  Full allocation per KES 100 of revenue
+                </span>
+                <span className='text-[11px] text-neutral-muted'>
+                  Sum exceeds 100 — shortfall funded by borrowing
+                </span>
               </div>
-              <div
-                className='flex items-center justify-center bg-gov-forest text-white text-xs font-bold'
-                style={{ width: `${taxAllocation.recurrent}%` }}
-                title={`Recurrent: KES ${taxAllocation.recurrent.toFixed(1)}`}>
-                {taxAllocation.recurrent > 8 ? `${taxAllocation.recurrent.toFixed(0)}%` : ''}
+              <div className='flex w-full h-10 rounded-lg overflow-hidden shadow-sm border border-neutral-border/30'>
+                {[
+                  {
+                    key: 'ds',
+                    val: taxAllocation.debtServicePerRev,
+                    color: 'bg-gov-copper',
+                    label: 'Debt service',
+                  },
+                  {
+                    key: 'rec',
+                    val: taxAllocation.recPerRev,
+                    color: 'bg-gov-forest',
+                    label: 'Recurrent',
+                  },
+                  {
+                    key: 'dev',
+                    val: taxAllocation.devPerRev,
+                    color: 'bg-gov-sage',
+                    label: 'Development',
+                  },
+                  {
+                    key: 'counties',
+                    val: taxAllocation.countiesPerRev,
+                    color: 'bg-gov-gold',
+                    label: 'Counties',
+                  },
+                ].map((seg) => {
+                  const sumAllocated =
+                    taxAllocation.debtServicePerRev +
+                    taxAllocation.recPerRev +
+                    taxAllocation.devPerRev +
+                    taxAllocation.countiesPerRev +
+                    taxAllocation.borrowingPerRev;
+                  const w = sumAllocated > 0 ? (seg.val / sumAllocated) * 100 : 0;
+                  return (
+                    <div
+                      key={seg.key}
+                      className={`${seg.color} flex items-center justify-center text-white text-[11px] font-bold`}
+                      style={{ width: `${w}%` }}
+                      title={`${seg.label}: KES ${seg.val.toFixed(1)} per 100 of revenue`}>
+                      {w > 10 ? `${seg.val.toFixed(0)}` : ''}
+                    </div>
+                  );
+                })}
+                {taxAllocation.borrowingPerRev > 0 && (
+                  <div
+                    className='bg-neutral-muted/30 flex items-center justify-center text-gov-dark text-[11px] font-bold border-l-2 border-dashed border-gov-copper/40'
+                    style={{
+                      width: `${
+                        (taxAllocation.borrowingPerRev /
+                          (taxAllocation.debtServicePerRev +
+                            taxAllocation.recPerRev +
+                            taxAllocation.devPerRev +
+                            taxAllocation.countiesPerRev +
+                            taxAllocation.borrowingPerRev)) *
+                        100
+                      }%`,
+                    }}
+                    title={`Borrowing: KES ${taxAllocation.borrowingPerRev.toFixed(1)} per 100 of revenue`}>
+                    {taxAllocation.borrowingPerRev > 10
+                      ? `+${taxAllocation.borrowingPerRev.toFixed(0)}`
+                      : '+'}
+                  </div>
+                )}
               </div>
-              <div
-                className='flex items-center justify-center bg-gov-sage text-white text-xs font-bold'
-                style={{ width: `${taxAllocation.development}%` }}
-                title={`Development: KES ${taxAllocation.development.toFixed(1)}`}>
-                {taxAllocation.development > 8 ? `${taxAllocation.development.toFixed(0)}%` : ''}
-              </div>
-              <div
-                className='flex items-center justify-center bg-gov-gold text-white text-xs font-bold'
-                style={{ width: `${taxAllocation.counties}%` }}
-                title={`Counties: KES ${taxAllocation.counties.toFixed(1)}`}>
-                {taxAllocation.counties > 8 ? `${taxAllocation.counties.toFixed(0)}%` : ''}
-              </div>
-            </div>
-            <div className='grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 text-[11px]'>
-              <div className='flex items-center gap-1.5'>
-                <span className='w-2.5 h-2.5 rounded-sm bg-gov-copper' />
-                <span className='text-neutral-muted'>Debt service</span>
-              </div>
-              <div className='flex items-center gap-1.5'>
-                <span className='w-2.5 h-2.5 rounded-sm bg-gov-forest' />
-                <span className='text-neutral-muted'>Recurrent (salaries, ops)</span>
-              </div>
-              <div className='flex items-center gap-1.5'>
-                <span className='w-2.5 h-2.5 rounded-sm bg-gov-sage' />
-                <span className='text-neutral-muted'>Development</span>
-              </div>
-              <div className='flex items-center gap-1.5'>
-                <span className='w-2.5 h-2.5 rounded-sm bg-gov-gold' />
-                <span className='text-neutral-muted'>Counties</span>
+              <div className='grid grid-cols-2 sm:grid-cols-5 gap-x-3 gap-y-1.5 mt-3 text-[11px]'>
+                {[
+                  { color: 'bg-gov-copper', label: 'Debt service', val: taxAllocation.debtServicePerRev },
+                  { color: 'bg-gov-forest', label: 'Recurrent', val: taxAllocation.recPerRev },
+                  { color: 'bg-gov-sage', label: 'Development', val: taxAllocation.devPerRev },
+                  { color: 'bg-gov-gold', label: 'Counties', val: taxAllocation.countiesPerRev },
+                  ...(taxAllocation.borrowingPerRev > 0
+                    ? [
+                        {
+                          color: 'bg-neutral-muted/30',
+                          label: 'Borrowing (shortfall)',
+                          val: taxAllocation.borrowingPerRev,
+                        },
+                      ]
+                    : []),
+                ].map((row) => (
+                  <div key={row.label} className='flex items-center gap-1.5'>
+                    <span className={`w-2.5 h-2.5 rounded-sm ${row.color}`} />
+                    <span className='text-neutral-muted truncate'>{row.label}</span>
+                    <span className='ml-auto font-bold text-gov-dark tabular-nums'>
+                      {row.val.toFixed(0)}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -858,165 +1021,238 @@ export default function NationalDebtPage() {
       )}
 
       {/* ═══════════ SECTION 7 — PENDING BILLS AGING ═══════════ */}
-      {pb && (
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.5 }}
-          className='space-y-4'>
-          <div className='flex flex-wrap items-start justify-between gap-3'>
-            <div>
-              <h2 className='font-display text-2xl sm:text-3xl text-gov-dark flex items-center gap-2'>
-                <FileWarning className='text-gov-forest' size={24} />
-                Stalled payments
-                <InfoTip term='pending-bills' size={14} />
-              </h2>
-              <p className='text-sm text-neutral-muted mt-1'>
-                Money already owed to suppliers, contractors and staff — but not yet paid. Older
-                bills are a signal of cashflow distress.
-              </p>
+      {pb && (() => {
+        const nationalPct = pb.total > 0 ? (pb.national / pb.total) * 100 : 0;
+        const countyPct = pb.total > 0 ? (pb.county / pb.total) * 100 : 0;
+        const buckets = pendingBillsSummary?.aging_buckets || [];
+        const bucketsWithData = buckets.filter((b: any) => (b.amount || 0) > 0);
+        const agingIsDegenerate =
+          bucketsWithData.length === 1 && bucketsWithData[0].bucket?.includes('180');
+        return (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.5 }}
+            className='space-y-4'>
+            <div className='flex flex-wrap items-start justify-between gap-3'>
+              <div>
+                <h2 className='font-display text-2xl sm:text-3xl text-gov-dark flex items-center gap-2'>
+                  <FileWarning className='text-gov-forest' size={24} />
+                  Stalled payments
+                  <InfoTip term='pending-bills' size={14} />
+                </h2>
+                <p className='text-sm text-neutral-muted mt-1'>
+                  Money already owed to suppliers, contractors and staff — but not yet paid. Older
+                  bills are a signal of cashflow distress.
+                </p>
+              </div>
+              <div className='inline-flex rounded-lg bg-white border border-neutral-border/40 p-1 shadow-sm'>
+                <button
+                  onClick={() => setPbView('national')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                    pbView === 'national' ? 'bg-gov-dark text-white' : 'text-gov-dark hover:bg-neutral-border/30'
+                  }`}>
+                  National
+                </button>
+                <button
+                  onClick={() => setPbView('counties')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                    pbView === 'counties' ? 'bg-gov-dark text-white' : 'text-gov-dark hover:bg-neutral-border/30'
+                  }`}>
+                  Counties
+                </button>
+              </div>
             </div>
-            <div className='inline-flex rounded-lg bg-white/70 border border-white/70 p-1'>
-              <button
-                onClick={() => setPbView('national')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                  pbView === 'national' ? 'bg-gov-dark text-white' : 'text-gov-dark hover:bg-white'
-                }`}>
-                National
-              </button>
-              <button
-                onClick={() => setPbView('counties')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                  pbView === 'counties' ? 'bg-gov-dark text-white' : 'text-gov-dark hover:bg-white'
-                }`}>
-                Counties
-              </button>
-            </div>
-          </div>
 
-          <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
-            <div className='rounded-xl bg-gov-copper/10 border border-gov-copper/30 p-4'>
-              <div className='text-[10px] uppercase tracking-wider text-gov-copper font-semibold'>
-                Total stalled
-              </div>
-              <div className='metric-medium text-gov-dark'>{fmtKES(pb.total)}</div>
-            </div>
-            <div className='rounded-xl bg-white/70 border border-white/70 p-4'>
-              <div className='text-[10px] uppercase tracking-wider text-neutral-muted font-semibold'>
-                National
-              </div>
-              <div className='metric-medium text-gov-dark'>{fmtKES(pb.national)}</div>
-            </div>
-            <div className='rounded-xl bg-white/70 border border-white/70 p-4'>
-              <div className='text-[10px] uppercase tracking-wider text-neutral-muted font-semibold'>
-                Counties
-              </div>
-              <div className='metric-medium text-gov-dark'>{fmtKES(pb.county)}</div>
-            </div>
-            <div className='rounded-xl bg-white/70 border border-white/70 p-4'>
-              <div className='text-[10px] uppercase tracking-wider text-neutral-muted font-semibold'>
-                Entities affected
-              </div>
-              <div className='metric-medium text-gov-dark'>{pb.count.toLocaleString()}</div>
-            </div>
-          </div>
+            {/* Unified hero card with total + split + entities */}
+            <div className='rounded-2xl bg-white border border-neutral-border/40 shadow-surface overflow-hidden'>
+              <div className='grid grid-cols-1 lg:grid-cols-[1.1fr_1.5fr]'>
+                {/* Big total */}
+                <div className='relative p-6 sm:p-8 bg-gradient-to-br from-gov-copper/10 via-gov-copper/4 to-white border-b lg:border-b-0 lg:border-r border-neutral-border/40'>
+                  <div className='text-[11px] uppercase tracking-[0.2em] font-semibold text-gov-copper mb-2'>
+                    Total money owed, unpaid
+                  </div>
+                  <div className='text-4xl sm:text-5xl font-extrabold text-gov-dark tabular-nums tracking-tight leading-none'>
+                    {fmtKES(pb.total)}
+                  </div>
+                  <div className='mt-3 flex items-center gap-2 text-xs text-neutral-muted'>
+                    <Users size={14} />
+                    <span>
+                      Across{' '}
+                      <span className='font-bold text-gov-dark tabular-nums'>
+                        {pb.count.toLocaleString()}
+                      </span>{' '}
+                      ministries, agencies &amp; counties
+                    </span>
+                  </div>
+                </div>
 
-          {pendingBillsSummary?.aging_buckets?.length > 0 && (
-            <div className='rounded-xl bg-white/70 border border-white/70 shadow-surface p-5'>
-              <h3 className='text-sm font-semibold text-gov-dark mb-3'>
-                Aging — how long bills have gone unpaid
-              </h3>
-              <ResponsiveContainer width='100%' height={220}>
-                <BarChart
-                  data={pendingBillsSummary.aging_buckets}
-                  margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
-                  <defs>
-                    <linearGradient id='agingGrad0' x1='0' y1='0' x2='0' y2='1'>
-                      <stop offset='0%' stopColor='#4A7C5C' stopOpacity={0.95} />
-                      <stop offset='100%' stopColor='#2E5A3E' />
-                    </linearGradient>
-                    <linearGradient id='agingGrad1' x1='0' y1='0' x2='0' y2='1'>
-                      <stop offset='0%' stopColor='#D9A441' stopOpacity={0.95} />
-                      <stop offset='100%' stopColor='#BA8B33' />
-                    </linearGradient>
-                    <linearGradient id='agingGrad2' x1='0' y1='0' x2='0' y2='1'>
-                      <stop offset='0%' stopColor='#E07B45' stopOpacity={0.95} />
-                      <stop offset='100%' stopColor='#B05A2F' />
-                    </linearGradient>
-                    <linearGradient id='agingGrad3' x1='0' y1='0' x2='0' y2='1'>
-                      <stop offset='0%' stopColor='#C94A4A' stopOpacity={0.95} />
-                      <stop offset='100%' stopColor='#8C2E2E' />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray='3 3' stroke='#E2DDD5' vertical={false} />
-                  <XAxis dataKey='bucket' tick={{ fill: '#6B7280', fontSize: 11 }} tickLine={false} />
-                  <YAxis
-                    tickFormatter={(v) => fmtT(v)}
-                    tick={{ fill: '#6B7280', fontSize: 11 }}
-                    tickLine={false}
-                    width={60}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: 'rgba(255,255,255,0.95)',
-                      border: '1px solid rgba(226,221,213,0.4)',
-                      borderRadius: 12,
-                      fontSize: 12,
-                    }}
-                    formatter={(v: any) => fmtKES(Number(v))}
-                  />
-                  <Bar dataKey='amount' radius={[6, 6, 0, 0]}>
-                    {pendingBillsSummary.aging_buckets.map((b: any, i: number) => (
-                      <Cell key={b.bucket} fill={`url(#agingGrad${Math.min(i, 3)})`} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-              <p className='text-[11px] text-neutral-muted mt-2'>
-                Bills older than 180 days are often referred to the Pending Bills Verification
-                Committee — shown in deep copper.
-              </p>
-            </div>
-          )}
-
-          {pbView === 'counties' && pendingBillsSummary?.top_counties_by_amount?.length > 0 && (
-            <div className='rounded-xl bg-white/70 border border-white/70 shadow-surface p-5'>
-              <h3 className='text-sm font-semibold text-gov-dark mb-3'>
-                Top counties by stalled payments
-              </h3>
-              <div className='space-y-2'>
-                {pendingBillsSummary.top_counties_by_amount.slice(0, 8).map((c: any, i: number) => {
-                  const max = pendingBillsSummary.top_counties_by_amount[0]?.amount || 1;
-                  const w = (c.amount / max) * 100;
-                  return (
-                    <div key={c.county_id || c.county_name} className='flex items-center gap-3'>
-                      <span className='text-[11px] text-neutral-muted font-bold w-5'>
-                        {i + 1}
-                      </span>
-                      <span className='text-xs font-medium text-gov-dark w-28 truncate'>
-                        {c.county_name}
-                      </span>
-                      <div className='flex-1 h-4 bg-neutral-border/20 rounded-full overflow-hidden'>
-                        <motion.div
-                          initial={{ width: 0 }}
-                          whileInView={{ width: `${w}%` }}
-                          viewport={{ once: true }}
-                          transition={{ duration: 0.8, delay: i * 0.05 }}
-                          className='h-full rounded-full bg-gradient-to-r from-gov-copper/80 to-gov-copper'
-                        />
-                      </div>
-                      <span className='text-xs font-bold text-gov-dark tabular-nums w-20 text-right'>
-                        {fmtT(c.amount)}
-                      </span>
+                {/* Split gauge */}
+                <div className='p-6 sm:p-8'>
+                  <div className='text-[11px] uppercase tracking-[0.2em] font-semibold text-neutral-muted mb-3'>
+                    National vs. counties
+                  </div>
+                  <div className='flex w-full h-10 rounded-lg overflow-hidden shadow-sm border border-neutral-border/30 mb-3'>
+                    <div
+                      className='bg-gov-copper flex items-center justify-center text-white text-xs font-bold'
+                      style={{ width: `${nationalPct}%` }}
+                      title={`National: ${fmtKES(pb.national)} (${nationalPct.toFixed(0)}%)`}>
+                      {nationalPct > 15 ? `${nationalPct.toFixed(0)}%` : ''}
                     </div>
-                  );
-                })}
+                    <div
+                      className='bg-gov-gold flex items-center justify-center text-white text-xs font-bold'
+                      style={{ width: `${countyPct}%` }}
+                      title={`Counties: ${fmtKES(pb.county)} (${countyPct.toFixed(0)}%)`}>
+                      {countyPct > 15 ? `${countyPct.toFixed(0)}%` : ''}
+                    </div>
+                  </div>
+                  <div className='grid grid-cols-2 gap-3'>
+                    <div className='flex items-start gap-2.5'>
+                      <span className='w-2.5 h-2.5 rounded-sm bg-gov-copper mt-1.5 flex-shrink-0' />
+                      <div>
+                        <div className='text-[10px] uppercase tracking-wider text-neutral-muted font-semibold'>
+                          National
+                        </div>
+                        <div className='text-xl font-bold text-gov-dark tabular-nums'>
+                          {fmtKES(pb.national)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className='flex items-start gap-2.5'>
+                      <span className='w-2.5 h-2.5 rounded-sm bg-gov-gold mt-1.5 flex-shrink-0' />
+                      <div>
+                        <div className='text-[10px] uppercase tracking-wider text-neutral-muted font-semibold'>
+                          Counties
+                        </div>
+                        <div className='text-xl font-bold text-gov-dark tabular-nums'>
+                          {fmtKES(pb.county)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          )}
-        </motion.section>
-      )}
+
+            {bucketsWithData.length > 0 && (
+              <div className='rounded-2xl bg-white border border-neutral-border/40 shadow-surface p-5 sm:p-6'>
+                <div className='flex items-start justify-between gap-3 mb-4'>
+                  <div>
+                    <h3 className='text-sm font-semibold text-gov-dark'>
+                      Aging — how long bills have gone unpaid
+                    </h3>
+                    <p className='text-[11px] text-neutral-muted mt-0.5'>
+                      Bills older than 180 days are referred to the Pending Bills Verification Committee.
+                    </p>
+                  </div>
+                </div>
+                <ResponsiveContainer width='100%' height={220}>
+                  <BarChart
+                    data={buckets}
+                    margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                    <defs>
+                      <linearGradient id='agingGrad0' x1='0' y1='0' x2='0' y2='1'>
+                        <stop offset='0%' stopColor='#4A7C5C' stopOpacity={0.95} />
+                        <stop offset='100%' stopColor='#2E5A3E' />
+                      </linearGradient>
+                      <linearGradient id='agingGrad1' x1='0' y1='0' x2='0' y2='1'>
+                        <stop offset='0%' stopColor='#D9A441' stopOpacity={0.95} />
+                        <stop offset='100%' stopColor='#BA8B33' />
+                      </linearGradient>
+                      <linearGradient id='agingGrad2' x1='0' y1='0' x2='0' y2='1'>
+                        <stop offset='0%' stopColor='#E07B45' stopOpacity={0.95} />
+                        <stop offset='100%' stopColor='#B05A2F' />
+                      </linearGradient>
+                      <linearGradient id='agingGrad3' x1='0' y1='0' x2='0' y2='1'>
+                        <stop offset='0%' stopColor='#C94A4A' stopOpacity={0.95} />
+                        <stop offset='100%' stopColor='#8C2E2E' />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray='3 3' stroke='#E2DDD5' vertical={false} />
+                    <XAxis dataKey='bucket' tick={{ fill: '#4B5563', fontSize: 12, fontWeight: 500 }} tickLine={false} axisLine={{ stroke: '#E2DDD5' }} />
+                    <YAxis
+                      tickFormatter={(v) => fmtT(v)}
+                      tick={{ fill: '#4B5563', fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={{ stroke: '#E2DDD5' }}
+                      width={60}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: '#ffffff',
+                        border: '1px solid rgba(226,221,213,0.8)',
+                        borderRadius: 12,
+                        fontSize: 12,
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                      }}
+                      formatter={(v: any) => fmtKES(Number(v))}
+                    />
+                    <Bar dataKey='amount' radius={[6, 6, 0, 0]}>
+                      {buckets.map((b: any, i: number) => (
+                        <Cell key={b.bucket} fill={`url(#agingGrad${Math.min(i, 3)})`} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                {agingIsDegenerate && (
+                  <div className='mt-3 flex items-start gap-2 text-[11px] text-neutral-muted bg-gov-gold/8 border border-gov-gold/25 rounded-lg px-3 py-2'>
+                    <AlertTriangle size={14} className='text-gov-gold flex-shrink-0 mt-0.5' />
+                    <span>
+                      <span className='font-semibold text-gov-dark'>Data quality note:</span> The
+                      backend currently derives aging from the loans table, where all entries are
+                      flagged as 180d+. A richer breakdown will appear once the pending_bills seed
+                      lands.
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {pbView === 'counties' && pendingBillsSummary?.top_counties_by_amount?.length > 0 && (
+              <div className='rounded-2xl bg-white border border-neutral-border/40 shadow-surface p-5 sm:p-6'>
+                <h3 className='text-sm font-semibold text-gov-dark mb-4'>
+                  Top counties by stalled payments
+                </h3>
+                <div className='space-y-2.5'>
+                  {pendingBillsSummary.top_counties_by_amount
+                    .filter((c: any) => c.county_name !== 'National Government')
+                    .slice(0, 8)
+                    .map((c: any, i: number) => {
+                      const filtered = pendingBillsSummary.top_counties_by_amount.filter(
+                        (x: any) => x.county_name !== 'National Government'
+                      );
+                      const max = filtered[0]?.amount || 1;
+                      const w = (c.amount / max) * 100;
+                      return (
+                        <div key={c.county_id || c.county_name} className='flex items-center gap-3'>
+                          <span className='text-[11px] text-neutral-muted font-bold w-5 text-right tabular-nums'>
+                            {i + 1}
+                          </span>
+                          <span className='text-xs font-medium text-gov-dark w-32 truncate flex-shrink-0'>
+                            {c.county_name}
+                          </span>
+                          <div className='flex-1 h-5 bg-neutral-border/20 rounded-md overflow-hidden'>
+                            <motion.div
+                              initial={{ width: 0 }}
+                              whileInView={{ width: `${w}%` }}
+                              viewport={{ once: true }}
+                              transition={{ duration: 0.8, delay: i * 0.05 }}
+                              className='h-full rounded-md bg-gradient-to-r from-gov-copper/80 to-gov-copper'
+                            />
+                          </div>
+                          <span className='text-xs font-bold text-gov-dark tabular-nums w-20 text-right'>
+                            {fmtT(c.amount)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </motion.section>
+        );
+      })()}
 
       {/* ═══════════ SECTION 8 — DEBT SERVICE TREND ═══════════ */}
       {fiscal?.years && fiscal.years.length > 1 && (
