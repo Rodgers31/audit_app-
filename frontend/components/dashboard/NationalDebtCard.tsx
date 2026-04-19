@@ -344,7 +344,7 @@ export default function NationalDebtCard() {
           <InsightPill
             icon='🇰🇪'
             title={`KES ${debtServiceRatio} cents`}
-            desc='of every tax shilling goes to debt service'
+            desc='of every shilling of revenue goes to debt service'
           />
           <InsightPill
             icon='📊'
