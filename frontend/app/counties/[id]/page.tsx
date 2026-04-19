@@ -36,18 +36,7 @@ import {
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 
 /* ═══════════ Utilities ═══════════ */
 function fmtKES(n: number): string {
@@ -55,11 +44,6 @@ function fmtKES(n: number): string {
   if (n >= 1e6) return `KES ${(n / 1e6).toFixed(1)}M`;
   if (n >= 1e3) return `KES ${(n / 1e3).toFixed(0)}K`;
   return `KES ${n.toLocaleString()}`;
-}
-function fmtShort(n: number): string {
-  if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
-  if (n >= 1e6) return `${(n / 1e6).toFixed(0)}M`;
-  return n.toLocaleString();
 }
 function fmtPop(n: number): string {
   if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
@@ -684,6 +668,7 @@ function OverviewTab({ data }: { data: CountyComprehensive }) {
 function BudgetTab({ data }: { data: CountyComprehensive }) {
   const { budget, debt } = data;
   const { data: countyPendingBills } = useCountyPendingBills(data.id.toString());
+  const [activeSector, setActiveSector] = useState<string | null>(null);
 
   const sectors = useMemo(
     () =>
@@ -700,7 +685,25 @@ function BudgetTab({ data }: { data: CountyComprehensive }) {
     [budget.sector_breakdown]
   );
 
-  const pieData = sectors.map((s) => ({ name: s.name, value: s.allocated, fill: s.fill }));
+  const totalSectorAlloc = sectors.reduce((sum, s) => sum + s.allocated, 0);
+  const totalSectorSpent = sectors.reduce((sum, s) => sum + s.spent, 0);
+  const topSector = sectors[0];
+  const active = activeSector
+    ? sectors.find((s) => s.fullName === activeSector) || null
+    : null;
+  const displayed = active || topSector || null;
+  const displayedPct = displayed && totalSectorAlloc > 0
+    ? (displayed.allocated / totalSectorAlloc) * 100
+    : 0;
+  const displayedUtil = displayed && displayed.allocated > 0
+    ? (displayed.spent / displayed.allocated) * 100
+    : 0;
+  const pieData = sectors.map((s) => ({
+    name: s.name,
+    fullName: s.fullName,
+    value: s.allocated,
+    fill: s.fill,
+  }));
 
   return (
     <div className='space-y-5'>
@@ -734,84 +737,199 @@ function BudgetTab({ data }: { data: CountyComprehensive }) {
         </div>
       </div>
 
-      {/* Sector charts */}
-      <div className='grid grid-cols-1 lg:grid-cols-5 gap-4'>
-        {/* Bar chart: 3/5 */}
-        <div className='lg:col-span-3 bg-white rounded-xl border border-gray-100 p-5'>
-          <h3 className='text-sm font-semibold text-gray-800 mb-3'>Sector Spending</h3>
-          <div className='h-[340px]'>
-            <ResponsiveContainer width='100%' height='100%'>
-              <BarChart
-                data={sectors}
-                layout='vertical'
-                margin={{ left: 5, right: 15, top: 5, bottom: 5 }}>
-                <CartesianGrid strokeDasharray='3 3' stroke='#f3f4f6' />
-                <XAxis type='number' tickFormatter={(v) => fmtShort(v)} tick={{ fontSize: 10 }} />
-                <YAxis type='category' dataKey='name' width={115} tick={{ fontSize: 11 }} />
-                <Tooltip
-                  formatter={(v: number, name: string) => [
-                    fmtKES(v),
-                    name === 'allocated' ? 'Allocated' : 'Spent',
-                  ]}
-                  contentStyle={{ borderRadius: 10, border: '1px solid #e5e7eb', fontSize: 12 }}
-                />
-                <Bar
-                  dataKey='allocated'
-                  fill='#3b82f6'
-                  radius={[0, 3, 3, 0]}
-                  name='Allocated'
-                  barSize={12}
-                />
-                <Bar
-                  dataKey='spent'
-                  fill='#22c55e'
-                  radius={[0, 3, 3, 0]}
-                  name='Spent'
-                  barSize={12}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      {/* Sector spending — editorial donut + ranked list */}
+      {sectors.length > 0 && (
+        <div className='relative overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-white via-white to-gov-sage/5'>
+          {/* Ambient color wash from top sector */}
+          <div
+            aria-hidden
+            className='absolute -top-20 -right-20 w-64 h-64 rounded-full blur-3xl opacity-20'
+            style={{ backgroundColor: displayed?.fill || '#3b82f6' }}
+          />
 
-        {/* Pie chart: 2/5 */}
-        <div className='lg:col-span-2 bg-white rounded-xl border border-gray-100 p-5'>
-          <h3 className='text-sm font-semibold text-gray-800 mb-3'>Distribution</h3>
-          <div className='h-[300px]'>
-            <ResponsiveContainer width='100%' height='100%'>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  dataKey='value'
-                  nameKey='name'
-                  cx='50%'
-                  cy='50%'
-                  outerRadius={100}
-                  innerRadius={48}
-                  paddingAngle={1.5}
-                  strokeWidth={1}>
-                  {pieData.map((e, i) => (
-                    <Cell key={i} fill={e.fill} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(v: number) => fmtKES(v)}
-                  contentStyle={{ borderRadius: 10, fontSize: 12 }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          {/* Legend */}
-          <div className='flex flex-wrap gap-x-3 gap-y-1 mt-2'>
-            {sectors.slice(0, 6).map((s) => (
-              <div key={s.name} className='flex items-center gap-1'>
-                <div className='w-2 h-2 rounded-full' style={{ backgroundColor: s.fill }} />
-                <span className='text-[10px] text-gray-600'>{s.name}</span>
+          {/* Header */}
+          <div className='relative flex items-start justify-between gap-4 px-5 pt-5 pb-2'>
+            <div>
+              <div className='flex items-center gap-2 mb-1'>
+                <div className='h-5 w-1 rounded-full bg-gov-forest' />
+                <h3 className='text-base font-semibold text-gray-900'>Sector Spending</h3>
               </div>
-            ))}
+              <p className='text-xs text-gray-500 ml-3'>
+                Top {sectors.length} sectors · hover to explore allocation vs. spend
+              </p>
+            </div>
+            <div className='hidden sm:flex items-center gap-3 text-[11px] text-gray-500'>
+              <div className='flex items-center gap-1.5'>
+                <div className='w-2.5 h-2.5 rounded-sm bg-gray-200' />
+                <span>Allocated</span>
+              </div>
+              <div className='flex items-center gap-1.5'>
+                <div className='w-2.5 h-2.5 rounded-sm bg-emerald-500' />
+                <span>Spent</span>
+              </div>
+            </div>
+          </div>
+
+          <div className='relative grid grid-cols-1 lg:grid-cols-12 gap-4 px-5 pb-5 pt-2'>
+            {/* LEFT: interactive donut with live center label (5/12) */}
+            <div className='lg:col-span-5'>
+              <div className='relative h-[320px]'>
+                <ResponsiveContainer width='100%' height='100%'>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      dataKey='value'
+                      nameKey='fullName'
+                      cx='50%'
+                      cy='50%'
+                      outerRadius='90%'
+                      innerRadius='62%'
+                      paddingAngle={1.5}
+                      strokeWidth={0}
+                      onMouseEnter={(e) => setActiveSector(e?.fullName || null)}
+                      onMouseLeave={() => setActiveSector(null)}>
+                      {pieData.map((e, i) => (
+                        <Cell
+                          key={i}
+                          fill={e.fill}
+                          opacity={
+                            activeSector && activeSector !== e.fullName ? 0.35 : 1
+                          }
+                          style={{ transition: 'opacity 200ms ease-out', cursor: 'pointer' }}
+                        />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+
+                {/* Center label — swaps between total + hovered sector */}
+                <div className='absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center'>
+                  {active ? (
+                    <>
+                      <div
+                        className='w-2 h-2 rounded-full mb-2'
+                        style={{ backgroundColor: active.fill }}
+                      />
+                      <div className='text-[10px] uppercase tracking-widest font-semibold text-gray-400 px-4 leading-tight'>
+                        {active.fullName}
+                      </div>
+                      <div className='text-lg font-bold tabular-nums text-gray-900 mt-1'>
+                        {fmtKES(active.allocated)}
+                      </div>
+                      <div className='text-[11px] text-gray-500 tabular-nums mt-0.5'>
+                        {displayedPct.toFixed(1)}% of top 10
+                      </div>
+                      <div className='mt-2 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100'>
+                        <span className='text-[10px] font-semibold text-emerald-700 tabular-nums'>
+                          {displayedUtil.toFixed(0)}% executed
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className='text-[10px] uppercase tracking-widest font-semibold text-gray-400'>
+                        Top 10 Sectors
+                      </div>
+                      <div className='text-2xl font-bold tabular-nums text-gray-900 mt-1'>
+                        {fmtKES(totalSectorAlloc)}
+                      </div>
+                      <div className='text-[11px] text-gray-500 mt-0.5'>allocated</div>
+                      <div className='mt-2 flex items-baseline gap-1'>
+                        <span className='text-sm font-bold text-emerald-700 tabular-nums'>
+                          {fmtKES(totalSectorSpent)}
+                        </span>
+                        <span className='text-[10px] text-gray-400'>spent</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT: ranked sector cards with allocation + utilization (7/12) */}
+            <div className='lg:col-span-7 space-y-1.5'>
+              {sectors.map((s, idx) => {
+                const pctOfTotal =
+                  totalSectorAlloc > 0 ? (s.allocated / totalSectorAlloc) * 100 : 0;
+                const utilization = s.allocated > 0 ? (s.spent / s.allocated) * 100 : 0;
+                const isActive = activeSector === s.fullName;
+                const utilColor =
+                  utilization >= 85
+                    ? 'text-emerald-700'
+                    : utilization >= 60
+                      ? 'text-teal-700'
+                      : utilization >= 30
+                        ? 'text-amber-700'
+                        : 'text-rose-700';
+                return (
+                  <button
+                    key={s.fullName}
+                    type='button'
+                    onMouseEnter={() => setActiveSector(s.fullName)}
+                    onMouseLeave={() => setActiveSector(null)}
+                    className={`w-full text-left rounded-xl px-3 py-2.5 transition-all border ${
+                      isActive
+                        ? 'border-gray-200 bg-white shadow-sm'
+                        : 'border-transparent hover:bg-white/60'
+                    }`}>
+                    <div className='flex items-center gap-3'>
+                      {/* Rank */}
+                      <div className='text-[10px] font-bold text-gray-400 tabular-nums w-4 flex-shrink-0'>
+                        {(idx + 1).toString().padStart(2, '0')}
+                      </div>
+                      {/* Color dot */}
+                      <div
+                        className='w-2.5 h-2.5 rounded-full flex-shrink-0'
+                        style={{ backgroundColor: s.fill }}
+                      />
+                      {/* Name */}
+                      <div className='flex-1 min-w-0'>
+                        <div className='text-sm font-semibold text-gray-800 truncate'>
+                          {s.fullName}
+                        </div>
+                      </div>
+                      {/* Allocation */}
+                      <div className='text-right flex-shrink-0'>
+                        <div className='text-sm font-bold text-gray-900 tabular-nums'>
+                          {fmtKES(s.allocated)}
+                        </div>
+                        <div className='text-[10px] text-gray-400 tabular-nums'>
+                          {pctOfTotal.toFixed(1)}%
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Layered progress bar: allocated track + spent fill */}
+                    <div className='mt-2 ml-11'>
+                      <div className='relative h-1.5 bg-gray-100 rounded-full overflow-hidden'>
+                        <div
+                          className='absolute inset-y-0 left-0 rounded-full'
+                          style={{
+                            width: `${Math.min(utilization, 100)}%`,
+                            backgroundColor: s.fill,
+                            transition: 'width 400ms ease-out',
+                          }}
+                        />
+                      </div>
+                      <div className='flex items-center justify-between mt-1'>
+                        <span className='text-[10px] text-gray-500 tabular-nums'>
+                          <span className={`font-semibold ${utilColor}`}>
+                            {utilization.toFixed(0)}%
+                          </span>{' '}
+                          executed
+                        </span>
+                        <span className='text-[10px] text-gray-400 tabular-nums'>
+                          {fmtKES(s.spent)} spent
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Debt breakdown */}
       {debt.breakdown.length > 0 && (
@@ -1446,18 +1564,69 @@ function ProjectsTab({ data }: { data: CountyComprehensive }) {
 /* ═══════════ Accountability Grade Colors ═══════════ */
 const ACCT_GRADE_STYLE: Record<
   string,
-  { bg: string; text: string; border: string; label: string }
+  { bg: string; text: string; border: string; label: string; glow: string }
 > = {
-  A: { bg: 'bg-emerald-500', text: 'text-white', border: 'border-emerald-600', label: 'Excellent' },
-  B: { bg: 'bg-teal-500', text: 'text-white', border: 'border-teal-600', label: 'Good' },
-  C: { bg: 'bg-yellow-400', text: 'text-yellow-900', border: 'border-yellow-500', label: 'Fair' },
+  A: {
+    bg: 'bg-emerald-500',
+    text: 'text-white',
+    border: 'border-emerald-600',
+    label: 'Excellent',
+    glow: 'bg-emerald-300',
+  },
+  B: {
+    bg: 'bg-teal-500',
+    text: 'text-white',
+    border: 'border-teal-600',
+    label: 'Good',
+    glow: 'bg-teal-300',
+  },
+  C: {
+    bg: 'bg-yellow-400',
+    text: 'text-yellow-900',
+    border: 'border-yellow-500',
+    label: 'Fair',
+    glow: 'bg-yellow-300',
+  },
   D: {
     bg: 'bg-orange-500',
     text: 'text-white',
     border: 'border-orange-600',
     label: 'Needs Improvement',
+    glow: 'bg-orange-300',
   },
-  F: { bg: 'bg-red-600', text: 'text-white', border: 'border-red-700', label: 'Poor' },
+  F: {
+    bg: 'bg-red-600',
+    text: 'text-white',
+    border: 'border-red-700',
+    label: 'Poor',
+    glow: 'bg-rose-300',
+  },
+};
+
+const IMPACT_STYLE: Record<
+  string,
+  { chip: string; dot: string; label: string }
+> = {
+  positive: {
+    chip: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    dot: 'bg-emerald-500',
+    label: 'Positive',
+  },
+  minor: {
+    chip: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+    dot: 'bg-yellow-500',
+    label: 'Minor',
+  },
+  moderate: {
+    chip: 'bg-orange-50 text-orange-700 border-orange-200',
+    dot: 'bg-orange-500',
+    label: 'Moderate',
+  },
+  major: {
+    chip: 'bg-rose-50 text-rose-700 border-rose-200',
+    dot: 'bg-rose-500',
+    label: 'Major',
+  },
 };
 
 const OPINION_COLOR: Record<string, string> = {
@@ -1492,38 +1661,194 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
   const peer = data.peer_comparison;
   const isBelowRegion = data.total_flagged_amount > peer.region_avg_flagged_amount;
   const isBelowBracket = data.total_flagged_amount > peer.population_bracket_avg;
+  const score =
+    typeof data.accountability_score === 'number' ? data.accountability_score : null;
+  const factors = data.grade_factors || [];
+
+  // Score arc — 0 to 100 maps to stroke-dashoffset on a circle
+  const CIRC = 2 * Math.PI * 42; // r=42
+  const scorePct = score !== null ? Math.max(0, Math.min(100, score)) : 0;
+  const dashOffset = CIRC - (scorePct / 100) * CIRC;
+  const arcColor =
+    score === null
+      ? '#9ca3af'
+      : score >= 85
+        ? '#10b981'
+        : score >= 70
+          ? '#14b8a6'
+          : score >= 55
+            ? '#eab308'
+            : score >= 40
+              ? '#f97316'
+              : '#dc2626';
 
   return (
     <div className='space-y-6'>
-      {/* A. GRADE — editorial hero */}
+      {/* A. GRADE — editorial hero with score ring */}
       <div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-white to-gov-sage/5 border border-gray-100 p-6'>
         <div
           aria-hidden
-          className={`absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl opacity-30 ${
-            data.accountability_grade === 'A' || data.accountability_grade === 'B+'
-              ? 'bg-emerald-300'
-              : data.accountability_grade === 'B' || data.accountability_grade === 'B-'
-                ? 'bg-amber-300'
-                : 'bg-rose-300'
-          }`}
+          className={`absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl opacity-30 ${gradeStyle.glow}`}
         />
         <div className='relative flex flex-col sm:flex-row items-center sm:items-start gap-6'>
-          <div
-            className={`w-24 h-24 rounded-2xl ${gradeStyle.bg} ${gradeStyle.text} flex items-center justify-center shadow-xl flex-shrink-0`}>
-            <span className='text-5xl font-black'>{data.accountability_grade}</span>
+          {/* Score ring with grade letter centered */}
+          <div className='relative flex-shrink-0'>
+            <svg width='112' height='112' viewBox='0 0 100 100' className='-rotate-90'>
+              <circle
+                cx='50'
+                cy='50'
+                r='42'
+                fill='none'
+                stroke='#f1f5f9'
+                strokeWidth='8'
+              />
+              <circle
+                cx='50'
+                cy='50'
+                r='42'
+                fill='none'
+                stroke={arcColor}
+                strokeWidth='8'
+                strokeLinecap='round'
+                strokeDasharray={CIRC}
+                strokeDashoffset={dashOffset}
+                style={{ transition: 'stroke-dashoffset 0.8s ease-out' }}
+              />
+            </svg>
+            <div className='absolute inset-0 flex flex-col items-center justify-center'>
+              <span
+                className={`text-4xl font-black leading-none ${
+                  score !== null && score >= 55 ? 'text-gray-800' : 'text-gray-800'
+                }`}
+                style={{ color: arcColor }}>
+                {data.accountability_grade}
+              </span>
+              {score !== null && (
+                <span className='text-[10px] font-semibold text-gray-500 tabular-nums mt-0.5'>
+                  {score.toFixed(0)}/100
+                </span>
+              )}
+            </div>
           </div>
+
           <div className='text-center sm:text-left flex-1'>
             <div className='text-[11px] uppercase tracking-widest font-semibold text-gray-400 mb-1'>
               Accountability Grade
             </div>
             <h3 className='text-2xl font-bold text-gray-900 mb-1'>{gradeStyle.label}</h3>
-            <p className='text-sm text-gray-600 max-w-lg'>
-              Derived from audit opinions, flagged amounts, recurring findings, and budget
-              absorption over the past 3 fiscal years.
+            <p className='text-sm text-gray-600 max-w-xl'>
+              Scored out of 100 across five dimensions: audit opinions, finding volume &amp;
+              severity, recurring issues, unresolved items, flagged spend, and absorption.
+              Grade bands: A ≥ 85, B ≥ 70, C ≥ 55, D ≥ 40, else F.
             </p>
           </div>
         </div>
       </div>
+
+      {/* A2. HOW THIS GRADE WAS CALCULATED */}
+      {factors.length > 0 && (
+        <div className='bg-white rounded-2xl border border-gray-100 overflow-hidden'>
+          <div className='px-5 pt-5 pb-3 flex items-center gap-2'>
+            <div className='h-5 w-1 rounded-full bg-gov-forest' />
+            <h3 className='text-base font-semibold text-gray-900'>
+              How this grade was calculated
+            </h3>
+          </div>
+          <div className='px-5 pb-3 text-[12px] text-gray-500'>
+            Starting from 100, we subtract points for each risk factor. Mouse-over each row
+            for the specific threshold triggered.
+          </div>
+          <div className='divide-y divide-gray-50'>
+            {/* Score bar summary */}
+            <div className='px-5 py-3'>
+              <div className='flex items-center justify-between text-[11px] text-gray-500 mb-1.5'>
+                <span className='font-semibold uppercase tracking-widest'>Score</span>
+                <span className='tabular-nums font-semibold text-gray-800'>
+                  {score !== null ? `${score.toFixed(1)} / 100` : '—'}
+                </span>
+              </div>
+              <div className='relative h-2 bg-gray-100 rounded-full overflow-hidden'>
+                <div
+                  className='absolute inset-y-0 left-0 rounded-full'
+                  style={{
+                    width: `${scorePct}%`,
+                    backgroundColor: arcColor,
+                    transition: 'width 0.8s ease-out',
+                  }}
+                />
+                {/* Grade band markers */}
+                {[40, 55, 70, 85].map((threshold) => (
+                  <div
+                    key={threshold}
+                    className='absolute inset-y-0 w-px bg-white/80'
+                    style={{ left: `${threshold}%` }}
+                  />
+                ))}
+              </div>
+              <div className='flex justify-between text-[9px] text-gray-400 mt-1 tabular-nums'>
+                <span>F</span>
+                <span className='ml-[28%]'>D</span>
+                <span className='ml-[10%]'>C</span>
+                <span className='ml-[10%]'>B</span>
+                <span className='ml-[10%]'>A</span>
+              </div>
+            </div>
+
+            {factors.map((f, idx) => {
+              const style = IMPACT_STYLE[f.impact] || IMPACT_STYLE.minor;
+              const pts = typeof f.points === 'number' ? f.points : 0;
+              return (
+                <div
+                  key={idx}
+                  className='px-5 py-3 flex items-start gap-3 hover:bg-gray-50/60 transition-colors'>
+                  <div
+                    className={`mt-1.5 h-2 w-2 rounded-full flex-shrink-0 ${style.dot}`}
+                    aria-hidden
+                  />
+                  <div className='flex-1 min-w-0'>
+                    <div className='flex items-center justify-between gap-2 mb-0.5'>
+                      <span className='text-sm font-semibold text-gray-800'>
+                        {f.label}
+                      </span>
+                      <span
+                        className={`text-xs font-bold tabular-nums px-2 py-0.5 rounded-md border ${
+                          pts < 0
+                            ? 'text-rose-700 bg-rose-50 border-rose-200'
+                            : pts > 0
+                              ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                              : 'text-gray-600 bg-gray-50 border-gray-200'
+                        }`}>
+                        {pts > 0 ? `+${pts}` : pts} pt
+                      </span>
+                    </div>
+                    <div className='flex items-center gap-2'>
+                      <span
+                        className={`inline-block text-[10px] uppercase tracking-widest font-semibold px-1.5 py-0.5 rounded border ${style.chip}`}>
+                        {style.label}
+                      </span>
+                      <span className='text-xs text-gray-500'>{f.detail}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {factors.length === 0 && (
+              <div className='px-5 py-6 text-center text-sm text-gray-500'>
+                No penalty factors triggered — clean accountability record.
+              </div>
+            )}
+          </div>
+          <div className='px-5 py-3 bg-gray-50/60 border-t border-gray-100 text-[11px] text-gray-500 flex items-start gap-2'>
+            <Info size={12} className='mt-0.5 flex-shrink-0 text-gray-400' />
+            <span>
+              Penalties are derived from OAG audit records and COB budget implementation
+              reports. &ldquo;Unresolved&rdquo; counts any finding not explicitly resolved,
+              closed, dismissed, or settled — including items marked &ldquo;Under
+              Review&rdquo; or &ldquo;Escalated&rdquo;.
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* C. KEY METRICS — stat strip with colour accent */}
       <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
@@ -1532,18 +1857,28 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
             value:
               data.total_flagged_amount > 0 ? fmtKES(data.total_flagged_amount) : 'KES 0',
             label: 'Total Flagged',
+            sub:
+              typeof data.flagged_pct_of_budget === 'number' && data.flagged_pct_of_budget > 0
+                ? `${data.flagged_pct_of_budget.toFixed(1)}% of budget`
+                : undefined,
             Icon: FileWarning,
             tone: 'rose' as const,
           },
           {
-            value: String(data.recurring_findings_count),
-            label: 'Recurring Findings',
+            value: String(data.total_findings ?? 0),
+            label: 'Audit Findings',
+            sub:
+              typeof data.critical_findings === 'number' &&
+              typeof data.warning_findings === 'number'
+                ? `${data.critical_findings} critical · ${data.warning_findings} warning`
+                : undefined,
             Icon: AlertTriangle,
             tone: 'amber' as const,
           },
           {
             value: String(data.unresolved_findings_count),
             label: 'Unresolved',
+            sub: `${data.recurring_findings_count} recurring`,
             Icon: Clock,
             tone: 'orange' as const,
           },
@@ -1553,6 +1888,7 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
                 ? `${(data.absorption_rate * 100).toFixed(1)}%`
                 : 'N/A',
             label: 'Absorption Rate',
+            sub: data.absorption_rate !== null ? 'Spent / allocated' : undefined,
             Icon: TrendingUp,
             tone: 'blue' as const,
           },
@@ -1574,6 +1910,7 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
                 </div>
               </div>
               <div className='text-xl font-bold tabular-nums text-gray-900'>{m.value}</div>
+              {m.sub && <div className='text-[10px] text-gray-500 mt-0.5'>{m.sub}</div>}
             </div>
           );
         })}

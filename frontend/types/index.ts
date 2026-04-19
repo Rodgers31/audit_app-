@@ -189,15 +189,34 @@ export interface Ministry {
   citizenServices: string[];
 }
 
+export interface GradeFactor {
+  impact: 'positive' | 'minor' | 'moderate' | 'major';
+  label: string;
+  detail: string;
+  /** Point delta applied to the 100-point accountability score.
+   * Negative for penalties, 0 for neutral/positive factors. */
+  points?: number;
+}
+
 export interface AccountabilityScorecard {
   county_id: string;
   county_name: string;
   audit_opinion_history: Array<{ year: number; opinion: string }>;
   total_flagged_amount: number;
+  /** Total raw findings count (may not equal sum of critical+warning if some have no severity). */
+  total_findings?: number;
+  critical_findings?: number;
+  warning_findings?: number;
   recurring_findings_count: number;
   unresolved_findings_count: number;
   absorption_rate: number | null;
+  /** Total flagged amount as % of current-FY budget. */
+  flagged_pct_of_budget?: number;
   accountability_grade: string; // A/B/C/D/F
+  /** Derived from a 100-point scale: A≥85, B≥70, C≥55, D≥40, else F. */
+  accountability_score?: number;
+  /** Ordered list of penalty/positive factors that drove the score. */
+  grade_factors?: GradeFactor[];
   peer_comparison: {
     region: string;
     region_avg_flagged_amount: number;

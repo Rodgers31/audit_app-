@@ -3969,9 +3969,24 @@ def _compute_accountability(db, entity, county_id: str) -> Dict[str, Any]:
     recurring_findings_count = sum(1 for years in qt_years.values() if len(years) >= 2)
 
     # --- unresolved_findings_count ---
-    unresolved_statuses = {"pending", "unresolved", "recurring"}
+    # Any status that is NOT a terminal resolution counts as unresolved.
+    # This includes intermediate states ("Under Review", "Escalated")
+    # that the previous implementation missed — making counties with
+    # many pending investigations appear "accountable" when they aren't.
+    resolved_statuses = {"resolved", "closed", "dismissed", "settled"}
     unresolved_findings_count = sum(
-        1 for a in audits if a.status and a.status.lower() in unresolved_statuses
+        1
+        for a in audits
+        if not a.status or a.status.strip().lower() not in resolved_statuses
+    )
+
+    # --- severity + amount context (used for grade) ---
+    total_findings = len(audits)
+    critical_findings = sum(
+        1 for a in audits if a.severity and a.severity.value == "critical"
+    )
+    warning_findings = sum(
+        1 for a in audits if a.severity and a.severity.value == "warning"
     )
 
     # --- absorption_rate from budget data (latest FY) ---
@@ -3982,43 +3997,158 @@ def _compute_accountability(db, entity, county_id: str) -> Dict[str, Any]:
         round(total_spent / total_allocated, 4) if total_allocated > 0 else None
     )
 
-    # --- accountability_grade ---
-    grade_order = ["A", "B", "C", "D", "F"]
+    # Flagged amount as % of current-FY budget (signal of audit severity)
+    flagged_pct_of_budget = (
+        (total_flagged_amount / total_allocated * 100.0) if total_allocated > 0 else 0.0
+    )
 
-    def _drop_grade(current: str, steps: int = 1) -> str:
-        idx = grade_order.index(current)
-        return grade_order[min(idx + steps, len(grade_order) - 1)]
+    # --- accountability_score (0-100 point system) ---
+    #
+    # Starts at 100 and subtracts points for each concern. The grade is
+    # then derived from the final score. A point system is clearer than
+    # cascading letter drops because (a) penalties of different severity
+    # map to different point costs, (b) the UI can show the exact math.
+    score = 100.0
+    grade_factors: List[Dict[str, Any]] = []
 
-    grade = "A"
+    def _penalise(points: float, impact: str, label: str, detail: str) -> None:
+        nonlocal score
+        score -= points
+        grade_factors.append(
+            {
+                "impact": impact,
+                "label": label,
+                "detail": detail,
+                "points": -round(points, 1),
+            }
+        )
 
-    # Adverse/Disclaimer opinion any year -> drop to D
-    for entry in audit_opinion_history:
-        op = entry["opinion"].lower()
-        if op in ("adverse", "disclaimer"):
-            grade = _drop_grade(
-                grade, max(0, grade_order.index("D") - grade_order.index(grade))
-            )
-            break
-
-    # Qualified opinion in latest year -> drop to C (if not already worse)
+    # --- Opinion-based penalties (only fire if we have opinions) ---
     if audit_opinion_history:
+        adverse_years = sorted(
+            e["year"]
+            for e in audit_opinion_history
+            if e["opinion"].lower() in ("adverse", "disclaimer")
+        )
+        if adverse_years:
+            _penalise(
+                40,
+                "major",
+                f"Adverse / disclaimer opinion ({adverse_years[0]})",
+                "OAG rejected the financial statements",
+            )
+
         latest_opinion = audit_opinion_history[-1]["opinion"].lower()
-        if latest_opinion == "qualified" and grade_order.index(
-            grade
-        ) < grade_order.index("C"):
-            grade = "C"
+        if latest_opinion == "qualified":
+            _penalise(
+                15,
+                "major",
+                "Qualified opinion (latest FY)",
+                "OAG flagged material concerns",
+            )
 
-    # recurring_findings_count > 5 -> drop one grade
-    if recurring_findings_count > 5:
-        grade = _drop_grade(grade)
+    # --- Finding-volume penalties ---
+    if total_findings > 20:
+        _penalise(15, "major", f"{total_findings} audit findings (>20)", "High volume")
+    elif total_findings > 10:
+        _penalise(8, "moderate", f"{total_findings} audit findings (>10)", "Elevated volume")
+    elif total_findings > 5:
+        _penalise(4, "minor", f"{total_findings} audit findings", "Some findings present")
 
-    # unresolved_findings_count > 10 -> drop one grade
-    if unresolved_findings_count > 10:
-        grade = _drop_grade(grade)
+    # Critical findings = any is serious (cap at -15)
+    if critical_findings > 0:
+        pts = min(critical_findings * 5, 15)
+        _penalise(
+            pts,
+            "major" if critical_findings >= 3 else "moderate",
+            f"{critical_findings} critical finding{'s' if critical_findings != 1 else ''}",
+            "Serious irregularity flagged",
+        )
 
-    # absorption_rate < 0.5 -> drop one grade
+    # Recurring query types (same issue across multiple years)
+    if recurring_findings_count >= 5:
+        _penalise(
+            15,
+            "major",
+            f"{recurring_findings_count} recurring query types",
+            "Systemic, year-over-year issues",
+        )
+    elif recurring_findings_count >= 3:
+        _penalise(
+            8,
+            "moderate",
+            f"{recurring_findings_count} recurring query types",
+            "Repeated across fiscal years",
+        )
+
+    # Unresolved backlog (includes "Under Review", "Escalated", etc.)
+    if unresolved_findings_count > 15:
+        _penalise(
+            20,
+            "major",
+            f"{unresolved_findings_count} unresolved findings",
+            "Large backlog of open issues",
+        )
+    elif unresolved_findings_count > 5:
+        _penalise(
+            10,
+            "moderate",
+            f"{unresolved_findings_count} unresolved findings",
+            "Pending / under-review items",
+        )
+
+    # Flagged amount material to budget
+    if flagged_pct_of_budget > 10:
+        _penalise(
+            10,
+            "moderate",
+            f"{flagged_pct_of_budget:.1f}% of budget flagged",
+            ">10% of current-FY allocation",
+        )
+    elif flagged_pct_of_budget > 5:
+        _penalise(
+            5,
+            "minor",
+            f"{flagged_pct_of_budget:.1f}% of budget flagged",
+            ">5% of current-FY allocation",
+        )
+
+    # Low absorption = wasted fiscal capacity
     if absorption_rate is not None and absorption_rate < 0.5:
-        grade = _drop_grade(grade)
+        _penalise(
+            10,
+            "moderate",
+            f"{absorption_rate * 100:.0f}% budget absorption",
+            "Under half of budget was spent",
+        )
+
+    # Positive factor — acknowledge when we penalised nothing
+    if not grade_factors:
+        grade_factors.append(
+            {
+                "impact": "positive",
+                "label": "No penalty triggers",
+                "detail": (
+                    f"{total_findings} finding"
+                    f"{'s' if total_findings != 1 else ''}, "
+                    f"{unresolved_findings_count} unresolved"
+                ),
+                "points": 0,
+            }
+        )
+
+    score = max(0.0, min(100.0, score))
+    # Grade thresholds matched to familiar academic scale
+    if score >= 85:
+        grade = "A"
+    elif score >= 70:
+        grade = "B"
+    elif score >= 55:
+        grade = "C"
+    elif score >= 40:
+        grade = "D"
+    else:
+        grade = "F"
 
     # --- peer_comparison ---
     region = COUNTY_REGIONS.get(county_id, "Unknown")
@@ -4157,10 +4287,16 @@ def _compute_accountability(db, entity, county_id: str) -> Dict[str, Any]:
         "county_name": (entity.canonical_name or "").replace(" County", ""),
         "audit_opinion_history": audit_opinion_history,
         "total_flagged_amount": total_flagged_amount,
+        "total_findings": total_findings,
+        "critical_findings": critical_findings,
+        "warning_findings": warning_findings,
         "recurring_findings_count": recurring_findings_count,
         "unresolved_findings_count": unresolved_findings_count,
         "absorption_rate": absorption_rate,
+        "flagged_pct_of_budget": round(flagged_pct_of_budget, 2),
         "accountability_grade": grade,
+        "accountability_score": round(score, 1),
+        "grade_factors": grade_factors,
         "peer_comparison": peer_comparison,
     }
 
