@@ -40,7 +40,9 @@
         "(3) The filling of special seats under clause (1)(b) shall be determined after declaration of elected members from each ward.",
         "(4) A county assembly is elected for a term of five years."
       ],
-      "tags": ["assembly", "elections"]
+      "summary": "A county assembly is elected every five years. Each ward elects one member; special seats top up gender, youth and disability representation.",
+      "explanation": "Five-year terms mean voters review their MCAs regularly — but also that an assembly that lets the governor overspend is not accountable again until the next election cycle.",
+      "tags": ["assembly", "elections", "term", "five years"]
     },
     {
       "number": 179,
@@ -61,9 +63,13 @@
         "(2) To be eligible for election as county governor, a person must be eligible for election as a member of the county assembly.",
         "(3) If only one candidate for county governor is nominated, that candidate shall be declared elected.",
         "(4) If two or more candidates are nominated, an election shall be held in the county and the candidate who receives the greatest number of the votes cast shall be declared elected.",
-        "(5) Each candidate for election as county governor shall nominate a person who is qualified for nomination for election as county governor as a candidate for deputy governor."
+        "(5) Each candidate for election as county governor shall nominate a person who is qualified for nomination for election as county governor as a candidate for deputy governor.",
+        "(6) Clause (5) and Article 148(2) and (3), with the necessary modifications, apply to a candidate for deputy governor.",
+        "(7) A person shall not hold office— (a) as a county governor for more than two terms; or (b) as a deputy county governor for more than two terms."
       ],
-      "tags": ["governor", "elections"]
+      "summary": "Governors and their deputies are elected every five years. No one may serve as governor — or deputy governor — for more than two terms.",
+      "explanation": "Clause (7) is Kenya's county-level term limit. It caps each governor at ten years of executive power, forcing a renewal of leadership every two cycles regardless of how popular or entrenched an incumbent becomes.",
+      "tags": ["governor", "elections", "term limits", "two terms"]
     },
     {
       "number": 185,
