@@ -6,8 +6,9 @@
  *   - For the selected chapter, the article list expands inline.
  *   - A mobile drawer variant (handled by the parent) reuses the same tree.
  *
- * Why not a virtualised list? We ship 6 chapters × <20 articles each. A plain
- * scrollable <ul> is faster and simpler than a virtualised grid here.
+ * Why not a virtualised list? We ship 18 chapters and a few dozen articles
+ * each. A plain scrollable <ul> is faster and simpler than a virtualised
+ * grid here.
  */
 'use client';
 
