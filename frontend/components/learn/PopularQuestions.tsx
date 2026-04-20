@@ -1,25 +1,37 @@
 /**
  * PopularQuestions — expandable FAQ for the Learn hub.
  *
- * One question open at a time. Clicking the active row collapses it.
- * Deep-links pass an article number back to the ConstitutionBook via a
- * parent callback so it opens the referenced article in place.
+ * One question open at a time. Each row carries a category icon, a small
+ * uppercase eyebrow (category · article), and the question itself. The
+ * expanded panel pulls in a gold border rail so the answer feels
+ * anchored to the row above it.
  */
 'use client';
 
 import { POPULAR_QUESTIONS, type PopularQuestion } from '@/data/popularQuestions';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, ExternalLink, HelpCircle, ScrollText } from 'lucide-react';
+import {
+  Banknote,
+  ChevronDown,
+  ExternalLink,
+  HelpCircle,
+  MapPin,
+  ScrollText,
+  ShieldCheck,
+  Users,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
-const CATEGORY_STYLE: Record<PopularQuestion['category'], string> = {
-  Budget: 'bg-emerald-100 text-emerald-700',
-  Audit: 'bg-amber-100 text-amber-700',
-  Debt: 'bg-rose-100 text-rose-700',
-  Devolution: 'bg-sky-100 text-sky-700',
-  Citizens: 'bg-violet-100 text-violet-700',
-  Constitution: 'bg-gov-gold/20 text-gov-dark',
+const CATEGORY_ICON: Record<PopularQuestion['category'], LucideIcon> = {
+  Budget: Wallet,
+  Audit: ShieldCheck,
+  Debt: Banknote,
+  Devolution: MapPin,
+  Citizens: Users,
+  Constitution: ScrollText,
 };
 
 interface Props {
@@ -31,46 +43,67 @@ export default function PopularQuestions({ onOpenArticle }: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
 
   return (
-    <section
-      aria-labelledby='popular-questions-heading'
-      className='rounded-3xl border border-white/60 bg-white/65 p-5 shadow-surface backdrop-blur sm:p-7'>
-      <div className='mb-5 flex items-center gap-3'>
-        <span className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gov-forest/10 text-gov-forest'>
-          <HelpCircle size={20} />
-        </span>
+    <section aria-labelledby='popular-questions-heading' className='space-y-4'>
+      <div className='flex flex-wrap items-end justify-between gap-3'>
         <div>
           <h2
             id='popular-questions-heading'
-            className='font-display text-xl leading-tight text-gov-dark sm:text-2xl'>
+            className='font-display text-2xl leading-tight text-gov-dark sm:text-[1.7rem]'>
             Popular questions
           </h2>
-          <p className='text-xs text-neutral-muted sm:text-sm'>
-            What other Kenyans are asking about budgets, audits, and accountability.
+          <p className='text-sm text-neutral-muted'>
+            Real questions from Kenyans — each answered in a few sentences, with the
+            article behind it.
           </p>
         </div>
+        <span className='inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gov-forest/10 px-3 py-1.5 text-[11.5px] font-semibold text-gov-forest'>
+          <HelpCircle size={12} />
+          {POPULAR_QUESTIONS.length} questions · linked to the law
+        </span>
       </div>
 
-      <ul className='divide-y divide-neutral-border/60 overflow-hidden rounded-2xl border border-neutral-border/60 bg-white/80'>
-        {POPULAR_QUESTIONS.map((q) => {
+      <ul className='overflow-hidden rounded-3xl border border-white/70 bg-gradient-to-br from-white/85 via-white/70 to-gov-cream/50 shadow-surface backdrop-blur'>
+        {POPULAR_QUESTIONS.map((q, i) => {
+          const Icon = CATEGORY_ICON[q.category];
           const isOpen = openId === q.id;
+          const isLast = i === POPULAR_QUESTIONS.length - 1;
           return (
-            <li key={q.id} className='group'>
+            <li
+              key={q.id}
+              className={isLast ? '' : 'border-b border-neutral-border/40'}>
               <button
                 type='button'
                 onClick={() => setOpenId(isOpen ? null : q.id)}
                 aria-expanded={isOpen}
-                className='flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gov-forest/5 sm:px-5'>
+                className={`group flex w-full items-start gap-3.5 px-4 py-4 text-left transition-colors sm:gap-4 sm:px-6 ${
+                  isOpen ? 'bg-gov-forest/[0.05]' : 'hover:bg-gov-forest/[0.03]'
+                }`}>
                 <span
-                  className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider ${CATEGORY_STYLE[q.category]}`}>
-                  {q.category}
+                  className={`mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                    isOpen
+                      ? 'bg-gov-forest text-white shadow-surface'
+                      : 'bg-gov-forest/10 text-gov-forest group-hover:bg-gov-forest/15'
+                  }`}>
+                  <Icon size={16} />
                 </span>
-                <span className='min-w-0 flex-1 text-sm font-semibold text-neutral-text sm:text-[15px]'>
-                  {q.question}
+                <span className='min-w-0 flex-1'>
+                  <span className='flex flex-wrap items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-widest text-gov-forest/70'>
+                    <span>{q.category}</span>
+                    {q.articleNumber && (
+                      <>
+                        <span className='text-neutral-border'>·</span>
+                        <span>Article {q.articleNumber}</span>
+                      </>
+                    )}
+                  </span>
+                  <span className='mt-1 block text-[14.5px] font-semibold leading-snug text-gov-dark sm:text-[15.5px]'>
+                    {q.question}
+                  </span>
                 </span>
                 <motion.span
                   animate={{ rotate: isOpen ? 180 : 0 }}
                   transition={{ duration: 0.2 }}
-                  className='mt-0.5 shrink-0 text-neutral-muted group-hover:text-gov-forest'>
+                  className='mt-1.5 shrink-0 text-neutral-muted group-hover:text-gov-forest'>
                   <ChevronDown size={18} />
                 </motion.span>
               </button>
@@ -78,37 +111,38 @@ export default function PopularQuestions({ onOpenArticle }: Props) {
               <AnimatePresence initial={false}>
                 {isOpen && (
                   <motion.div
-                    key='a'
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.25 }}
                     className='overflow-hidden'>
-                    <div className='px-4 pb-4 sm:px-5'>
-                      <p className='pl-[88px] text-[14px] leading-relaxed text-neutral-text sm:pl-[104px]'>
-                        {q.answer}
-                      </p>
-                      {(q.articleNumber || q.learnMoreHref) && (
-                        <div className='mt-3 flex flex-wrap gap-2 pl-[88px] sm:pl-[104px]'>
-                          {q.articleNumber && onOpenArticle && (
-                            <button
-                              type='button'
-                              onClick={() => onOpenArticle(q.articleNumber!)}
-                              className='inline-flex items-center gap-1.5 rounded-full bg-gov-forest px-3 py-1 text-xs font-semibold text-white hover:bg-gov-dark'>
-                              <ScrollText size={12} />
-                              Read Article {q.articleNumber}
-                            </button>
-                          )}
-                          {q.learnMoreHref && (
-                            <Link
-                              href={q.learnMoreHref}
-                              className='inline-flex items-center gap-1.5 rounded-full bg-gov-forest/10 px-3 py-1 text-xs font-semibold text-gov-forest hover:bg-gov-forest/15'>
-                              Learn more
-                              <ExternalLink size={11} />
-                            </Link>
-                          )}
-                        </div>
-                      )}
+                    <div className='bg-gov-forest/[0.04] px-4 pb-5 pt-1 sm:px-6'>
+                      <div className='ml-[50px] border-l-2 border-gov-gold/50 pl-4 sm:ml-[52px]'>
+                        <p className='text-[14px] leading-relaxed text-gov-dark/90'>
+                          {q.answer}
+                        </p>
+                        {(q.articleNumber || q.learnMoreHref) && (
+                          <div className='mt-3 flex flex-wrap gap-2'>
+                            {q.articleNumber && onOpenArticle && (
+                              <button
+                                type='button'
+                                onClick={() => onOpenArticle(q.articleNumber!)}
+                                className='inline-flex items-center gap-1.5 rounded-full bg-gov-forest px-3.5 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-gov-dark'>
+                                <ScrollText size={12} />
+                                Read Article {q.articleNumber}
+                              </button>
+                            )}
+                            {q.learnMoreHref && (
+                              <Link
+                                href={q.learnMoreHref}
+                                className='inline-flex items-center gap-1.5 rounded-full bg-gov-forest/10 px-3.5 py-1.5 text-[12px] font-semibold text-gov-forest hover:bg-gov-forest/15'>
+                                Learn more
+                                <ExternalLink size={11} />
+                              </Link>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </motion.div>
                 )}
