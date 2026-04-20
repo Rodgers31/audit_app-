@@ -1009,6 +1009,45 @@ def _seed_federal_audits(
     logger.info("Federal audit findings seeded: %d new records", seeded)
 
 
+def _seed_national_budget(session: Session) -> None:
+    """Seed national-government BudgetLine rows from the CoB NG-BIRR fixture.
+
+    Delegates to the national_budget seeding domain so bootstrap stays
+    aligned with the canonical pipeline. Uses the local fixture
+    (live_pdf_fetch_enabled=False) to keep restart time bounded; the
+    CLI entrypoint (`python -m seeding.cli seed --domain national_budget`)
+    is still the right tool when a fresh live fetch is wanted.
+
+    Idempotent — the domain writer matches on
+    (entity_id, period_id, category, subcategory), so repeat calls are no-ops
+    when the fixture hasn't changed.
+    """
+    try:
+        from seeding.config import SeedingSettings
+        from seeding.domains.national_budget import run as _run
+        from seeding.types import DomainRunContext
+    except ImportError as exc:  # seeding package missing — safe to skip
+        logger.warning("national_budget seed skipped (import failed): %s", exc)
+        return
+
+    try:
+        settings = SeedingSettings(live_pdf_fetch_enabled=False)
+        context = DomainRunContext(since=None, dry_run=False, job_id=None)
+        result = _run(session=session, settings=settings, context=context)
+        if result.errors:
+            logger.warning(
+                "national_budget seed completed with errors: %s", result.errors
+            )
+        logger.info(
+            "National budget execution seeded (processed=%d, created=%d, updated=%d)",
+            result.items_processed,
+            result.items_created,
+            result.items_updated,
+        )
+    except Exception as exc:  # don't crash startup on seeder hiccups
+        logger.warning("national_budget seed skipped: %s", exc)
+
+
 def initialize_reference_data(
     code_lookup: Optional[Dict[str, str]] = None, *, force: bool = False
 ) -> None:
@@ -1226,10 +1265,14 @@ def initialize_reference_data(
         # --- Federal/National government audit findings ---
         _seed_federal_audits(session, country=country, period=period)
 
+        # --- National-government budget execution (CoB NG-BIRR) ---
+        _seed_national_budget(session)
+
         session.commit()
         if skip_county_loop:
             logger.info(
-                "National-level data refreshed (GDP, population, federal audits)"
+                "National-level data refreshed (GDP, population, "
+                "federal audits, national budget)"
             )
         else:
             logger.info(
