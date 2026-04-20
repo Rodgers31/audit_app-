@@ -61,12 +61,21 @@ export default function Navigation() {
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           scrolled
-            ? 'bg-gov-dark/95 backdrop-blur-xl shadow-[0_1px_12px_rgba(0,0,0,0.25)] py-3'
-            : 'bg-transparent py-6'
+            ? 'bg-gov-dark/90 backdrop-blur-xl shadow-[0_1px_24px_rgba(0,0,0,0.35)] py-3'
+            : 'bg-gradient-to-b from-black/30 via-black/10 to-transparent backdrop-blur-[2px] py-5'
         }`}>
-        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between'>
+        {/* Subtle gold hairline at the bottom — only when scrolled, matches PageShell */}
+        {scrolled && (
+          <div
+            aria-hidden
+            className='pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gov-gold/40 to-transparent'
+          />
+        )}
+        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3 md:gap-4 xl:gap-8'>
           {/* Left: Brand */}
-          <Link href='/' className='flex items-center space-x-3 group relative z-50'>
+          <Link
+            href='/'
+            className='flex items-center gap-3 group relative z-50 shrink-0'>
             <div className='w-10 h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/20 backdrop-blur-sm group-hover:bg-white/20 transition-colors relative overflow-hidden shadow-lg'>
               <span className='text-xl relative z-10' suppressHydrationWarning>
                 🇰🇪
@@ -74,20 +83,20 @@ export default function Navigation() {
               {/* Shine effect */}
               <div className='absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-500' />
             </div>
-            <span className='text-white font-bold tracking-tight text-lg drop-shadow-md hidden sm:block'>
+            <span className='text-white font-bold tracking-tight text-[15px] lg:text-base drop-shadow-md hidden sm:block whitespace-nowrap'>
               Kenya Public Money
             </span>
           </Link>
 
           {/* Center: Desktop Navigation */}
-          <nav className='hidden md:flex items-center space-x-1 bg-white/5 backdrop-blur-md px-2 py-1.5 rounded-full border border-white/10 shadow-lg'>
+          <nav className='hidden md:flex items-center gap-0.5 bg-white/[0.07] backdrop-blur-md px-1.5 py-1.5 rounded-full ring-1 ring-inset ring-white/15 shadow-[0_4px_20px_rgba(0,0,0,0.25)]'>
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`relative px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                  className={`relative px-2.5 xl:px-4 py-1.5 rounded-full text-[12px] xl:text-sm font-medium transition-all duration-300 whitespace-nowrap ${
                     isActive ? 'text-gov-dark' : 'text-white/80 hover:text-white hover:bg-white/10'
                   }`}>
                   {isActive && (
@@ -104,8 +113,8 @@ export default function Navigation() {
           </nav>
 
           {/* Right: Auth / Profile & Menu */}
-          <div className='flex items-center space-x-3 md:space-x-4 relative z-50'>
-            <button className='p-2 rounded-full bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors border border-white/10 backdrop-blur-sm hidden sm:flex items-center justify-center group'>
+          <div className='flex items-center gap-2 md:gap-3 relative z-50 shrink-0'>
+            <button className='p-2 rounded-full bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors border border-white/10 backdrop-blur-sm hidden xl:flex items-center justify-center group'>
               <Grid className='w-5 h-5 group-hover:rotate-90 transition-transform duration-300' />
             </button>
 
