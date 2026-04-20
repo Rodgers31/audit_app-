@@ -53,8 +53,28 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Derive API origin once so preconnect/dns-prefetch can warm the TCP + TLS
+  // handshake before the first React Query fetch fires on the client.
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+  let apiOrigin = '';
+  try {
+    if (apiUrl) apiOrigin = new URL(apiUrl).origin;
+  } catch {
+    // Swallow URL parse errors — falls back to no preconnect.
+  }
   return (
     <html lang='en' suppressHydrationWarning>
+      <head>
+        {apiOrigin && (
+          <>
+            <link rel='preconnect' href={apiOrigin} crossOrigin='anonymous' />
+            <link rel='dns-prefetch' href={apiOrigin} />
+          </>
+        )}
+        {/* Above-the-fold LCP image — preload so it begins downloading
+            in parallel with the CSS / JS chunks. */}
+        <link rel='preload' as='image' href='/kenya_bg_top.jpg' />
+      </head>
       <body className='bg-gov-sand antialiased' suppressHydrationWarning>
         <QueryProvider>
           <LangProvider>

@@ -13,38 +13,31 @@
 import {
   AuditReportsSection,
   BudgetSnapshotCard,
-  CountyDetailsPanel,
   FeatureNavCards,
   HeroSection,
   KenyanGovCard,
   LearningHubCTA,
+  MapWithDetailPanel,
   NationalDebtCard,
   NationalLoansCard,
   SummaryStrip,
 } from '@/components/dashboard';
-import InteractiveKenyaMap from '@/components/InteractiveKenyaMap';
 import { ScenicBackgroundLayout } from '@/components/layout';
 import NewsletterBanner from '@/components/NewsletterBanner';
 import { useCounties } from '@/lib/react-query';
 import { County } from '@/types';
 import { motion } from 'framer-motion';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 
 export default function HomeDashboardClient() {
   /* ── Dynamic county data from the database ── */
   const { data: counties = [] } = useCounties();
 
+  // `hoveredCounty` is deliberately NOT stored here — it's owned by
+  // MapWithDetailPanel so mouse-move events don't re-render the entire
+  // dashboard (SummaryStrip, NationalDebtCard, etc.).
   const [selectedCounty, setSelectedCounty] = useState<County | null>(null);
-  const [hoveredCounty, setHoveredCounty] = useState<County | null>(null);
   const [countyIndex, setCountyIndex] = useState(0);
-
-  // Hover callback for the map — shows hovered county in the side panel
-  const handleCountyHover = useCallback((county: County | null) => {
-    setHoveredCounty(county);
-  }, []);
-
-  // Priority: hover > explicit click > auto-rotate
-  const activeCounty = hoveredCounty ?? selectedCounty ?? counties[countyIndex] ?? null;
 
   return (
     <ScenicBackgroundLayout
@@ -77,29 +70,16 @@ export default function HomeDashboardClient() {
             <KenyanGovCard />
           </div>
 
-          {/* ── Map + County Details — unified container ── */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className='grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-0 items-stretch rounded-xl bg-gray-50/60 border border-gray-200/40 overflow-hidden'>
-            <InteractiveKenyaMap
-              counties={counties}
-              onCountySelect={setSelectedCounty}
-              onCountyHover={handleCountyHover}
-              selectedCounty={selectedCounty}
-              currentCountyIndex={countyIndex}
-              onCountyIndexChange={setCountyIndex}
-              className='p-4'
-            />
-            <div className='border-t lg:border-t-0 lg:border-l border-gray-200/50'>
-              <CountyDetailsPanel
-                county={activeCounty}
-                className='h-full rounded-none border-0 shadow-none'
-              />
-            </div>
-          </motion.div>
+          {/* ── Map + County Details — unified container ──
+              hoveredCounty state is local to this subtree so hover
+              doesn't re-render the entire homepage. */}
+          <MapWithDetailPanel
+            counties={counties}
+            selectedCounty={selectedCounty}
+            setSelectedCounty={setSelectedCounty}
+            countyIndex={countyIndex}
+            setCountyIndex={setCountyIndex}
+          />
 
           {/* ── Latest Audit Reports ── */}
           <AuditReportsSection />
