@@ -23,7 +23,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import ArticleViewer from './ArticleViewer';
 import ChapterSidebar from './ChapterSidebar';
-import ConstitutionSearch from './ConstitutionSearch';
 
 interface ConstitutionBookProps {
   /** Initial chapter to open. Defaults to Chapter 12 (Public Finance). */
@@ -31,9 +30,8 @@ interface ConstitutionBookProps {
   /** Initial article within that chapter. Defaults to first. */
   initialArticle?: number;
   /**
-   * Pre-fill the search field — useful when the Learn hero forwards
-   * a query. Changing this value remounts the search so the new text
-   * shows immediately.
+   * Query string from the hero search — used to highlight matching
+   * text inside the currently open article.
    */
   seedQuery?: string;
 }
@@ -49,7 +47,6 @@ export default function ConstitutionBook({
   const [loadedChapter, setLoadedChapter] = useState<ConstitutionChapter | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [direction, setDirection] = useState<number>(1);
-  const [query, setQuery] = useState<string>('');
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
 
   /* Use a ref for direction too so keyboard/swipe handlers always read the
@@ -113,9 +110,25 @@ export default function ConstitutionBook({
       if (n === activeChapter) return;
       setDirection(n > activeChapter ? 1 : -1);
       setActiveChapter(n);
+      // Drop the preselected article so the new chapter opens at #1.
+      setActiveArticle(null);
     },
     [activeChapter]
   );
+
+  /** Next chapter in reading order (or null when we're on the last one). */
+  const nextChapterMeta = useMemo(() => {
+    const idx = CONSTITUTION_META.findIndex((m) => m.number === activeChapter);
+    if (idx < 0 || idx >= CONSTITUTION_META.length - 1) return null;
+    return CONSTITUTION_META[idx + 1]!;
+  }, [activeChapter]);
+
+  const goNextChapter = useCallback(() => {
+    if (!nextChapterMeta) return;
+    setDirection(1);
+    setActiveChapter(nextChapterMeta.number);
+    setActiveArticle(null);
+  }, [nextChapterMeta]);
 
   const selectArticle = useCallback(
     (chapterNumber: number, articleNumber: number) => {
@@ -191,16 +204,6 @@ export default function ConstitutionBook({
         </button>
       </div>
 
-      {/* ── Search bar ── */}
-      <div className='border-b border-neutral-border/50 bg-white/40 px-4 py-3 sm:px-6'>
-        <ConstitutionSearch
-          key={`search-${seedQuery}`}
-          defaultValue={seedQuery}
-          onSelect={selectArticle}
-          onQueryChange={setQuery}
-        />
-      </div>
-
       {/* ── Body ── */}
       <div className='grid grid-cols-1 lg:grid-cols-[280px_1fr]'>
         {/* Sidebar — desktop */}
@@ -257,7 +260,7 @@ export default function ConstitutionBook({
             <ArticleViewer
               chapter={loadedChapter}
               article={currentArticle}
-              query={query}
+              query={seedQuery}
               direction={direction}
               hasPrev={!!prevArticle}
               hasNext={!!nextArticle}
@@ -265,6 +268,9 @@ export default function ConstitutionBook({
               nextLabel={nextArticle ? String(nextArticle.number) : undefined}
               onPrev={goPrev}
               onNext={goNext}
+              nextChapterNumber={nextChapterMeta?.number}
+              nextChapterTitle={nextChapterMeta?.title}
+              onGoNextChapter={goNextChapter}
             />
           ) : null}
         </motion.div>

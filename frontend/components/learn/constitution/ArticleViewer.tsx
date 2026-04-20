@@ -11,7 +11,15 @@
 
 import type { ConstitutionArticle, ConstitutionChapter } from '@/data/constitution/types';
 import { AnimatePresence, motion, type Variants } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Bookmark, Hash, Lightbulb, ScrollText } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Bookmark,
+  CheckCircle2,
+  Hash,
+  Lightbulb,
+  ScrollText,
+} from 'lucide-react';
 import { useMemo } from 'react';
 
 /** Page-turn variants. `direction` is passed via AnimatePresence's custom prop. */
@@ -34,6 +42,10 @@ interface ArticleViewerProps {
   nextLabel?: string;
   onPrev: () => void;
   onNext: () => void;
+  /** Next chapter in reading order, when we're on the last article. */
+  nextChapterNumber?: number;
+  nextChapterTitle?: string;
+  onGoNextChapter?: () => void;
 }
 
 /** Cheap, allocation-light highlight: splits on case-insensitive query. */
@@ -76,11 +88,16 @@ export default function ArticleViewer({
   nextLabel,
   onPrev,
   onNext,
+  nextChapterNumber,
+  nextChapterTitle,
+  onGoNextChapter,
 }: ArticleViewerProps) {
   const pageKey = useMemo(
     () => `${chapter.number}-${article.number}`,
     [chapter.number, article.number]
   );
+  const atEndOfChapter = !hasNext;
+  const showNextChapter = atEndOfChapter && !!nextChapterNumber && !!onGoNextChapter;
 
   return (
     <div className='relative h-full' style={{ perspective: '1800px' }}>
@@ -153,6 +170,32 @@ export default function ArticleViewer({
                 ))}
               </div>
             )}
+
+            {showNextChapter && (
+              <div className='mt-6 rounded-2xl border border-gov-forest/20 bg-gradient-to-br from-gov-forest/5 via-white to-gov-sage/15 p-4 sm:p-5'>
+                <div className='flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-gov-forest'>
+                  <CheckCircle2 size={13} className='text-gov-sage' />
+                  End of Chapter {chapter.number}
+                </div>
+                <div className='mt-2 flex flex-wrap items-center justify-between gap-3'>
+                  <div className='min-w-0'>
+                    <div className='text-[11px] font-semibold uppercase tracking-wider text-gov-forest/60'>
+                      Up next · Chapter {nextChapterNumber}
+                    </div>
+                    <div className='font-display text-base text-gov-dark sm:text-lg'>
+                      {nextChapterTitle}
+                    </div>
+                  </div>
+                  <button
+                    type='button'
+                    onClick={onGoNextChapter}
+                    className='inline-flex shrink-0 items-center gap-2 rounded-xl bg-gov-forest px-4 py-2.5 text-sm font-semibold text-white shadow-surface transition-colors hover:bg-gov-dark'>
+                    Read Chapter {nextChapterNumber}
+                    <ArrowRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ── Footer nav ── */}
@@ -171,17 +214,28 @@ export default function ArticleViewer({
             <div className='text-[11px] font-semibold uppercase tracking-wider text-neutral-muted'>
               Article {article.number}
             </div>
-            <button
-              type='button'
-              onClick={onNext}
-              disabled={!hasNext}
-              className='inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-gov-forest transition-colors hover:bg-gov-forest/10 disabled:cursor-not-allowed disabled:opacity-30'>
-              <span className='hidden sm:inline'>
-                {nextLabel ? `Art. ${nextLabel}` : 'Next'}
-              </span>
-              <span className='sm:hidden'>Next</span>
-              <ArrowRight size={16} />
-            </button>
+            {showNextChapter ? (
+              <button
+                type='button'
+                onClick={onGoNextChapter}
+                className='inline-flex items-center gap-2 rounded-lg bg-gov-forest/10 px-3 py-2 text-sm font-semibold text-gov-forest transition-colors hover:bg-gov-forest/20'>
+                <span className='hidden sm:inline'>Ch. {nextChapterNumber}</span>
+                <span className='sm:hidden'>Next ch.</span>
+                <ArrowRight size={16} />
+              </button>
+            ) : (
+              <button
+                type='button'
+                onClick={onNext}
+                disabled={!hasNext}
+                className='inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-gov-forest transition-colors hover:bg-gov-forest/10 disabled:cursor-not-allowed disabled:opacity-30'>
+                <span className='hidden sm:inline'>
+                  {nextLabel ? `Art. ${nextLabel}` : 'Next'}
+                </span>
+                <span className='sm:hidden'>Next</span>
+                <ArrowRight size={16} />
+              </button>
+            )}
           </footer>
         </motion.article>
       </AnimatePresence>

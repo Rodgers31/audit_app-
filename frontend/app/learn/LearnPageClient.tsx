@@ -2,12 +2,11 @@
  * Learning Hub — civic learning hub for AuditGava.
  *
  * Layout (top → bottom):
- *   1. LearnHero          — display headline + search + stat chips
- *   2. FeaturedTopics     — mixed-size card grid leading into each mode
- *   3. ConstitutionBook   — interactive reader for the Constitution
- *   4. Dive deeper tabs   — quiz / government / glossary / impact
- *   5. PopularQuestions   — expandable civic FAQ
- *   6. CTA                — jump back to the dashboard
+ *   1. LearnHero          — headline + hero search (hybrid BM25 + semantic)
+ *   2. ConstitutionBook   — interactive reader for the Constitution
+ *   3. Keep learning      — three entry points into dedicated practice pages
+ *   4. PopularQuestions   — expandable civic FAQ
+ *   5. CTA                — jump back to the dashboard
  *
  * The hero search pipes into the ConstitutionBook: number queries (e.g.
  * "Article 229") directly open that article; keyword queries seed the
@@ -15,59 +14,71 @@
  */
 'use client';
 
-import InteractiveGlossary from '@/components/InteractiveGlossary';
 import PageShell from '@/components/layout/PageShell';
 import ConstitutionBook from '@/components/learn/constitution/ConstitutionBook';
-import FeaturedTopics from '@/components/learn/FeaturedTopics';
-import GovernmentExplorer from '@/components/learn/GovernmentExplorer';
 import LearnHero from '@/components/learn/LearnHero';
 import PopularQuestions from '@/components/learn/PopularQuestions';
-import QuizGame from '@/components/learn/QuizGame';
-import WhyThisMatters from '@/components/WhyThisMatters';
 import { findChapterForArticle } from '@/data/constitution';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   ArrowRight,
-  BookOpen,
   Gamepad2,
   Heart,
   Landmark,
+  Library,
   Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useRef, useState } from 'react';
 
-type DeeperTab = 'quiz' | 'government' | 'glossary' | 'why';
-
-const DEEPER_TABS: {
-  id: DeeperTab;
+const KEEP_LEARNING: {
+  href: string;
+  eyebrow: string;
   title: string;
   description: string;
   icon: React.ElementType;
+  accent: string;
+  iconTint: string;
 }[] = [
   {
-    id: 'quiz',
-    title: 'Quiz game',
-    description: 'Test your civic knowledge',
+    href: '/learn/quiz',
+    eyebrow: 'Practice',
+    title: 'Civic quiz',
+    description:
+      'Short, playful questions that turn what you just read into recall you can use.',
     icon: Gamepad2,
+    accent: 'from-gov-forest/10 via-white to-gov-sage/20',
+    iconTint: 'bg-gov-forest text-white',
   },
   {
-    id: 'government',
+    href: '/learn/government',
+    eyebrow: 'Explore',
     title: 'Government explorer',
-    description: 'How power is arranged',
+    description:
+      'Walk through the three arms of government and the commissions that keep them honest.',
     icon: Landmark,
+    accent: 'from-gov-gold/15 via-white to-gov-sand',
+    iconTint: 'bg-gov-gold text-gov-dark',
   },
   {
-    id: 'glossary',
-    title: 'Jargon decoder',
-    description: 'Every term, in plain English',
-    icon: BookOpen,
+    href: '/learn/glossary',
+    eyebrow: 'Reference',
+    title: 'Plain-English glossary',
+    description:
+      'Every budget, audit and finance term, translated into language that actually makes sense.',
+    icon: Library,
+    accent: 'from-gov-sage/15 via-white to-gov-cream',
+    iconTint: 'bg-gov-sage text-white',
   },
   {
-    id: 'why',
-    title: 'Real impact',
-    description: 'How it affects your life',
+    href: '/learn/why-it-matters',
+    eyebrow: 'Real life',
+    title: 'Why this matters',
+    description:
+      'The stories behind each clause — how constitutional rights touch your day-to-day.',
     icon: Heart,
+    accent: 'from-rose-100 via-white to-gov-cream',
+    iconTint: 'bg-rose-500 text-white',
   },
 ];
 
@@ -140,10 +151,6 @@ export default function LearningHubPage() {
     [openArticle, scrollToBook]
   );
 
-  /* ── Dive-deeper tabs ── */
-  const [activeDeep, setActiveDeep] = useState<DeeperTab>('quiz');
-  const [glossarySearch, setGlossarySearch] = useState<string>('');
-
   return (
     <PageShell
       title='Learning Hub'
@@ -151,10 +158,7 @@ export default function LearningHubPage() {
       {/* 1 ── Hero ─────────────────────────────────── */}
       <LearnHero onSearchSubmit={handleHeroSearch} onArticleSelect={jumpToArticle} />
 
-      {/* 2 ── Featured topics ─────────────────────── */}
-      <FeaturedTopics />
-
-      {/* 3 ── Constitution book ───────────────────── */}
+      {/* 2 ── Constitution book ───────────────────── */}
       <div ref={bookRef} className='scroll-mt-[72px]'>
         <div className='mb-3 flex items-end justify-between gap-4'>
           <div>
@@ -180,92 +184,63 @@ export default function LearningHubPage() {
         />
       </div>
 
-      {/* 4 ── Dive deeper ─────────────────────────── */}
-      <section aria-labelledby='dive-deeper-heading' className='space-y-4'>
-        <div className='flex items-end justify-between gap-4'>
+      {/* 3 ── Keep learning ───────────────────────── */}
+      <section aria-labelledby='keep-learning-heading' className='space-y-4'>
+        <div className='flex flex-wrap items-end justify-between gap-3'>
           <div>
             <h2
-              id='dive-deeper-heading'
+              id='keep-learning-heading'
               className='font-display text-2xl leading-tight text-gov-dark sm:text-[1.7rem]'>
-              Dive deeper
+              Keep learning
             </h2>
             <p className='text-sm text-neutral-muted'>
-              Four different ways to practise what you&rsquo;ve learned.
+              Four focused stops once you&rsquo;ve closed the book — pick whichever fits your
+              mood.
             </p>
           </div>
         </div>
 
-        {/* Tab chips */}
-        <div className='flex flex-wrap gap-2 rounded-2xl border border-white/60 bg-white/60 p-2 shadow-surface backdrop-blur'>
-          {DEEPER_TABS.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeDeep === tab.id;
+        <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4'>
+          {KEEP_LEARNING.map((card, i) => {
+            const Icon = card.icon;
             return (
-              <button
-                key={tab.id}
-                type='button'
-                onClick={() => setActiveDeep(tab.id)}
-                className={`relative flex min-w-[150px] flex-1 items-center gap-2 rounded-xl px-3 py-2.5 text-left transition-colors sm:min-w-[180px] ${
-                  isActive
-                    ? 'bg-gov-forest text-white shadow-surface'
-                    : 'text-gov-dark hover:bg-gov-forest/5'
-                }`}>
-                <span
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                    isActive ? 'bg-gov-gold/90 text-gov-dark' : 'bg-gov-forest/10 text-gov-forest'
-                  }`}>
-                  <Icon size={15} />
-                </span>
-                <span className='min-w-0'>
-                  <span className='block truncate text-sm font-semibold'>{tab.title}</span>
+              <motion.div
+                key={card.href}
+                initial={{ opacity: 0, y: 14 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.4 }}
+                transition={{ duration: 0.4, delay: i * 0.06 }}>
+                <Link
+                  href={card.href}
+                  className={`group relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/70 bg-gradient-to-br ${card.accent} p-5 shadow-surface transition-shadow hover:shadow-elevated`}>
                   <span
-                    className={`block truncate text-[11px] ${
-                      isActive ? 'text-white/70' : 'text-neutral-muted'
-                    }`}>
-                    {tab.description}
+                    className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${card.iconTint} shadow-surface`}>
+                    <Icon size={18} />
                   </span>
-                </span>
-              </button>
+                  <div className='mt-4 text-[11px] font-semibold uppercase tracking-wider text-gov-forest/70'>
+                    {card.eyebrow}
+                  </div>
+                  <h3 className='mt-0.5 font-display text-lg text-gov-dark'>
+                    {card.title}
+                  </h3>
+                  <p className='mt-1 flex-1 text-[13.5px] leading-relaxed text-neutral-text'>
+                    {card.description}
+                  </p>
+                  <span className='mt-4 inline-flex items-center gap-1 text-sm font-semibold text-gov-forest transition-transform group-hover:translate-x-0.5'>
+                    Open
+                    <ArrowRight size={14} />
+                  </span>
+                </Link>
+              </motion.div>
             );
           })}
         </div>
-
-        {/* Tab content */}
-        <AnimatePresence mode='wait'>
-          <motion.div
-            key={activeDeep}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
-            {activeDeep === 'quiz' && <QuizGame />}
-
-            {activeDeep === 'government' && <GovernmentExplorer />}
-
-            {activeDeep === 'glossary' && (
-              <div className='space-y-4'>
-                <div className='max-w-md'>
-                  <input
-                    type='text'
-                    placeholder='Search terms…'
-                    value={glossarySearch}
-                    onChange={(e) => setGlossarySearch(e.target.value)}
-                    className='w-full rounded-xl border border-neutral-border bg-white/80 px-4 py-2.5 text-sm shadow-surface transition-shadow placeholder:text-neutral-muted focus:outline-none focus:ring-2 focus:ring-gov-sage/40'
-                  />
-                </div>
-                <InteractiveGlossary searchTerm={glossarySearch} />
-              </div>
-            )}
-
-            {activeDeep === 'why' && <WhyThisMatters searchTerm='' />}
-          </motion.div>
-        </AnimatePresence>
       </section>
 
-      {/* 5 ── Popular questions ───────────────────── */}
+      {/* 4 ── Popular questions ───────────────────── */}
       <PopularQuestions onOpenArticle={openArticle} />
 
-      {/* 6 ── CTA ─────────────────────────────────── */}
+      {/* 5 ── CTA ─────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 22 }}
         whileInView={{ opacity: 1, y: 0 }}
