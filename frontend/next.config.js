@@ -1,5 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // @huggingface/transformers + onnxruntime-node are browser-only — the
+  // Learn page dynamically imports them inside a `typeof window` guard.
+  // Next's file tracer still pulls the 350MB onnxruntime-node binary into
+  // every serverless function bundle, blowing Vercel's 250MB limit.
+  // Exclude the whole native-binary tree from the deployment trace so
+  // server bundles stay lean; browser code still gets transformers.js
+  // via its own chunk.
+  outputFileTracingExcludes: {
+    '*': [
+      'node_modules/@huggingface/**',
+      'node_modules/onnxruntime-node/**',
+      'node_modules/onnxruntime-web/**',
+      'node_modules/onnxruntime-common/**',
+    ],
+  },
   images: {
     remotePatterns: [
       {
