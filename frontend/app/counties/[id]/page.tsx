@@ -4,11 +4,14 @@ import FollowTheMoney, { YearSelector } from '@/components/FollowTheMoney';
 import PageShell from '@/components/layout/PageShell';
 import PDFExportButton from '@/components/PDFExportButton';
 import WatchButton from '@/components/WatchButton';
+import { useLang } from '@/lib/i18n/LangProvider';
+import type { TranslationKey } from '@/lib/i18n/messages';
 import { useAvailableFiscalYears } from '@/lib/react-query';
 import { useCountyAccountability, useCountyComprehensive } from '@/lib/react-query/useCounties';
 import { useCountyPendingBills } from '@/lib/react-query/useDebt';
 import { useCountyMoneyFlow } from '@/lib/react-query/useMoneyFlow';
-import { generateFiscalYears } from '@/lib/utils';
+import { getCountyOfficials } from '@/lib/data/county-officials';
+import { generateFiscalYears, getLatestReportedFiscalYear } from '@/lib/utils';
 import { CountyComprehensive } from '@/types';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -82,19 +85,40 @@ const PALETTE = [
 
 type Tab = 'overview' | 'budget' | 'audit' | 'accountability' | 'projects' | 'money';
 
-const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: 'overview', label: 'Overview', icon: Landmark },
-  { id: 'money', label: 'Follow the Money', icon: Banknote },
-  { id: 'budget', label: 'Budget & Debt', icon: CircleDollarSign },
-  { id: 'audit', label: 'Audit Findings', icon: ShieldAlert },
-  { id: 'accountability', label: 'Accountability', icon: Award },
-  { id: 'projects', label: 'Projects', icon: HardHat },
+const TABS: { id: Tab; labelKey: TranslationKey; icon: React.ElementType }[] = [
+  { id: 'overview', labelKey: 'county.tab.overview', icon: Landmark },
+  { id: 'money', labelKey: 'county.tab.money', icon: Banknote },
+  { id: 'budget', labelKey: 'county.tab.budget_debt', icon: CircleDollarSign },
+  { id: 'audit', labelKey: 'county.tab.audit_findings', icon: ShieldAlert },
+  { id: 'accountability', labelKey: 'county.tab.accountability', icon: Award },
+  { id: 'projects', labelKey: 'county.tab.projects', icon: HardHat },
 ];
 
-const SEVERITY_STYLE: Record<string, { label: string; dot: string; bg: string; text: string }> = {
-  critical: { label: 'Critical', dot: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-800' },
-  warning: { label: 'Warning', dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-800' },
-  info: { label: 'Info', dot: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-800' },
+const SEVERITY_STYLE: Record<
+  string,
+  { labelKey: TranslationKey; lowerKey: TranslationKey; dot: string; bg: string; text: string }
+> = {
+  critical: {
+    labelKey: 'county.audit.critical',
+    lowerKey: 'county.overview.sev_critical_lower',
+    dot: 'bg-red-500',
+    bg: 'bg-red-50',
+    text: 'text-red-800',
+  },
+  warning: {
+    labelKey: 'county.audit.warning',
+    lowerKey: 'county.overview.sev_warning_lower',
+    dot: 'bg-amber-500',
+    bg: 'bg-amber-50',
+    text: 'text-amber-800',
+  },
+  info: {
+    labelKey: 'county.audit.info',
+    lowerKey: 'county.overview.sev_info_lower',
+    dot: 'bg-blue-500',
+    bg: 'bg-blue-50',
+    text: 'text-blue-800',
+  },
 };
 
 /* ═══════════ Grade Badge ═══════════ */
@@ -115,6 +139,51 @@ const ACCT_GRADE_BG: Record<string, string> = {
   F: 'from-rose-500 to-red-600',
 };
 
+/** Tiny inline SVG sparkline — renders a trend without pulling in a chart lib.
+ * Used under the HEALTH and AUDIT badges to show whether a county is trending
+ * up or down over the last ~4 fiscal years. */
+function Sparkline({
+  values,
+  stroke = 'rgba(255,255,255,0.85)',
+  fill = 'rgba(255,255,255,0.18)',
+  width = 80,
+  height = 18,
+  title,
+}: {
+  values: number[];
+  stroke?: string;
+  fill?: string;
+  width?: number;
+  height?: number;
+  title?: string;
+}) {
+  if (!values.length) return null;
+  const max = Math.max(...values, 100);
+  const min = Math.min(...values, 0);
+  const range = Math.max(max - min, 1);
+  const step = values.length > 1 ? width / (values.length - 1) : 0;
+  const points = values
+    .map((v, i) => `${(i * step).toFixed(1)},${(height - ((v - min) / range) * height).toFixed(1)}`)
+    .join(' ');
+  const areaPath = `M0,${height} L${points.replace(/\s/g, ' L')} L${width},${height} Z`;
+  const last = values[values.length - 1];
+  const lastY = height - ((last - min) / range) * height;
+  const trendUp = values.length > 1 && last >= values[0];
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      aria-label={title || `Trend across ${values.length} fiscal years`}
+      className='overflow-visible'>
+      <title>{title || `Trend across ${values.length} fiscal years`}</title>
+      <path d={areaPath} fill={fill} />
+      <polyline points={points} fill='none' stroke={stroke} strokeWidth={1.5} strokeLinejoin='round' strokeLinecap='round' />
+      <circle cx={width} cy={lastY} r={2} fill={trendUp ? '#86efac' : '#fca5a5'} stroke={stroke} strokeWidth={0.8} />
+    </svg>
+  );
+}
+
 function GradeBadge({
   grade,
   score,
@@ -122,6 +191,7 @@ function GradeBadge({
   title,
   palette,
   onClick,
+  sparklineValues,
 }: {
   grade: string;
   score: number | null;
@@ -129,6 +199,7 @@ function GradeBadge({
   title: string;
   palette: Record<string, string>;
   onClick?: () => void;
+  sparklineValues?: number[];
 }) {
   return (
     <button
@@ -140,30 +211,143 @@ function GradeBadge({
       title={title}
       style={{ position: 'relative', zIndex: 100 }}
       aria-label={`${label} grade: ${grade}${score !== null ? `, score ${score.toFixed(0)} out of 100` : ''}`}
-      className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r ${palette[grade] || palette.C || palette.F || 'from-gray-500 to-gray-600'} text-white shadow-lg cursor-pointer hover:brightness-110 hover:scale-105 transition-all group`}>
-      <span className='text-2xl font-black leading-none' aria-hidden='true'>
-        {grade}
-      </span>
-      <div className='border-l border-white/30 pl-2 text-left'>
-        <div className='text-[9px] uppercase tracking-widest opacity-80 flex items-center gap-1'>
-          {label}
-          <Info size={9} className='opacity-0 group-hover:opacity-100 transition-opacity' />
-        </div>
-        <div className='text-sm font-bold leading-tight tabular-nums'>
-          {score !== null ? score.toFixed(0) : '—'}
+      className={`inline-flex flex-col items-stretch gap-1 px-3.5 py-2 rounded-xl bg-gradient-to-r ${palette[grade] || palette.C || palette.F || 'from-gray-500 to-gray-600'} text-white shadow-lg cursor-pointer hover:brightness-110 hover:scale-105 transition-all group`}>
+      <div className='flex items-center gap-2'>
+        <span className='text-2xl font-black leading-none' aria-hidden='true'>
+          {grade}
+        </span>
+        <div className='border-l border-white/30 pl-2 text-left'>
+          <div className='text-[9px] uppercase tracking-widest opacity-80 flex items-center gap-1'>
+            {label}
+            <Info size={9} className='opacity-0 group-hover:opacity-100 transition-opacity' />
+          </div>
+          <div className='text-sm font-bold leading-tight tabular-nums'>
+            {score !== null ? score.toFixed(0) : '—'}
+          </div>
         </div>
       </div>
+      {sparklineValues && sparklineValues.length >= 2 && (
+        <div className='pt-1 border-t border-white/20'>
+          <Sparkline
+            values={sparklineValues}
+            width={72}
+            height={14}
+            title={`${label} trend — last ${sparklineValues.length} FYs`}
+          />
+        </div>
+      )}
     </button>
   );
 }
 
+/* ═══════════ Officials Card — Who Runs This County ═══════════ */
+function OfficialsCard({
+  countyId,
+  fallbackGovernor,
+}: {
+  countyId: string;
+  fallbackGovernor?: string;
+}) {
+  const { t } = useLang();
+  const officials = getCountyOfficials(countyId);
+  const governor = officials.governor?.name || fallbackGovernor || null;
+  const rows: Array<{
+    role: string;
+    title: string;
+    name: string | null;
+    tip: string;
+    meta?: string;
+  }> = [
+    {
+      role: 'governor',
+      title: t('county.officials.title.governor'),
+      name: governor,
+      tip: t('county.officials.desc.governor'),
+      meta: officials.governor?.party
+        ? `${officials.governor.party}${officials.governor.term_start ? ` · ${t('county.officials.since_word')} ${officials.governor.term_start}` : ''}`
+        : undefined,
+    },
+    {
+      role: 'deputy_governor',
+      title: t('county.officials.title.deputy_governor'),
+      name: officials.deputy_governor?.name || null,
+      tip: t('county.officials.desc.deputy_governor'),
+    },
+    {
+      role: 'cec_finance',
+      title: t('county.officials.title.cec_finance'),
+      name: officials.cec_finance?.name || null,
+      tip: t('county.officials.desc.cec_finance'),
+    },
+    {
+      role: 'assembly_speaker',
+      title: t('county.officials.title.assembly_speaker'),
+      name: officials.assembly_speaker?.name || null,
+      tip: t('county.officials.desc.assembly_speaker'),
+    },
+  ];
+
+  return (
+    <div className='bg-white rounded-xl border border-gray-100 p-5'>
+      <div className='flex items-center justify-between mb-3'>
+        <div>
+          <h3 className='text-sm font-semibold text-gray-800'>{t('county.officials.card_title')}</h3>
+          <p className='text-xs text-gray-500 mt-0.5'>{t('county.officials.card_subtitle')}</p>
+        </div>
+        {officials.website && (
+          <a
+            href={officials.website}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='text-xs text-gov-forest hover:underline inline-flex items-center gap-1'>
+            {t('county.officials.official_site')}
+            <ExternalLink size={11} />
+          </a>
+        )}
+      </div>
+      <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3'>
+        {rows.map((r) => (
+          <div
+            key={r.role}
+            title={r.tip}
+            className='rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2.5 hover:border-gov-sage/50 transition-colors'>
+            <div className='text-[10px] uppercase tracking-wider text-gray-500 font-semibold'>
+              {r.title}
+            </div>
+            <div
+              className={`text-sm font-semibold mt-0.5 ${r.name ? 'text-gray-900' : 'text-gray-400 italic'}`}>
+              {r.name || t('county.officials.not_published')}
+            </div>
+            {r.meta && <div className='text-[10px] text-gray-500 mt-0.5'>{r.meta}</div>}
+          </div>
+        ))}
+      </div>
+      {!officials.governor && (
+        <p className='text-[11px] text-gray-400 mt-3 italic'>
+          {t('county.officials.directory_beta')}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /* ═══════════ Health Score Methodology Modal ═══════════ */
-const GRADE_THRESHOLDS = [
-  { min: 85, grade: 'A', label: 'Excellent', color: 'bg-emerald-500' },
-  { min: 70, grade: 'B+', label: 'Good', color: 'bg-green-500' },
-  { min: 55, grade: 'B', label: 'Fair', color: 'bg-amber-500' },
-  { min: 40, grade: 'B-', label: 'Needs Improvement', color: 'bg-orange-500' },
-  { min: 0, grade: 'C', label: 'Poor', color: 'bg-red-500' },
+const GRADE_THRESHOLDS: Array<{
+  min: number;
+  grade: string;
+  labelKey: TranslationKey;
+  color: string;
+}> = [
+  { min: 85, grade: 'A', labelKey: 'county.acct.grade_excellent', color: 'bg-emerald-500' },
+  { min: 70, grade: 'B+', labelKey: 'county.acct.grade_good', color: 'bg-green-500' },
+  { min: 55, grade: 'B', labelKey: 'county.acct.grade_fair', color: 'bg-amber-500' },
+  {
+    min: 40,
+    grade: 'B-',
+    labelKey: 'county.acct.grade_needs_improvement',
+    color: 'bg-orange-500',
+  },
+  { min: 0, grade: 'C', labelKey: 'county.acct.grade_poor', color: 'bg-red-500' },
 ];
 
 function HealthScoreModal({
@@ -175,6 +359,7 @@ function HealthScoreModal({
   onClose: () => void;
   data: CountyComprehensive;
 }) {
+  const { t } = useLang();
   // Close on Escape key
   useEffect(() => {
     if (!open) return;
@@ -194,7 +379,7 @@ function HealthScoreModal({
 
   // Determine which threshold is active
   const activeThreshold =
-    GRADE_THRESHOLDS.find((t) => healthScore >= t.min) ||
+    GRADE_THRESHOLDS.find((th) => healthScore >= th.min) ||
     GRADE_THRESHOLDS[GRADE_THRESHOLDS.length - 1];
 
   return (
@@ -211,8 +396,10 @@ function HealthScoreModal({
         {/* Header */}
         <div className='bg-gradient-to-r from-gov-dark to-gov-forest px-6 py-5 rounded-t-2xl flex items-center justify-between'>
           <div>
-            <h2 className='text-lg font-bold text-white'>Financial Health Score</h2>
-            <p className='text-sm text-white/70 mt-0.5'>{data.name} County</p>
+            <h2 className='text-lg font-bold text-white'>{t('county.healthmodal.title')}</h2>
+            <p className='text-sm text-white/70 mt-0.5'>
+              {data.name} {t('county.page.name_suffix')}
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -234,7 +421,7 @@ function HealthScoreModal({
                   {healthScore.toFixed(1)}
                   <span className='text-sm text-gray-500 font-normal'> / 100</span>
                 </div>
-                <div className='text-sm text-gray-500'>{activeThreshold.label}</div>
+                <div className='text-sm text-gray-500'>{t(activeThreshold.labelKey)}</div>
               </div>
             </div>
           </div>
@@ -242,52 +429,61 @@ function HealthScoreModal({
           {/* How it's calculated */}
           <div>
             <h3 className='text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3'>
-              How It&apos;s Calculated
+              {t('county.healthmodal.how_calc')}
             </h3>
             <div className='bg-gray-50 rounded-xl p-4 space-y-3 text-sm text-gray-700'>
-              <p>
-                The health score is derived from the county&apos;s{' '}
-                <strong>budget execution rate</strong> &mdash; how much of the allocated budget was
-                actually spent in the fiscal year.
-              </p>
+              <p>{t('county.healthmodal.derived_from')}</p>
               <div className='border-l-2 border-gov-sage pl-3 space-y-1'>
                 <p>
-                  <strong>If utilization &le; 95%:</strong> Score = utilization percentage
+                  <strong>{t('county.healthmodal.rule_1')}</strong>{' '}
+                  {t('county.healthmodal.rule_1_body')}
                 </p>
                 <p>
-                  <strong>If 95% &lt; utilization &le; 100%:</strong> Score = 90 (near-perfect
-                  execution)
+                  <strong>{t('county.healthmodal.rule_2')}</strong>{' '}
+                  {t('county.healthmodal.rule_2_body')}
                 </p>
                 <p>
-                  <strong>If utilization &gt; 100% (overspend):</strong> Score = 80 &minus;
-                  overspend %, penalizing excess spending
+                  <strong>{t('county.healthmodal.rule_3')}</strong>{' '}
+                  {t('county.healthmodal.rule_3_body')}
                 </p>
               </div>
-              <p className='text-xs text-gray-500 italic'>
-                A score of 95 is the maximum — counties that spend close to their budget without
-                overspending demonstrate the best fiscal discipline.
-              </p>
+              <p className='text-xs text-gray-500 italic'>{t('county.healthmodal.max_note')}</p>
             </div>
           </div>
 
           {/* This county's breakdown */}
           <div>
             <h3 className='text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3'>
-              This County&apos;s Numbers
+              {t('county.healthmodal.this_county_numbers')}
             </h3>
             <div className='space-y-2'>
               {[
-                { label: 'Budget Allocated', value: fmtKES(budget.total_allocated) },
-                { label: 'Budget Spent', value: fmtKES(budget.total_spent) },
                 {
-                  label: 'Execution Rate',
+                  label: t('county.healthmodal.row.budget_allocated'),
+                  value: fmtKES(budget.total_allocated),
+                },
+                {
+                  label: t('county.healthmodal.row.budget_spent'),
+                  value: fmtKES(budget.total_spent),
+                },
+                {
+                  label: t('county.healthmodal.row.execution_rate'),
                   value: `${utilization.toFixed(1)}%`,
                   highlight: true,
                 },
-                { label: 'Pending Bills', value: fmtKES(debt.pending_bills) },
-                { label: 'Total Debt', value: fmtKES(debt.total_debt) },
-                { label: 'Audit Issues', value: String(audit.findings_count) },
-                { label: 'Stalled Projects', value: String(stalled_projects.count) },
+                {
+                  label: t('county.healthmodal.row.pending_bills'),
+                  value: fmtKES(debt.pending_bills),
+                },
+                { label: t('county.healthmodal.row.total_debt'), value: fmtKES(debt.total_debt) },
+                {
+                  label: t('county.healthmodal.row.audit_issues'),
+                  value: String(audit.findings_count),
+                },
+                {
+                  label: t('county.healthmodal.row.stalled_projects'),
+                  value: String(stalled_projects.count),
+                },
               ].map((row) => (
                 <div
                   key={row.label}
@@ -304,24 +500,26 @@ function HealthScoreModal({
           {/* Grade scale */}
           <div>
             <h3 className='text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3'>
-              Grade Scale
+              {t('county.healthmodal.grade_scale')}
             </h3>
             <div className='space-y-1.5'>
-              {GRADE_THRESHOLDS.map((t) => (
+              {GRADE_THRESHOLDS.map((th) => (
                 <div
-                  key={t.grade}
+                  key={th.grade}
                   className={`flex items-center gap-3 py-2 px-3 rounded-lg text-sm ${
-                    t.grade === grade ? 'bg-gray-100 ring-1 ring-gray-300 font-semibold' : ''
+                    th.grade === grade ? 'bg-gray-100 ring-1 ring-gray-300 font-semibold' : ''
                   }`}>
                   <span
-                    className={`${t.color} text-white font-bold w-8 h-8 rounded-lg flex items-center justify-center text-xs`}>
-                    {t.grade}
+                    className={`${th.color} text-white font-bold w-8 h-8 rounded-lg flex items-center justify-center text-xs`}>
+                    {th.grade}
                   </span>
-                  <span className='text-gray-700 flex-1'>{t.label}</span>
-                  <span className='text-gray-400 text-xs'>{t.min > 0 ? `≥ ${t.min}` : `< 40`}</span>
-                  {t.grade === grade && (
+                  <span className='text-gray-700 flex-1'>{t(th.labelKey)}</span>
+                  <span className='text-gray-400 text-xs'>
+                    {th.min > 0 ? `≥ ${th.min}` : `< 40`}
+                  </span>
+                  {th.grade === grade && (
                     <span className='text-xs bg-gov-forest text-white px-2 py-0.5 rounded-full'>
-                      Current
+                      {t('county.healthmodal.current')}
                     </span>
                   )}
                 </div>
@@ -331,7 +529,7 @@ function HealthScoreModal({
 
           {/* Data source note */}
           <p className='text-xs text-gray-400 text-center'>
-            Source: Office of the Auditor General &middot; County financial statements
+            {t('county.healthmodal.source_line')}
           </p>
         </div>
       </motion.div>
@@ -434,6 +632,7 @@ function SummaryMetricCard({
 
 /* ═══════════ Tab: Overview ═══════════ */
 function OverviewTab({ data }: { data: CountyComprehensive }) {
+  const { t } = useLang();
   const {
     demographics,
     economic_profile,
@@ -446,35 +645,27 @@ function OverviewTab({ data }: { data: CountyComprehensive }) {
     revenue,
   } = data;
 
-  const sustainLabel: Record<string, { text: string; color: string; Icon: React.ElementType }> = {
-    sustainable: { text: 'Sustainable', color: 'text-emerald-700', Icon: TrendingUp },
-    moderate: { text: 'Moderate Risk', color: 'text-amber-700', Icon: Scale },
-    at_risk: { text: 'At Risk', color: 'text-red-700', Icon: TrendingDown },
+  const sustainLabel: Record<
+    string,
+    { textKey: TranslationKey; color: string; Icon: React.ElementType }
+  > = {
+    sustainable: {
+      textKey: 'county.overview.sustain.sustainable',
+      color: 'text-emerald-700',
+      Icon: TrendingUp,
+    },
+    moderate: {
+      textKey: 'county.overview.sustain.moderate',
+      color: 'text-amber-700',
+      Icon: Scale,
+    },
+    at_risk: {
+      textKey: 'county.overview.sustain.at_risk',
+      color: 'text-red-700',
+      Icon: TrendingDown,
+    },
   };
   const sust = sustainLabel[financial_summary.debt_sustainability] ?? sustainLabel.moderate;
-
-  const typeLabels: Record<string, string> = {
-    capital_city: 'Capital City',
-    standard_county: 'Standard County',
-    major_urban: 'Major Urban',
-    pastoral: 'Pastoral',
-    arid_semi_arid: 'Arid / Semi-Arid',
-  };
-
-  // Summary card helpers
-  const utilColor =
-    budget.utilization_rate >= 70
-      ? '#22c55e'
-      : budget.utilization_rate >= 50
-        ? '#f59e0b'
-        : '#ef4444';
-  const gradeColor: Record<string, string> = {
-    A: '#22c55e',
-    'B+': '#22c55e',
-    B: '#f59e0b',
-    'B-': '#f97316',
-    C: '#ef4444',
-  };
 
   return (
     <div className='space-y-6'>
@@ -486,25 +677,27 @@ function OverviewTab({ data }: { data: CountyComprehensive }) {
             <CircleProgress value={budget.utilization_rate} />
             <div className='min-w-0 flex-1'>
               <div className='text-[11px] uppercase tracking-widest font-semibold text-gray-400 mb-1'>
-                Budget Execution
+                {t('county.overview.budget_execution')}
               </div>
               <div className='text-2xl font-bold text-gray-900 mb-2'>
                 {pct(budget.utilization_rate)}
-                <span className='text-sm font-normal text-gray-500 ml-2'>utilized</span>
+                <span className='text-sm font-normal text-gray-500 ml-2'>
+                  {t('county.overview.utilized_suffix')}
+                </span>
               </div>
               <div className='text-sm text-gray-600 leading-relaxed'>
                 <span className='font-semibold tabular-nums'>
                   {fmtKES(budget.total_spent)}
                 </span>{' '}
-                spent of{' '}
+                {t('county.overview.spent_of')}{' '}
                 <span className='font-semibold tabular-nums'>
                   {fmtKES(budget.total_allocated)}
                 </span>{' '}
-                allocated
+                {t('county.overview.allocated_suffix')}
               </div>
               {budget.fiscal_year && (
                 <div className='mt-2 text-[11px] text-gray-400'>
-                  Source: Controller of Budget · {budget.fiscal_year}
+                  {t('county.overview.source_cob')} · {budget.fiscal_year}
                 </div>
               )}
             </div>
@@ -522,28 +715,26 @@ function OverviewTab({ data }: { data: CountyComprehensive }) {
           }`}>
           <div className='flex items-center gap-2 mb-3'>
             <sust.Icon size={18} className={sust.color} />
-            <span className={`text-sm font-semibold ${sust.color}`}>
-              {sust.text}
-            </span>
+            <span className={`text-sm font-semibold ${sust.color}`}>{t(sust.textKey)}</span>
           </div>
           <div className='text-[11px] uppercase tracking-widest font-semibold text-gray-400 mb-2'>
-            Debt Position
+            {t('county.overview.debt_position')}
           </div>
           <div className='space-y-1.5 text-sm'>
             <div className='flex justify-between'>
-              <span className='text-gray-500'>Total debt</span>
+              <span className='text-gray-500'>{t('county.overview.debt_total')}</span>
               <span className='font-semibold text-gray-800 tabular-nums'>
                 {fmtKES(debt.total_debt)}
               </span>
             </div>
             <div className='flex justify-between'>
-              <span className='text-gray-500'>Debt-to-budget</span>
+              <span className='text-gray-500'>{t('county.overview.debt_to_budget')}</span>
               <span className='font-semibold text-gray-800 tabular-nums'>
                 {pct(debt.debt_to_budget_ratio)}
               </span>
             </div>
             <div className='flex justify-between'>
-              <span className='text-gray-500'>Pending bills</span>
+              <span className='text-gray-500'>{t('county.overview.debt_pending')}</span>
               <span className='font-semibold text-gray-800 tabular-nums'>
                 {fmtKES(debt.pending_bills)}
               </span>
@@ -567,7 +758,7 @@ function OverviewTab({ data }: { data: CountyComprehensive }) {
         <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3 pl-2'>
           <div>
             <div className='text-[11px] uppercase tracking-widest font-semibold text-gray-400 mb-1'>
-              Audit Snapshot
+              {t('county.overview.audit_snapshot')}
             </div>
             <div className='flex items-center gap-4 flex-wrap'>
               {(['critical', 'warning', 'info'] as const).map((sev) => {
@@ -578,7 +769,7 @@ function OverviewTab({ data }: { data: CountyComprehensive }) {
                     <div className={`w-2 h-2 rounded-full ${s.dot}`} />
                     <span className='text-sm text-gray-700'>
                       <span className='font-semibold tabular-nums'>{count}</span>{' '}
-                      {s.label.toLowerCase()}
+                      {t(s.lowerKey)}
                     </span>
                   </div>
                 );
@@ -587,7 +778,9 @@ function OverviewTab({ data }: { data: CountyComprehensive }) {
           </div>
           {audit.total_amount_involved > 0 && (
             <div className='text-right'>
-              <div className='text-xs text-gray-500'>Total amount involved</div>
+              <div className='text-xs text-gray-500'>
+                {t('county.overview.total_amount_involved')}
+              </div>
               <div className='text-base font-bold text-rose-700 tabular-nums'>
                 {fmtKES(audit.total_amount_involved)}
               </div>
@@ -604,10 +797,10 @@ function OverviewTab({ data }: { data: CountyComprehensive }) {
           </div>
           <div>
             <div className='text-sm font-semibold text-red-900'>
-              {fmtKES(missing_funds.total_amount)} Unaccounted
+              {fmtKES(missing_funds.total_amount)} {t('county.overview.missing_unaccounted')}
             </div>
             <div className='text-xs text-red-700'>
-              {missing_funds.cases_count} cases identified by OAG
+              {missing_funds.cases_count} {t('county.overview.cases_oag')}
             </div>
           </div>
         </div>
@@ -615,26 +808,36 @@ function OverviewTab({ data }: { data: CountyComprehensive }) {
 
       {/* About this county */}
       <div className='bg-white rounded-xl border border-gray-100 p-5'>
-        <h3 className='text-sm font-semibold text-gray-800 mb-3'>County Profile</h3>
+        <h3 className='text-sm font-semibold text-gray-800 mb-3'>{t('county.profile.title')}</h3>
         <div className='grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-6'>
           <KPI
-            label='Population'
+            label={t('county.profile.population')}
             value={fmtPop(demographics.population)}
             sub={
-              demographics.population_year ? `Census ${demographics.population_year}` : undefined
+              demographics.population_year
+                ? `${t('county.overview.kpi.census')} ${demographics.population_year}`
+                : undefined
             }
             accent='text-blue-700'
           />
-          <KPI label='Governor' value={data.governor || 'N/A'} accent='text-purple-700' />
           <KPI
-            label='Economic Base'
+            label={t('county.profile.governor')}
+            value={data.governor || t('county.overview.kpi.na')}
+            accent='text-purple-700'
+          />
+          <KPI
+            label={t('county.profile.economic_base')}
             value={fmtLabel(economic_profile.economic_base)}
             accent='text-emerald-700'
           />
           <KPI
-            label='Total Revenue'
+            label={t('county.overview.kpi.total_revenue')}
             value={fmtKES(revenue.total_revenue)}
-            sub={revenue.local_revenue > 0 ? `Local: ${fmtKES(revenue.local_revenue)}` : undefined}
+            sub={
+              revenue.local_revenue > 0
+                ? `${t('county.overview.kpi.local_prefix')} ${fmtKES(revenue.local_revenue)}`
+                : undefined
+            }
             accent='text-green-700'
           />
         </div>
@@ -642,7 +845,7 @@ function OverviewTab({ data }: { data: CountyComprehensive }) {
         {economic_profile.major_issues.length > 0 && (
           <div className='mt-4 pt-4 border-t border-gray-100'>
             <div className='text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2'>
-              Key Challenges
+              {t('county.overview.key_challenges')}
             </div>
             <div className='flex flex-wrap gap-2'>
               {economic_profile.major_issues.map((issue, i) => (
@@ -657,26 +860,32 @@ function OverviewTab({ data }: { data: CountyComprehensive }) {
         )}
       </div>
 
+      {/* Who Runs This County — named officials */}
+      <OfficialsCard countyId={data.id} fallbackGovernor={data.governor} />
+
       {/* Stalled projects summary */}
       {stalled_projects.count > 0 && (
         <div className='bg-white rounded-xl border border-gray-100 p-5'>
           <div className='flex items-center gap-2 mb-2'>
             <HardHat size={16} className='text-red-600' />
             <h3 className='text-sm font-semibold text-gray-800'>
-              {stalled_projects.count} Stalled Project{stalled_projects.count !== 1 ? 's' : ''}
+              {stalled_projects.count}{' '}
+              {stalled_projects.count !== 1
+                ? t('county.overview.stalled_n_plural')
+                : t('county.overview.stalled_n')}
             </h3>
           </div>
           <div className='text-xs text-gray-500 mb-1'>
-            Total contracted: {fmtKES(stalled_projects.total_contracted_value)} &middot; Paid:{' '}
-            {fmtKES(stalled_projects.total_amount_paid)} (
+            {t('county.overview.contracted_total')}: {fmtKES(stalled_projects.total_contracted_value)}{' '}
+            &middot; {t('county.overview.paid')}: {fmtKES(stalled_projects.total_amount_paid)} (
             {pct(
               (stalled_projects.total_amount_paid /
                 (stalled_projects.total_contracted_value || 1)) *
                 100
             )}{' '}
-            disbursed)
+            {t('county.overview.disbursed')})
           </div>
-          <p className='text-xs text-gray-400'>See the Projects tab for full details.</p>
+          <p className='text-xs text-gray-400'>{t('county.overview.see_projects_tab')}</p>
         </div>
       )}
     </div>
@@ -685,6 +894,7 @@ function OverviewTab({ data }: { data: CountyComprehensive }) {
 
 /* ═══════════ Tab: Budget & Debt ═══════════ */
 function BudgetTab({ data }: { data: CountyComprehensive }) {
+  const { t } = useLang();
   const { budget, debt } = data;
   const { data: countyPendingBills } = useCountyPendingBills(data.id.toString());
   const [activeSector, setActiveSector] = useState<string | null>(null);
@@ -728,29 +938,37 @@ function BudgetTab({ data }: { data: CountyComprehensive }) {
     <div className='space-y-5'>
       {/* Top-level budget stats */}
       <div className='bg-white rounded-xl border border-gray-100 p-5'>
-        <h3 className='text-sm font-semibold text-gray-800 mb-4'>Budget Summary</h3>
+        <h3 className='text-sm font-semibold text-gray-800 mb-4'>{t('county.budget.summary')}</h3>
         <div className='grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-6'>
           <KPI
-            label='Total Allocated'
+            label={t('county.budget.total_allocated')}
             value={fmtKES(budget.total_allocated)}
             accent='text-blue-700'
           />
           <KPI
-            label='Total Spent'
+            label={t('county.budget.total_spent')}
             value={fmtKES(budget.total_spent)}
-            sub={`${pct(budget.utilization_rate)} execution`}
+            sub={`${pct(budget.utilization_rate)} ${t('county.budget.execution_suffix')}`}
             accent='text-emerald-700'
           />
           <KPI
-            label='Development'
-            value={budget.development_budget ? fmtKES(budget.development_budget) : 'Unavailable'}
-            sub={budget.development_budget ? undefined : 'Not classified in source data'}
+            label={t('county.budget.development')}
+            value={
+              budget.development_budget
+                ? fmtKES(budget.development_budget)
+                : t('county.budget.unavailable')
+            }
+            sub={budget.development_budget ? undefined : t('county.budget.not_classified')}
             accent='text-amber-700'
           />
           <KPI
-            label='Recurrent'
-            value={budget.recurrent_budget ? fmtKES(budget.recurrent_budget) : 'Unavailable'}
-            sub={budget.recurrent_budget ? undefined : 'Not classified in source data'}
+            label={t('county.budget.recurrent')}
+            value={
+              budget.recurrent_budget
+                ? fmtKES(budget.recurrent_budget)
+                : t('county.budget.unavailable')
+            }
+            sub={budget.recurrent_budget ? undefined : t('county.budget.not_classified')}
             accent='text-purple-700'
           />
         </div>
@@ -771,20 +989,22 @@ function BudgetTab({ data }: { data: CountyComprehensive }) {
             <div>
               <div className='flex items-center gap-2 mb-1'>
                 <div className='h-5 w-1 rounded-full bg-gov-forest' />
-                <h3 className='text-base font-semibold text-gray-900'>Sector Spending</h3>
+                <h3 className='text-base font-semibold text-gray-900'>
+                  {t('county.budget.sector_spending')}
+                </h3>
               </div>
               <p className='text-xs text-gray-500 ml-3'>
-                Top {sectors.length} sectors · hover to explore allocation vs. spend
+                {t('county.budget.sector_explore_hint').replace('{n}', String(sectors.length))}
               </p>
             </div>
             <div className='hidden sm:flex items-center gap-3 text-[11px] text-gray-500'>
               <div className='flex items-center gap-1.5'>
                 <div className='w-2.5 h-2.5 rounded-sm bg-gray-200' />
-                <span>Allocated</span>
+                <span>{t('county.budget.legend_allocated')}</span>
               </div>
               <div className='flex items-center gap-1.5'>
                 <div className='w-2.5 h-2.5 rounded-sm bg-emerald-500' />
-                <span>Spent</span>
+                <span>{t('county.budget.legend_spent')}</span>
               </div>
             </div>
           </div>
@@ -836,28 +1056,32 @@ function BudgetTab({ data }: { data: CountyComprehensive }) {
                         {fmtKES(active.allocated)}
                       </div>
                       <div className='text-[11px] text-gray-500 tabular-nums mt-0.5'>
-                        {displayedPct.toFixed(1)}% of top 10
+                        {displayedPct.toFixed(1)}% {t('county.budget.of_top_10')}
                       </div>
                       <div className='mt-2 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100'>
                         <span className='text-[10px] font-semibold text-emerald-700 tabular-nums'>
-                          {displayedUtil.toFixed(0)}% executed
+                          {displayedUtil.toFixed(0)}% {t('county.budget.executed_suffix')}
                         </span>
                       </div>
                     </>
                   ) : (
                     <>
                       <div className='text-[10px] uppercase tracking-widest font-semibold text-gray-400'>
-                        Top 10 Sectors
+                        {t('county.budget.top_10_sectors')}
                       </div>
                       <div className='text-2xl font-bold tabular-nums text-gray-900 mt-1'>
                         {fmtKES(totalSectorAlloc)}
                       </div>
-                      <div className='text-[11px] text-gray-500 mt-0.5'>allocated</div>
+                      <div className='text-[11px] text-gray-500 mt-0.5'>
+                        {t('county.budget.allocated_lower')}
+                      </div>
                       <div className='mt-2 flex items-baseline gap-1'>
                         <span className='text-sm font-bold text-emerald-700 tabular-nums'>
                           {fmtKES(totalSectorSpent)}
                         </span>
-                        <span className='text-[10px] text-gray-400'>spent</span>
+                        <span className='text-[10px] text-gray-400'>
+                          {t('county.budget.spent_lower')}
+                        </span>
                       </div>
                     </>
                   )}
@@ -935,10 +1159,10 @@ function BudgetTab({ data }: { data: CountyComprehensive }) {
                           <span className={`font-semibold ${utilColor}`}>
                             {utilization.toFixed(0)}%
                           </span>{' '}
-                          executed
+                          {t('county.budget.executed_suffix')}
                         </span>
                         <span className='text-[10px] text-gray-400 tabular-nums'>
-                          {fmtKES(s.spent)} spent
+                          {fmtKES(s.spent)} {t('county.budget.spent_lower')}
                         </span>
                       </div>
                     </div>
@@ -953,7 +1177,9 @@ function BudgetTab({ data }: { data: CountyComprehensive }) {
       {/* Debt breakdown */}
       {debt.breakdown.length > 0 && (
         <div className='bg-white rounded-xl border border-gray-100 p-5'>
-          <h3 className='text-sm font-semibold text-gray-800 mb-4'>Debt Breakdown</h3>
+          <h3 className='text-sm font-semibold text-gray-800 mb-4'>
+            {t('county.budget.debt_breakdown')}
+          </h3>
           <div className='space-y-3'>
             {debt.breakdown.map((d, i) => {
               const pctOfTotal = debt.total_debt > 0 ? (d.outstanding / debt.total_debt) * 100 : 0;
@@ -972,14 +1198,14 @@ function BudgetTab({ data }: { data: CountyComprehensive }) {
                     />
                   </div>
                   <div className='text-[10px] text-gray-400 mt-0.5'>
-                    {pct(pctOfTotal)} of total debt
+                    {pct(pctOfTotal)} {t('county.budget.of_total_debt')}
                   </div>
                 </div>
               );
             })}
           </div>
           <div className='mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-sm'>
-            <span className='text-gray-500'>Total Debt</span>
+            <span className='text-gray-500'>{t('county.budget.total_debt_label')}</span>
             <span className='font-bold text-red-700'>{fmtKES(debt.total_debt)}</span>
           </div>
         </div>
@@ -990,7 +1216,9 @@ function BudgetTab({ data }: { data: CountyComprehensive }) {
         <div className='bg-white rounded-xl border border-red-200 p-5'>
           <div className='flex items-center gap-2 mb-4'>
             <FileWarning size={16} className='text-red-600' />
-            <h3 className='text-sm font-semibold text-gray-800'>Pending Bills</h3>
+            <h3 className='text-sm font-semibold text-gray-800'>
+              {t('county.budget.pending_bills_title')}
+            </h3>
             <span className='text-sm font-bold text-red-700 ml-auto'>
               {fmtKES(countyPendingBills?.total_pending || debt.pending_bills)}
             </span>
@@ -1001,9 +1229,9 @@ function BudgetTab({ data }: { data: CountyComprehensive }) {
             countyPendingBills.breakdown_by_type.length > 0 && (
               <div className='space-y-2 mb-4'>
                 <h4 className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>
-                  By Type
+                  {t('county.budget.pending_by_type')}
                 </h4>
-                {countyPendingBills.breakdown_by_type.map((t) => {
+                {countyPendingBills.breakdown_by_type.map((row) => {
                   const colors: Record<string, string> = {
                     supplier_arrears: 'bg-red-500',
                     salary: 'bg-blue-500',
@@ -1012,22 +1240,22 @@ function BudgetTab({ data }: { data: CountyComprehensive }) {
                     court_awards: 'bg-orange-500',
                   };
                   const bgColor =
-                    Object.entries(colors).find(([k]) => t.type.toLowerCase().includes(k))?.[1] ||
+                    Object.entries(colors).find(([k]) => row.type.toLowerCase().includes(k))?.[1] ||
                     'bg-gray-400';
                   return (
-                    <div key={t.type}>
+                    <div key={row.type}>
                       <div className='flex items-center justify-between mb-0.5'>
                         <span className='text-xs text-gray-700'>
-                          {t.type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                          {row.type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
                         </span>
                         <span className='text-xs font-semibold text-gray-800'>
-                          {fmtKES(t.amount)}
+                          {fmtKES(row.amount)}
                         </span>
                       </div>
                       <div className='h-2 bg-gray-100 rounded-full overflow-hidden'>
                         <div
                           className={`h-full rounded-full ${bgColor}`}
-                          style={{ width: `${Math.min(t.percentage, 100)}%` }}
+                          style={{ width: `${Math.min(row.percentage, 100)}%` }}
                         />
                       </div>
                     </div>
@@ -1040,7 +1268,7 @@ function BudgetTab({ data }: { data: CountyComprehensive }) {
           {countyPendingBills?.aging_buckets && countyPendingBills.aging_buckets.length > 0 && (
             <div>
               <h4 className='text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2'>
-                Aging
+                {t('county.budget.pending_aging')}
               </h4>
               <div className='flex h-4 rounded-full overflow-hidden'>
                 {countyPendingBills.aging_buckets.map((bucket) => {
@@ -1089,8 +1317,7 @@ function BudgetTab({ data }: { data: CountyComprehensive }) {
 
           {!countyPendingBills && debt.pending_bills > 0 && (
             <p className='text-xs text-gray-500'>
-              This county has {fmtKES(debt.pending_bills)} in pending bills. Detailed breakdown data
-              will be available once the county reports are processed.
+              {t('county.budget.pending_fallback').replace('{amount}', fmtKES(debt.pending_bills))}
             </p>
           )}
         </div>
@@ -1101,76 +1328,84 @@ function BudgetTab({ data }: { data: CountyComprehensive }) {
 
 /* ═══════════ Tab: Audit ═══════════ */
 
-const CATEGORY_CONFIG: Record<string, { label: string; color: string; bg: string; icon: string }> =
-  {
-    'Financial Irregularity': {
-      label: 'Financial Irregularity',
-      color: 'text-red-700',
-      bg: 'bg-red-50 border-red-200',
-      icon: '💰',
-    },
-    'Asset Management': {
-      label: 'Asset Management',
-      color: 'text-amber-700',
-      bg: 'bg-amber-50 border-amber-200',
-      icon: '🏗️',
-    },
-    'Missing Funds': {
-      label: 'Missing / Unaccounted Funds',
-      color: 'text-red-800',
-      bg: 'bg-red-100 border-red-300',
-      icon: '🚨',
-    },
-    'Procurement Issues': {
-      label: 'Procurement Issues',
-      color: 'text-orange-700',
-      bg: 'bg-orange-50 border-orange-200',
-      icon: '📋',
-    },
-    'Payroll Issues': {
-      label: 'Payroll Issues',
-      color: 'text-purple-700',
-      bg: 'bg-purple-50 border-purple-200',
-      icon: '👥',
-    },
-    'Revenue Collection': {
-      label: 'Revenue Collection',
-      color: 'text-blue-700',
-      bg: 'bg-blue-50 border-blue-200',
-      icon: '🏦',
-    },
-    other: { label: 'Other', color: 'text-gray-700', bg: 'bg-gray-50 border-gray-200', icon: '📄' },
-  };
+const CATEGORY_CONFIG: Record<
+  string,
+  { labelKey: TranslationKey; color: string; bg: string; icon: string }
+> = {
+  'Financial Irregularity': {
+    labelKey: 'county.audit.cat.financial_irregularity',
+    color: 'text-red-700',
+    bg: 'bg-red-50 border-red-200',
+    icon: '💰',
+  },
+  'Asset Management': {
+    labelKey: 'county.audit.cat.asset_management',
+    color: 'text-amber-700',
+    bg: 'bg-amber-50 border-amber-200',
+    icon: '🏗️',
+  },
+  'Missing Funds': {
+    labelKey: 'county.audit.cat.missing_funds',
+    color: 'text-red-800',
+    bg: 'bg-red-100 border-red-300',
+    icon: '🚨',
+  },
+  'Procurement Issues': {
+    labelKey: 'county.audit.cat.procurement',
+    color: 'text-orange-700',
+    bg: 'bg-orange-50 border-orange-200',
+    icon: '📋',
+  },
+  'Payroll Issues': {
+    labelKey: 'county.audit.cat.payroll',
+    color: 'text-purple-700',
+    bg: 'bg-purple-50 border-purple-200',
+    icon: '👥',
+  },
+  'Revenue Collection': {
+    labelKey: 'county.audit.cat.revenue_collection',
+    color: 'text-blue-700',
+    bg: 'bg-blue-50 border-blue-200',
+    icon: '🏦',
+  },
+  other: {
+    labelKey: 'county.audit.cat.other',
+    color: 'text-gray-700',
+    bg: 'bg-gray-50 border-gray-200',
+    icon: '📄',
+  },
+};
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
+const STATUS_CONFIG: Record<string, { labelKey: TranslationKey; color: string; dot: string }> = {
   'Under Review': {
-    label: 'Under Review',
+    labelKey: 'county.audit.status.under_review',
     color: 'text-yellow-700 bg-yellow-50 border-yellow-200',
     dot: 'bg-yellow-500',
   },
   Escalated: {
-    label: 'Escalated',
+    labelKey: 'county.audit.status.escalated',
     color: 'text-red-700 bg-red-50 border-red-200',
     dot: 'bg-red-500',
   },
   Resolved: {
-    label: 'Resolved',
+    labelKey: 'county.audit.status.resolved',
     color: 'text-green-700 bg-green-50 border-green-200',
     dot: 'bg-green-500',
   },
   Pending: {
-    label: 'Pending',
+    labelKey: 'county.audit.status.pending',
     color: 'text-gray-600 bg-gray-50 border-gray-200',
     dot: 'bg-gray-400',
   },
   open: {
-    label: 'Open',
+    labelKey: 'county.audit.status.open',
     color: 'text-yellow-700 bg-yellow-50 border-yellow-200',
     dot: 'bg-yellow-500',
   },
 };
 
 function AuditTab({ data }: { data: CountyComprehensive }) {
+  const { t } = useLang();
   const { audit, missing_funds } = data;
   const [expanded, setExpanded] = useState<number | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -1205,27 +1440,27 @@ function AuditTab({ data }: { data: CountyComprehensive }) {
     <div className='space-y-5'>
       {/* ── What this means (plain language intro) ── */}
       <div className='bg-gov-forest/5 border border-gov-forest/20 rounded-xl p-4'>
-        <h3 className='text-sm font-semibold text-gov-dark mb-1'>What are audit findings?</h3>
-        <p className='text-xs text-gray-600 leading-relaxed'>
-          The Office of the Auditor-General examines how your county government spends public money.
-          When they find problems — like missing funds, irregular spending, or poor record-keeping —
-          they report them as &quot;audit findings.&quot; Each finding below shows{' '}
-          <strong>what went wrong</strong>, <strong>how much money is involved</strong>, and the{' '}
-          <strong>current status</strong> of the issue.
-        </p>
+        <h3 className='text-sm font-semibold text-gov-dark mb-1'>
+          {t('county.audit.intro_title')}
+        </h3>
+        <p className='text-xs text-gray-600 leading-relaxed'>{t('county.audit.intro_body')}</p>
       </div>
 
       {/* ── Top-level stats ── */}
       <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
         <div className='bg-white rounded-xl border border-gray-100 p-4 text-center'>
           <div className='text-2xl font-bold text-gray-900'>{audit.findings_count}</div>
-          <div className='text-[11px] text-gray-500 mt-0.5'>Total Findings</div>
+          <div className='text-[11px] text-gray-500 mt-0.5'>
+            {t('county.audit.kpi_total_findings')}
+          </div>
         </div>
         <div className='bg-white rounded-xl border border-gray-100 p-4 text-center'>
           <div className='text-2xl font-bold text-red-700'>
             {audit.total_amount_involved > 0 ? fmtKES(audit.total_amount_involved) : 'KES 0'}
           </div>
-          <div className='text-[11px] text-gray-500 mt-0.5'>Total Money Questioned</div>
+          <div className='text-[11px] text-gray-500 mt-0.5'>
+            {t('county.audit.kpi_money_questioned')}
+          </div>
         </div>
         <div className='bg-white rounded-xl border border-gray-100 p-4 text-center'>
           <div className='flex items-center justify-center gap-1.5'>
@@ -1234,18 +1469,22 @@ function AuditTab({ data }: { data: CountyComprehensive }) {
               {audit.by_severity.critical || 0}
             </span>
           </div>
-          <div className='text-[11px] text-gray-500 mt-0.5'>Critical Issues</div>
+          <div className='text-[11px] text-gray-500 mt-0.5'>
+            {t('county.audit.kpi_critical_issues')}
+          </div>
         </div>
         <div className='bg-white rounded-xl border border-gray-100 p-4 text-center'>
           <div className='text-2xl font-bold text-green-700'>{statusCounts['Resolved'] || 0}</div>
-          <div className='text-[11px] text-gray-500 mt-0.5'>Resolved</div>
+          <div className='text-[11px] text-gray-500 mt-0.5'>{t('county.audit.kpi_resolved')}</div>
         </div>
       </div>
 
       {/* ── Category breakdown ── */}
       {categoryBreakdown.length > 0 && (
         <div className='bg-white rounded-xl border border-gray-100 p-5'>
-          <h3 className='text-sm font-semibold text-gray-800 mb-3'>Findings by Category</h3>
+          <h3 className='text-sm font-semibold text-gray-800 mb-3'>
+            {t('county.audit.findings_by_category')}
+          </h3>
           <div className='space-y-2'>
             {categoryBreakdown.map(([cat, { count, amount }]) => {
               const cfg = CATEGORY_CONFIG[cat] || CATEGORY_CONFIG.other;
@@ -1263,9 +1502,12 @@ function AuditTab({ data }: { data: CountyComprehensive }) {
                   <div className='flex items-center justify-between mb-1'>
                     <div className='flex items-center gap-2'>
                       <span className='text-sm'>{cfg.icon}</span>
-                      <span className='text-sm font-medium text-gray-800'>{cfg.label}</span>
+                      <span className='text-sm font-medium text-gray-800'>{t(cfg.labelKey)}</span>
                       <span className='text-xs text-gray-400'>
-                        {count} finding{count !== 1 ? 's' : ''}
+                        {count}{' '}
+                        {count !== 1
+                          ? t('county.audit.finding_plural')
+                          : t('county.audit.finding_singular')}
                       </span>
                     </div>
                     {amount > 0 && (
@@ -1288,7 +1530,7 @@ function AuditTab({ data }: { data: CountyComprehensive }) {
             <button
               onClick={() => setFilterCategory('all')}
               className='mt-2 text-xs text-gov-forest hover:underline'>
-              ← Show all categories
+              {t('county.audit.show_all_categories')}
             </button>
           )}
         </div>
@@ -1303,7 +1545,7 @@ function AuditTab({ data }: { data: CountyComprehensive }) {
               key={status}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${cfg.color}`}>
               <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-              {cfg.label}: {count}
+              {t(cfg.labelKey)}: {count}
             </div>
           );
         })}
@@ -1315,12 +1557,11 @@ function AuditTab({ data }: { data: CountyComprehensive }) {
           <div className='flex items-center gap-2 mb-1'>
             <AlertTriangle size={16} className='text-red-600' />
             <span className='text-sm font-semibold text-red-900'>
-              {fmtKES(missing_funds.total_amount)} Missing / Unaccounted
+              {fmtKES(missing_funds.total_amount)} {t('county.audit.missing_unaccounted')}
             </span>
           </div>
           <div className='text-xs text-red-700'>
-            {missing_funds.cases_count} case(s) flagged by the Auditor-General as money that cannot
-            be accounted for.
+            {missing_funds.cases_count} {t('county.audit.cases_flagged')}
           </div>
         </div>
       )}
@@ -1330,11 +1571,14 @@ function AuditTab({ data }: { data: CountyComprehensive }) {
         <div className='flex items-center justify-between'>
           <h3 className='text-sm font-semibold text-gray-800'>
             {filterCategory === 'all'
-              ? 'All Audit Findings'
-              : `${(CATEGORY_CONFIG[filterCategory] || CATEGORY_CONFIG.other).label} Findings`}
+              ? t('county.audit.all_findings_title')
+              : `${t((CATEGORY_CONFIG[filterCategory] || CATEGORY_CONFIG.other).labelKey)} ${t('county.audit.category_findings_suffix')}`}
           </h3>
           <span className='text-xs text-gray-400'>
-            {filteredFindings.length} finding{filteredFindings.length !== 1 ? 's' : ''}
+            {filteredFindings.length}{' '}
+            {filteredFindings.length !== 1
+              ? t('county.audit.finding_plural')
+              : t('county.audit.finding_singular')}
           </span>
         </div>
 
@@ -1343,6 +1587,66 @@ function AuditTab({ data }: { data: CountyComprehensive }) {
           const catCfg = CATEGORY_CONFIG[f.category] || CATEGORY_CONFIG.other;
           const stCfg = STATUS_CONFIG[f.status] || STATUS_CONFIG.open;
           const open = expanded === f.id;
+
+          // Pre-compute the "what does this mean" text
+          const amountStr =
+            f.amount_involved > 0 ? f.amount_involved.toLocaleString() : '';
+          const undisclosedAmount = t('county.audit.explain.undisclosed_amount');
+          const undisclosedValue = t('county.audit.explain.undisclosed_value');
+          const amountFallback = t('county.audit.explain.amount_fallback');
+          const fundsFallback = t('county.audit.explain.funds_fallback');
+          const undisclosedAmounts = t('county.audit.explain.undisclosed_amounts');
+
+          let meansText = '';
+          if (f.category === 'Missing Funds') {
+            meansText = t('county.audit.explain.missing_funds').replace(
+              '{amount}',
+              amountStr || undisclosedAmount
+            );
+          } else if (f.category === 'Financial Irregularity') {
+            meansText = t('county.audit.explain.financial_irregularity').replace(
+              '{amount}',
+              amountStr || amountFallback
+            );
+          } else if (f.category === 'Asset Management') {
+            meansText = t('county.audit.explain.asset_management').replace(
+              '{amount}',
+              amountStr || undisclosedValue
+            );
+          } else if (f.category === 'Procurement Issues') {
+            meansText = t('county.audit.explain.procurement').replace(
+              '{amount}',
+              amountStr || fundsFallback
+            );
+          } else if (f.category === 'Payroll Issues') {
+            meansText = t('county.audit.explain.payroll').replace(
+              '{amount}',
+              amountStr || undisclosedAmounts
+            );
+          } else {
+            const amountClause =
+              f.amount_involved > 0
+                ? t('county.audit.explain.amount_clause').replace('{amount}', amountStr)
+                : '';
+            meansText = t('county.audit.explain.default').replace(
+              '{amount_clause}',
+              amountClause
+            );
+          }
+
+          // Status explanation
+          let statusExplain = '';
+          if (f.status === 'Resolved') {
+            statusExplain = t('county.audit.status_explain.resolved');
+          } else if (f.status === 'Escalated') {
+            statusExplain = t('county.audit.status_explain.escalated');
+          } else if (f.status === 'Under Review') {
+            statusExplain = t('county.audit.status_explain.under_review');
+          } else if (f.status === 'Pending') {
+            statusExplain = t('county.audit.status_explain.pending');
+          } else {
+            statusExplain = t('county.audit.status_explain.default');
+          }
 
           return (
             <div
@@ -1357,18 +1661,20 @@ function AuditTab({ data }: { data: CountyComprehensive }) {
                 <div className='flex items-center gap-2 flex-wrap mb-2'>
                   <span
                     className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border ${catCfg.bg} ${catCfg.color}`}>
-                    {catCfg.icon} {catCfg.label}
+                    {catCfg.icon} {t(catCfg.labelKey)}
                   </span>
                   <span
                     className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${stCfg.color}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${stCfg.dot}`} />
-                    {stCfg.label}
+                    {t(stCfg.labelKey)}
                   </span>
                   <span className={`text-[10px] font-bold uppercase tracking-wider ${s.text}`}>
-                    {s.label}
+                    {t(s.labelKey)}
                   </span>
                   {f.audit_year && (
-                    <span className='text-[10px] text-gray-400 ml-auto'>FY {f.audit_year}</span>
+                    <span className='text-[10px] text-gray-400 ml-auto'>
+                      {t('county.audit.fy_prefix')} {f.audit_year}
+                    </span>
                   )}
                 </div>
 
@@ -1383,7 +1689,9 @@ function AuditTab({ data }: { data: CountyComprehensive }) {
                     </span>
                   )}
                   {f.reference && (
-                    <span className='text-[10px] text-gray-400 font-mono'>Ref: {f.reference}</span>
+                    <span className='text-[10px] text-gray-400 font-mono'>
+                      {t('county.audit.ref_prefix')} {f.reference}
+                    </span>
                   )}
                   <ChevronDown
                     size={14}
@@ -1404,28 +1712,9 @@ function AuditTab({ data }: { data: CountyComprehensive }) {
                       {/* What this means section */}
                       <div className='mt-3 mb-3 bg-blue-50 border border-blue-100 rounded-lg p-3'>
                         <h4 className='text-xs font-semibold text-blue-800 mb-1'>
-                          What does this mean?
+                          {t('county.audit.what_means')}
                         </h4>
-                        <p className='text-xs text-blue-700 leading-relaxed'>
-                          {f.category === 'Missing Funds' &&
-                            `The auditors found KES ${f.amount_involved > 0 ? f.amount_involved.toLocaleString() : 'an undisclosed amount'} that the county government cannot explain where it went. This money was meant for public services.`}
-                          {f.category === 'Financial Irregularity' &&
-                            `The county spent KES ${f.amount_involved > 0 ? f.amount_involved.toLocaleString() : 'an amount'} without proper documentation or following financial rules. This makes it impossible to verify the money was used correctly.`}
-                          {f.category === 'Asset Management' &&
-                            `County assets worth KES ${f.amount_involved > 0 ? f.amount_involved.toLocaleString() : 'an undisclosed value'} are not being properly tracked, insured, or maintained — putting public property at risk.`}
-                          {f.category === 'Procurement Issues' &&
-                            `KES ${f.amount_involved > 0 ? f.amount_involved.toLocaleString() : 'Funds'} were spent on purchases that didn't follow proper procurement rules — potentially meaning taxpayers didn't get value for money.`}
-                          {f.category === 'Payroll Issues' &&
-                            `There are irregularities in how county staff are paid, involving KES ${f.amount_involved > 0 ? f.amount_involved.toLocaleString() : 'undisclosed amounts'}. This could mean ghost workers or unauthorized payments.`}
-                          {![
-                            'Missing Funds',
-                            'Financial Irregularity',
-                            'Asset Management',
-                            'Procurement Issues',
-                            'Payroll Issues',
-                          ].includes(f.category || '') &&
-                            `The auditors flagged an issue with how public money was managed${f.amount_involved > 0 ? `, involving KES ${f.amount_involved.toLocaleString()}` : ''}. This requires attention to ensure taxpayer money is protected.`}
-                        </p>
+                        <p className='text-xs text-blue-700 leading-relaxed'>{meansText}</p>
                       </div>
 
                       {/* Recommendation */}
@@ -1433,7 +1722,7 @@ function AuditTab({ data }: { data: CountyComprehensive }) {
                         <div className='bg-green-50 border border-green-100 rounded-lg p-3'>
                           <h4 className='text-xs font-semibold text-green-800 mb-1'>
                             <CheckCircle2 size={12} className='inline mr-1' />
-                            Auditor&apos;s Recommendation
+                            {t('county.audit.recommendation')}
                           </h4>
                           <p className='text-xs text-green-700 leading-relaxed'>
                             {f.recommendation}
@@ -1442,19 +1731,7 @@ function AuditTab({ data }: { data: CountyComprehensive }) {
                       )}
 
                       {/* Status explanation */}
-                      <div className='mt-2 text-[11px] text-gray-500'>
-                        {f.status === 'Resolved' &&
-                          '✅ This issue has been addressed by the county government.'}
-                        {f.status === 'Escalated' &&
-                          '⚠️ This issue has been escalated for further investigation or action.'}
-                        {f.status === 'Under Review' &&
-                          '🔍 This issue is currently being reviewed by the relevant authorities.'}
-                        {f.status === 'Pending' &&
-                          '⏳ This issue is awaiting action from the county government.'}
-                        {!['Resolved', 'Escalated', 'Under Review', 'Pending'].includes(
-                          f.status || ''
-                        ) && '📋 Status of this issue is being tracked.'}
-                      </div>
+                      <div className='mt-2 text-[11px] text-gray-500'>{statusExplain}</div>
                     </div>
                   </motion.div>
                 )}
@@ -1466,7 +1743,7 @@ function AuditTab({ data }: { data: CountyComprehensive }) {
 
       {filteredFindings.length > 20 && (
         <p className='text-xs text-gray-500 text-center'>
-          Showing 20 of {filteredFindings.length} findings
+          {t('county.audit.showing_of').replace('{n}', String(filteredFindings.length))}
         </p>
       )}
     </div>
@@ -1475,18 +1752,15 @@ function AuditTab({ data }: { data: CountyComprehensive }) {
 
 /* ═══════════ Tab: Projects ═══════════ */
 function ProjectsTab({ data }: { data: CountyComprehensive }) {
+  const { t } = useLang();
   const { stalled_projects } = data;
 
   if (stalled_projects.count === 0) {
     return (
       <div className='bg-emerald-50 border border-emerald-200 rounded-xl p-6 text-center'>
         <CheckCircle2 size={32} className='mx-auto text-emerald-500 mb-2' />
-        <p className='text-sm text-emerald-800 font-medium'>
-          No stalled or significantly delayed projects
-        </p>
-        <p className='text-xs text-emerald-600 mt-1'>
-          All audited development projects are progressing within acceptable parameters.
-        </p>
+        <p className='text-sm text-emerald-800 font-medium'>{t('county.projects.none_title')}</p>
+        <p className='text-xs text-emerald-600 mt-1'>{t('county.projects.none_body')}</p>
       </div>
     );
   }
@@ -1497,19 +1771,19 @@ function ProjectsTab({ data }: { data: CountyComprehensive }) {
       <div className='bg-white rounded-xl border border-gray-100 p-5'>
         <div className='grid grid-cols-3 gap-4'>
           <KPI
-            label='Stalled / Delayed'
+            label={t('county.projects.kpi_stalled')}
             value={String(stalled_projects.count)}
             accent='text-red-700'
           />
           <KPI
-            label='Contracted Value'
+            label={t('county.projects.kpi_contracted')}
             value={fmtKES(stalled_projects.total_contracted_value)}
             accent='text-blue-700'
           />
           <KPI
-            label='Already Paid'
+            label={t('county.projects.kpi_paid')}
             value={fmtKES(stalled_projects.total_amount_paid)}
-            sub={`${pct((stalled_projects.total_amount_paid / (stalled_projects.total_contracted_value || 1)) * 100)} disbursed`}
+            sub={`${pct((stalled_projects.total_amount_paid / (stalled_projects.total_contracted_value || 1)) * 100)} ${t('county.projects.disbursed_suffix')}`}
             accent='text-amber-700'
           />
         </div>
@@ -1536,14 +1810,18 @@ function ProjectsTab({ data }: { data: CountyComprehensive }) {
                   ? 'bg-red-50 border-red-200 text-red-700'
                   : 'bg-amber-50 border-amber-200 text-amber-700'
               }`}>
-              {p.status === 'stalled' ? 'Stalled' : 'Delayed'}
+              {p.status === 'stalled'
+                ? t('county.projects.status_stalled')
+                : t('county.projects.status_delayed')}
             </span>
           </div>
 
           {/* Progress */}
           <div className='mb-3'>
             <div className='flex items-center justify-between mb-1'>
-              <span className='text-xs text-gray-500'>{p.completion_pct}% complete</span>
+              <span className='text-xs text-gray-500'>
+                {p.completion_pct}% {t('county.projects.complete_suffix')}
+              </span>
               <span className='text-xs text-gray-500 tabular-nums'>
                 {fmtKES(p.amount_paid)} / {fmtKES(p.contracted_amount)}
               </span>
@@ -1562,11 +1840,11 @@ function ProjectsTab({ data }: { data: CountyComprehensive }) {
           <div className='flex items-center gap-4 text-xs text-gray-500 flex-wrap'>
             <span className='flex items-center gap-1'>
               <Clock size={11} />
-              Started {p.start_year}
+              {t('county.projects.started')} {p.start_year}
             </span>
             <span className='flex items-center gap-1'>
               <Clock size={11} />
-              Expected {p.expected_completion}
+              {t('county.projects.expected')} {p.expected_completion}
             </span>
           </div>
           {p.reason && (
@@ -1583,68 +1861,65 @@ function ProjectsTab({ data }: { data: CountyComprehensive }) {
 /* ═══════════ Accountability Grade Colors ═══════════ */
 const ACCT_GRADE_STYLE: Record<
   string,
-  { bg: string; text: string; border: string; label: string; glow: string }
+  { bg: string; text: string; border: string; labelKey: TranslationKey; glow: string }
 > = {
   A: {
     bg: 'bg-emerald-500',
     text: 'text-white',
     border: 'border-emerald-600',
-    label: 'Excellent',
+    labelKey: 'county.acct.grade_excellent',
     glow: 'bg-emerald-300',
   },
   B: {
     bg: 'bg-teal-500',
     text: 'text-white',
     border: 'border-teal-600',
-    label: 'Good',
+    labelKey: 'county.acct.grade_good',
     glow: 'bg-teal-300',
   },
   C: {
     bg: 'bg-yellow-400',
     text: 'text-yellow-900',
     border: 'border-yellow-500',
-    label: 'Fair',
+    labelKey: 'county.acct.grade_fair',
     glow: 'bg-yellow-300',
   },
   D: {
     bg: 'bg-orange-500',
     text: 'text-white',
     border: 'border-orange-600',
-    label: 'Needs Improvement',
+    labelKey: 'county.acct.grade_needs_improvement',
     glow: 'bg-orange-300',
   },
   F: {
     bg: 'bg-red-600',
     text: 'text-white',
     border: 'border-red-700',
-    label: 'Poor',
+    labelKey: 'county.acct.grade_poor',
     glow: 'bg-rose-300',
   },
 };
 
-const IMPACT_STYLE: Record<
-  string,
-  { chip: string; dot: string; label: string }
-> = {
+const IMPACT_STYLE: Record<string, { chip: string; dot: string; labelKey: TranslationKey }> = {
   positive: {
     chip: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     dot: 'bg-emerald-500',
-    label: 'Positive',
+    labelKey: 'county.acct.impact_positive',
   },
   minor: {
     chip: 'bg-yellow-50 text-yellow-700 border-yellow-200',
     dot: 'bg-yellow-500',
-    label: 'Minor',
+    labelKey: 'county.acct.impact_minor',
   },
   moderate: {
     chip: 'bg-orange-50 text-orange-700 border-orange-200',
     dot: 'bg-orange-500',
-    label: 'Moderate',
+    labelKey: 'county.acct.impact_moderate',
   },
   major: {
     chip: 'bg-rose-50 text-rose-700 border-rose-200',
     dot: 'bg-rose-500',
-    label: 'Major',
+    labelKey: 'county.acct.impact_major',
   },
 };
 
@@ -1655,8 +1930,16 @@ const OPINION_COLOR: Record<string, string> = {
   Disclaimer: 'bg-red-700 text-white',
 };
 
+const OPINION_KEY: Record<string, TranslationKey> = {
+  Unqualified: 'county.acct.opinion.unqualified',
+  Qualified: 'county.acct.opinion.qualified',
+  Adverse: 'county.acct.opinion.adverse',
+  Disclaimer: 'county.acct.opinion.disclaimer',
+};
+
 /* ═══════════ Tab: Accountability ═══════════ */
 function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) {
+  const { t } = useLang();
   const { data, isLoading, error } = useCountyAccountability(countyData.id);
 
   if (isLoading) {
@@ -1671,7 +1954,7 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
     return (
       <div className='bg-red-50 border border-red-200 rounded-xl p-6 text-center'>
         <ShieldAlert size={28} className='mx-auto text-red-400 mb-2' />
-        <p className='text-sm text-red-700'>Failed to load accountability data</p>
+        <p className='text-sm text-red-700'>{t('county.acct.failed_load')}</p>
       </div>
     );
   }
@@ -1752,14 +2035,10 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
 
           <div className='text-center sm:text-left flex-1'>
             <div className='text-[11px] uppercase tracking-widest font-semibold text-gray-400 mb-1'>
-              Accountability Grade
+              {t('county.acct.grade_label')}
             </div>
-            <h3 className='text-2xl font-bold text-gray-900 mb-1'>{gradeStyle.label}</h3>
-            <p className='text-sm text-gray-600 max-w-xl'>
-              Scored out of 100 across five dimensions: audit opinions, finding volume &amp;
-              severity, recurring issues, unresolved items, flagged spend, and absorption.
-              Grade bands: A ≥ 85, B ≥ 70, C ≥ 55, D ≥ 40, else F.
-            </p>
+            <h3 className='text-2xl font-bold text-gray-900 mb-1'>{t(gradeStyle.labelKey)}</h3>
+            <p className='text-sm text-gray-600 max-w-xl'>{t('county.acct.grade_description')}</p>
           </div>
         </div>
       </div>
@@ -1770,18 +2049,19 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
           <div className='px-5 pt-5 pb-3 flex items-center gap-2'>
             <div className='h-5 w-1 rounded-full bg-gov-forest' />
             <h3 className='text-base font-semibold text-gray-900'>
-              How this grade was calculated
+              {t('county.acct.how_calculated')}
             </h3>
           </div>
           <div className='px-5 pb-3 text-[12px] text-gray-500'>
-            Starting from 100, we subtract points for each risk factor. Mouse-over each row
-            for the specific threshold triggered.
+            {t('county.acct.how_calc_intro')}
           </div>
           <div className='divide-y divide-gray-50'>
             {/* Score bar summary */}
             <div className='px-5 py-3'>
               <div className='flex items-center justify-between text-[11px] text-gray-500 mb-1.5'>
-                <span className='font-semibold uppercase tracking-widest'>Score</span>
+                <span className='font-semibold uppercase tracking-widest'>
+                  {t('county.acct.score_label')}
+                </span>
                 <span className='tabular-nums font-semibold text-gray-800'>
                   {score !== null ? `${score.toFixed(1)} / 100` : '—'}
                 </span>
@@ -1826,9 +2106,7 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
                   />
                   <div className='flex-1 min-w-0'>
                     <div className='flex items-center justify-between gap-2 mb-0.5'>
-                      <span className='text-sm font-semibold text-gray-800'>
-                        {f.label}
-                      </span>
+                      <span className='text-sm font-semibold text-gray-800'>{f.label}</span>
                       <span
                         className={`text-xs font-bold tabular-nums px-2 py-0.5 rounded-md border ${
                           pts < 0
@@ -1837,13 +2115,13 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
                               ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
                               : 'text-gray-600 bg-gray-50 border-gray-200'
                         }`}>
-                        {pts > 0 ? `+${pts}` : pts} pt
+                        {pts > 0 ? `+${pts}` : pts} {t('county.acct.pt_suffix')}
                       </span>
                     </div>
                     <div className='flex items-center gap-2'>
                       <span
                         className={`inline-block text-[10px] uppercase tracking-widest font-semibold px-1.5 py-0.5 rounded border ${style.chip}`}>
-                        {style.label}
+                        {t(style.labelKey)}
                       </span>
                       <span className='text-xs text-gray-500'>{f.detail}</span>
                     </div>
@@ -1853,18 +2131,13 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
             })}
             {factors.length === 0 && (
               <div className='px-5 py-6 text-center text-sm text-gray-500'>
-                No penalty factors triggered — clean accountability record.
+                {t('county.acct.no_penalties')}
               </div>
             )}
           </div>
           <div className='px-5 py-3 bg-gray-50/60 border-t border-gray-100 text-[11px] text-gray-500 flex items-start gap-2'>
             <Info size={12} className='mt-0.5 flex-shrink-0 text-gray-400' />
-            <span>
-              Penalties are derived from OAG audit records and COB budget implementation
-              reports. &ldquo;Unresolved&rdquo; counts any finding not explicitly resolved,
-              closed, dismissed, or settled — including items marked &ldquo;Under
-              Review&rdquo; or &ldquo;Escalated&rdquo;.
-            </span>
+            <span>{t('county.acct.calc_footnote')}</span>
           </div>
         </div>
       )}
@@ -1875,29 +2148,29 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
           {
             value:
               data.total_flagged_amount > 0 ? fmtKES(data.total_flagged_amount) : 'KES 0',
-            label: 'Total Flagged',
+            label: t('county.acct.kpi.total_flagged'),
             sub:
               typeof data.flagged_pct_of_budget === 'number' && data.flagged_pct_of_budget > 0
-                ? `${data.flagged_pct_of_budget.toFixed(1)}% of budget`
+                ? `${data.flagged_pct_of_budget.toFixed(1)}% ${t('county.acct.kpi.pct_of_budget')}`
                 : undefined,
             Icon: FileWarning,
             tone: 'rose' as const,
           },
           {
             value: String(data.total_findings ?? 0),
-            label: 'Audit Findings',
+            label: t('county.acct.kpi.audit_findings'),
             sub:
               typeof data.critical_findings === 'number' &&
               typeof data.warning_findings === 'number'
-                ? `${data.critical_findings} critical · ${data.warning_findings} warning`
+                ? `${data.critical_findings} ${t('county.acct.kpi.critical_lower')} · ${data.warning_findings} ${t('county.acct.kpi.warning_lower')}`
                 : undefined,
             Icon: AlertTriangle,
             tone: 'amber' as const,
           },
           {
             value: String(data.unresolved_findings_count),
-            label: 'Unresolved',
-            sub: `${data.recurring_findings_count} recurring`,
+            label: t('county.acct.kpi.unresolved'),
+            sub: `${data.recurring_findings_count} ${t('county.acct.kpi.recurring')}`,
             Icon: Clock,
             tone: 'orange' as const,
           },
@@ -1905,9 +2178,9 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
             value:
               data.absorption_rate !== null
                 ? `${(data.absorption_rate * 100).toFixed(1)}%`
-                : 'N/A',
-            label: 'Absorption Rate',
-            sub: data.absorption_rate !== null ? 'Spent / allocated' : undefined,
+                : t('county.overview.kpi.na'),
+            label: t('county.acct.kpi.absorption_rate'),
+            sub: data.absorption_rate !== null ? t('county.acct.kpi.absorption_sub') : undefined,
             Icon: TrendingUp,
             tone: 'blue' as const,
           },
@@ -1938,16 +2211,18 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
       {/* B. AUDIT OPINION HISTORY */}
       {data.audit_opinion_history.length > 0 && (
         <div className='bg-white rounded-xl border border-gray-100 p-5'>
-          <h3 className='text-sm font-semibold text-gray-800 mb-4'>Audit Opinion History</h3>
+          <h3 className='text-sm font-semibold text-gray-800 mb-4'>
+            {t('county.acct.opinion_history')}
+          </h3>
           <div className='overflow-x-auto'>
             <table className='w-full border-collapse'>
               <thead>
                 <tr className='border-b border-gray-100'>
                   <th className='text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-2 px-3'>
-                    Year
+                    {t('county.acct.table.year')}
                   </th>
                   <th className='text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-2 px-3'>
-                    Opinion
+                    {t('county.acct.table.opinion')}
                   </th>
                 </tr>
               </thead>
@@ -1956,15 +2231,17 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
                   .sort((a, b) => b.year - a.year)
                   .map((entry) => {
                     const opinionCls = OPINION_COLOR[entry.opinion] || 'bg-gray-200 text-gray-700';
+                    const opinionKey = OPINION_KEY[entry.opinion];
                     return (
                       <tr key={entry.year} className='border-b border-gray-50 last:border-0'>
                         <td className='py-2.5 px-3 text-sm text-gray-700 tabular-nums font-medium'>
-                          FY {entry.year}/{(entry.year + 1).toString().slice(-2)}
+                          {t('county.audit.fy_prefix')} {entry.year}/
+                          {(entry.year + 1).toString().slice(-2)}
                         </td>
                         <td className='py-2.5 px-3'>
                           <span
                             className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${opinionCls}`}>
-                            {entry.opinion}
+                            {opinionKey ? t(opinionKey) : entry.opinion}
                           </span>
                         </td>
                       </tr>
@@ -1980,7 +2257,7 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
       <div>
         <div className='flex items-center gap-2 mb-3'>
           <div className='h-5 w-1 rounded-full bg-gov-forest' />
-          <h3 className='text-base font-semibold text-gray-900'>Peer Comparison</h3>
+          <h3 className='text-base font-semibold text-gray-900'>{t('county.acct.peer.title')}</h3>
         </div>
         <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
           {/* vs Region */}
@@ -1991,11 +2268,12 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
                 : 'bg-gradient-to-br from-emerald-50/60 to-white border-emerald-100'
             }`}>
             <div className='text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-3'>
-              vs{' '}
-              {peer.region
-                ? peer.region.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-                : 'Region'}{' '}
-              Average
+              {t('county.acct.peer.vs_region').replace(
+                '{region}',
+                peer.region
+                  ? peer.region.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+                  : t('county.acct.peer.region_fallback')
+              )}
             </div>
             <div className='flex items-center gap-2 mb-3'>
               {isBelowRegion ? (
@@ -2005,25 +2283,25 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
               )}
               <span
                 className={`text-lg font-bold ${isBelowRegion ? 'text-rose-700' : 'text-emerald-700'}`}>
-                {isBelowRegion ? 'Above' : 'Below'} peer average
+                {isBelowRegion ? t('county.acct.peer.above') : t('county.acct.peer.below')}
               </span>
             </div>
             <div className='space-y-1 text-sm'>
               <div className='flex justify-between'>
-                <span className='text-gray-500'>This county</span>
+                <span className='text-gray-500'>{t('county.acct.peer.this_county')}</span>
                 <span className='font-semibold text-gray-800 tabular-nums'>
                   {fmtKES(data.total_flagged_amount)}
                 </span>
               </div>
               <div className='flex justify-between'>
-                <span className='text-gray-500'>Region avg</span>
+                <span className='text-gray-500'>{t('county.acct.peer.region_avg')}</span>
                 <span className='font-semibold text-gray-800 tabular-nums'>
                   {fmtKES(peer.region_avg_flagged_amount)}
                 </span>
               </div>
               {peer.region_avg_grade && (
                 <div className='flex justify-between'>
-                  <span className='text-gray-500'>Region avg grade</span>
+                  <span className='text-gray-500'>{t('county.acct.peer.region_avg_grade')}</span>
                   <span className='font-semibold text-gray-800'>{peer.region_avg_grade}</span>
                 </div>
               )}
@@ -2038,7 +2316,10 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
                 : 'bg-gradient-to-br from-emerald-50/60 to-white border-emerald-100'
             }`}>
             <div className='text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-3'>
-              vs {peer.population_bracket || 'Population Bracket'} Average
+              {t('county.acct.peer.vs_bracket').replace(
+                '{bracket}',
+                peer.population_bracket || t('county.acct.peer.bracket_fallback')
+              )}
             </div>
             <div className='flex items-center gap-2 mb-3'>
               {isBelowBracket ? (
@@ -2048,18 +2329,20 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
               )}
               <span
                 className={`text-lg font-bold ${isBelowBracket ? 'text-rose-700' : 'text-emerald-700'}`}>
-                {isBelowBracket ? 'Above' : 'Below'} bracket average
+                {isBelowBracket
+                  ? t('county.acct.peer.above_bracket')
+                  : t('county.acct.peer.below_bracket')}
               </span>
             </div>
             <div className='space-y-1 text-sm'>
               <div className='flex justify-between'>
-                <span className='text-gray-500'>This county</span>
+                <span className='text-gray-500'>{t('county.acct.peer.this_county')}</span>
                 <span className='font-semibold text-gray-800 tabular-nums'>
                   {fmtKES(data.total_flagged_amount)}
                 </span>
               </div>
               <div className='flex justify-between'>
-                <span className='text-gray-500'>Bracket avg</span>
+                <span className='text-gray-500'>{t('county.acct.peer.bracket_avg')}</span>
                 <span className='font-semibold text-gray-800 tabular-nums'>
                   {fmtKES(peer.population_bracket_avg)}
                 </span>
@@ -2068,7 +2351,7 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
           </div>
         </div>
         <p className='text-[11px] text-gray-400 mt-3 italic'>
-          Higher flagged amounts indicate more audit issues. Lower is better.
+          {t('county.acct.peer.footer_note')}
         </p>
       </div>
     </div>
@@ -2079,6 +2362,7 @@ function AccountabilityTab({ data: countyData }: { data: CountyComprehensive }) 
 const DEFAULT_FISCAL_YEARS = generateFiscalYears();
 
 function MoneyFlowTab({ data: countyData }: { data: CountyComprehensive }) {
+  const { t } = useLang();
   const [selectedYear, setSelectedYear] = useState(DEFAULT_FISCAL_YEARS[0]);
   const { data: fiscalYears } = useAvailableFiscalYears();
   const { data, isLoading } = useCountyMoneyFlow(countyData.id, selectedYear);
@@ -2093,11 +2377,11 @@ function MoneyFlowTab({ data: countyData }: { data: CountyComprehensive }) {
           <div className='flex items-center gap-2 mb-1'>
             <div className='h-6 w-1 rounded-full bg-gov-forest' />
             <h3 className='text-base font-semibold text-gray-900'>
-              Follow the Money · {countyData.name}
+              {t('county.money.header_prefix')} · {countyData.name}
             </h3>
           </div>
           <p className='text-xs text-gray-500 ml-3'>
-            Trace how public funds flow from allocation to expenditure · {selectedYear}
+            {t('county.money.subtitle')} · {selectedYear}
           </p>
         </div>
         <YearSelector value={selectedYear} onChange={setSelectedYear} years={years} />
@@ -2110,26 +2394,35 @@ function MoneyFlowTab({ data: countyData }: { data: CountyComprehensive }) {
 }
 
 /* ═══════════ Data Sources Footer ═══════════ */
-function SourcesFooter({ data }: { data: CountyComprehensive }) {
-  const sources = [
+function SourcesFooter({ data: _data }: { data: CountyComprehensive }) {
+  const { t } = useLang();
+  const sources: Array<{ key: string; labelKey: TranslationKey; url: string }> = [
     {
       key: 'budget',
-      label: 'Budget',
+      labelKey: 'county.sources.budget',
       url: 'https://cob.go.ke/publications/county-budget-implementation-review-reports/',
     },
     {
       key: 'audit',
-      label: 'Audit',
+      labelKey: 'county.sources.audit',
       url: 'https://www.oagkenya.go.ke/county-government-audit-reports/',
     },
-    { key: 'debt', label: 'Debt', url: 'https://www.treasury.go.ke/county-governments/' },
-    { key: 'population', label: 'Population', url: 'https://www.knbs.or.ke/publications/' },
+    {
+      key: 'debt',
+      labelKey: 'county.sources.debt',
+      url: 'https://www.treasury.go.ke/county-governments/',
+    },
+    {
+      key: 'population',
+      labelKey: 'county.sources.population',
+      url: 'https://www.knbs.or.ke/publications/',
+    },
   ];
 
   return (
     <div className='flex flex-wrap items-center gap-x-4 gap-y-1 pt-3 border-t border-gray-100'>
       <span className='text-[10px] text-gray-400 uppercase tracking-wider font-semibold'>
-        Sources:
+        {t('county.sources.prefix')}
       </span>
       {sources.map((s) => (
         <a
@@ -2138,7 +2431,7 @@ function SourcesFooter({ data }: { data: CountyComprehensive }) {
           target='_blank'
           rel='noopener noreferrer'
           className='inline-flex items-center gap-1 text-[11px] text-gov-forest hover:underline'>
-          {s.label}
+          {t(s.labelKey)}
           <ExternalLink size={9} />
         </a>
       ))}
@@ -2150,10 +2443,14 @@ function SourcesFooter({ data }: { data: CountyComprehensive }) {
    Main Page
    ═══════════════════════════════════════════ */
 export default function CountyDetailPage() {
+  const { t } = useLang();
   const params = useParams();
   const searchParams = useSearchParams();
   const countyId = params.id as string;
-  const { data, isLoading, error } = useCountyComprehensive(countyId);
+  // Respect ?fy=... from the listing so the Health badge matches the column
+  // the user clicked from. Fall back to the last reported FY.
+  const fiscalYear = searchParams.get('fy') || getLatestReportedFiscalYear();
+  const { data, isLoading, error } = useCountyComprehensive(countyId, fiscalYear);
   // Prefetch accountability so the hero can show the grade immediately
   const { data: acctData } = useCountyAccountability(countyId);
 
@@ -2165,7 +2462,7 @@ export default function CountyDetailPage() {
   /* Loading */
   if (isLoading) {
     return (
-      <PageShell title='County Details' subtitle='Loading county data...'>
+      <PageShell title={t('county.page.title_fallback')} subtitle={t('county.loading')}>
         <div className='flex items-center justify-center py-24'>
           <div className='animate-spin rounded-full h-14 w-14 border-b-2 border-gov-forest' />
         </div>
@@ -2178,12 +2475,14 @@ export default function CountyDetailPage() {
     const from = searchParams.get('from');
     const backHref = from === 'transparency' ? '/transparency' : '/counties';
     const backLabel =
-      from === 'transparency' ? 'Back to Follow the Money' : 'Back to County Explorer';
+      from === 'transparency'
+        ? t('county.page.back_follow_money')
+        : t('county.page.back_county_explorer');
     return (
-      <PageShell title='County Details'>
+      <PageShell title={t('county.page.title_fallback')}>
         <div className='text-center py-16'>
           <ShieldAlert size={40} className='mx-auto text-red-400 mb-3' />
-          <p className='text-red-600 mb-4'>Failed to load county data</p>
+          <p className='text-red-600 mb-4'>{t('county.page.failed_load')}</p>
           <Link href={backHref} className='text-sm text-gov-forest hover:underline'>
             &larr; {backLabel}
           </Link>
@@ -2204,11 +2503,16 @@ export default function CountyDetailPage() {
 
   const fromParam = searchParams.get('from');
   const topBackHref = fromParam === 'transparency' ? '/transparency' : '/counties';
-  const topBackLabel = fromParam === 'transparency' ? 'Follow the Money' : 'All Counties';
+  const topBackLabel =
+    fromParam === 'transparency'
+      ? t('county.page.follow_money_short')
+      : t('county.page.all_counties_short');
 
   return (
     <>
-      <PageShell title={`${data.name} County`} subtitle='County government transparency report'>
+      <PageShell
+        title={`${data.name} ${t('county.page.name_suffix')}`}
+        subtitle={t('county.page.subtitle')}>
         {/* Back */}
         <Link
           href={topBackHref}
@@ -2237,40 +2541,45 @@ export default function CountyDetailPage() {
             <div className='min-w-0'>
               <div className='flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-white/60 mb-2'>
                 <Landmark size={12} />
-                County Government · Kenya
+                {t('county.hero.eyebrow')}
               </div>
               <h1 className='text-2xl sm:text-3xl font-bold tracking-tight'>
-                {data.name} County
+                {data.name} {t('county.page.name_suffix')}
               </h1>
               <p className='text-sm text-white/75 mt-1.5 max-w-md'>
-                {fmtPop(data.demographics.population)} residents ·{' '}
-                {fmtLabel(data.economic_profile.economic_base)} economy
-                {data.governor ? ` · Gov. ${data.governor}` : ''}
+                {fmtPop(data.demographics.population)} {t('county.hero.residents')} ·{' '}
+                {fmtLabel(data.economic_profile.economic_base)} {t('county.hero.economy_suffix')}
+                {data.governor ? ` · ${t('county.hero.governor_short')} ${data.governor}` : ''}
               </p>
               {data.budget.fiscal_year && (
                 <div className='mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur-sm px-3 py-1 text-[11px] font-medium text-white/90 border border-white/10'>
                   <Clock size={10} />
-                  Financial data from {data.budget.fiscal_year}
+                  {t('county.hero.fy_badge')} {data.budget.fiscal_year}
                 </div>
               )}
             </div>
 
             {/* Actions + Grades */}
             <div className='flex items-center gap-3 flex-shrink-0 flex-wrap justify-end'>
-              <WatchButton itemType='county' itemId={countyId} label={`${data.name} County`} />
+              <WatchButton
+                itemType='county'
+                itemId={countyId}
+                label={`${data.name} ${t('county.page.name_suffix')}`}
+              />
               <PDFExportButton
                 compact
-                documentTitle={`${data.name} County Report`}
+                documentTitle={`${data.name} ${t('county.pdf.report_suffix')}`}
                 className='text-white/70 hover:text-white hover:bg-white/10'
               />
               <div className='flex items-center gap-2'>
                 <GradeBadge
                   grade={data.financial_summary.grade}
                   score={data.financial_summary.health_score}
-                  label='Health'
-                  title='Financial health — budget execution, debt, pending bills. Click for methodology.'
+                  label={t('county.grade.health')}
+                  title={t('county.grade.health_tooltip')}
                   palette={HEALTH_GRADE_BG}
                   onClick={() => setShowHealthModal(true)}
+                  sparklineValues={data.health_history?.map((h) => h.score)}
                 />
                 <GradeBadge
                   grade={acctData?.accountability_grade || '—'}
@@ -2279,10 +2588,11 @@ export default function CountyDetailPage() {
                       ? acctData.accountability_score
                       : null
                   }
-                  label='Audit'
-                  title='Accountability — audit findings, unresolved items, flagged spend. Click to view breakdown.'
+                  label={t('county.grade.audit')}
+                  title={t('county.grade.audit_tooltip')}
                   palette={ACCT_GRADE_BG}
                   onClick={() => setTab('accountability')}
+                  sparklineValues={acctData?.audit_severity_history?.map((h) => h.score)}
                 />
               </div>
             </div>
@@ -2291,9 +2601,13 @@ export default function CountyDetailPage() {
           {/* Quick KPIs — glassy strip */}
           <div className='relative grid grid-cols-3 sm:grid-cols-6 bg-black/15 backdrop-blur-sm border-t border-white/10'>
             {[
-              { label: 'Budget', value: fmtKES(data.budget.total_allocated), accent: 'text-white' },
               {
-                label: 'Execution',
+                label: t('county.hero.kpi.budget'),
+                value: fmtKES(data.budget.total_allocated),
+                accent: 'text-white',
+              },
+              {
+                label: t('county.hero.kpi.execution'),
                 value: pct(data.budget.utilization_rate),
                 accent:
                   data.budget.utilization_rate >= 70
@@ -2302,19 +2616,23 @@ export default function CountyDetailPage() {
                       ? 'text-amber-300'
                       : 'text-rose-300',
               },
-              { label: 'Total Debt', value: fmtKES(data.debt.total_debt), accent: 'text-white' },
               {
-                label: 'Pending Bills',
+                label: t('county.hero.kpi.total_debt'),
+                value: fmtKES(data.debt.total_debt),
+                accent: 'text-white',
+              },
+              {
+                label: t('county.hero.kpi.pending_bills'),
                 value: fmtKES(data.debt.pending_bills),
                 accent: 'text-white',
               },
               {
-                label: 'Audit Issues',
+                label: t('county.hero.kpi.audit_issues'),
                 value: String(data.audit.findings_count),
                 accent: data.audit.findings_count > 0 ? 'text-rose-300' : 'text-white',
               },
               {
-                label: 'Stalled',
+                label: t('county.hero.kpi.stalled'),
                 value: String(data.stalled_projects.count),
                 accent: data.stalled_projects.count > 0 ? 'text-amber-300' : 'text-white',
               },
@@ -2333,17 +2651,20 @@ export default function CountyDetailPage() {
 
         {/* ── Tabs ── underline style, no nested box */}
         <div className='flex items-center gap-1 border-b border-gray-200 overflow-x-auto -mb-px'>
-          {TABS.map((t) => {
-            const active = tab === t.id;
+          {TABS.map((tabItem) => {
+            const active = tab === tabItem.id;
             return (
               <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
+                key={tabItem.id}
+                onClick={() => setTab(tabItem.id)}
                 className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap ${
                   active ? 'text-gov-forest' : 'text-gray-500 hover:text-gray-800'
                 }`}>
-                <t.icon size={14} className={active ? 'text-gov-forest' : 'text-gray-400'} />
-                {t.label}
+                <tabItem.icon
+                  size={14}
+                  className={active ? 'text-gov-forest' : 'text-gray-400'}
+                />
+                {t(tabItem.labelKey)}
                 {active && (
                   <motion.div
                     layoutId='county-tab-underline'

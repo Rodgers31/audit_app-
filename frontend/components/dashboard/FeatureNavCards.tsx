@@ -1,38 +1,24 @@
 'use client';
 
+import { useLang } from '@/lib/i18n/LangProvider';
+import type { TranslationKey } from '@/lib/i18n/messages';
 import { motion } from 'framer-motion';
 import { BarChart3, Globe, Map, Search } from 'lucide-react';
 import Link from 'next/link';
 
-const features = [
-  {
-    title: 'National Debt Overview',
-    subtitle: 'Analyst Start',
-    icon: Globe,
-    href: '/debt',
-    emoji: '🇰🇪',
-  },
-  {
-    title: 'Budget & Spending Insights',
-    subtitle: 'Budget Stars',
-    icon: BarChart3,
-    href: '/budget',
-    emoji: '📊',
-  },
-  {
-    title: 'Explore County Finances',
-    subtitle: 'County Explorer',
-    icon: Map,
-    href: '/counties',
-    emoji: '🗺️',
-  },
-  {
-    title: 'Audit Transparency Reports',
-    subtitle: 'Learning Hub',
-    icon: Search,
-    href: '/audits',
-    emoji: '🔍',
-  },
+interface Feature {
+  titleKey: TranslationKey;
+  subKey: TranslationKey;
+  icon: typeof Globe;
+  href: string;
+  emoji: string;
+}
+
+const features: Feature[] = [
+  { titleKey: 'home.features.debt.title', subKey: 'home.features.debt.sub', icon: Globe, href: '/debt', emoji: '🇰🇪' },
+  { titleKey: 'home.features.budget.title', subKey: 'home.features.budget.sub', icon: BarChart3, href: '/budget', emoji: '📊' },
+  { titleKey: 'home.features.explore.title', subKey: 'home.features.explore.sub', icon: Map, href: '/counties', emoji: '🗺️' },
+  { titleKey: 'home.features.audits.title', subKey: 'home.features.audits.sub', icon: Search, href: '/audits', emoji: '🔍' },
 ];
 
 /**
@@ -41,11 +27,12 @@ const features = [
  * Hover → slight elevation lift.
  */
 export default function FeatureNavCards() {
+  const { t } = useLang();
   return (
     <div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
       {features.map((feat, i) => (
         <motion.div
-          key={feat.title}
+          key={feat.titleKey}
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-40px' }}
@@ -66,10 +53,10 @@ export default function FeatureNavCards() {
               </div>
 
               <h4 className='text-sm font-semibold text-gov-dark leading-snug mb-1'>
-                {feat.title}
+                {t(feat.titleKey)}
               </h4>
               <span className='inline-block text-[11px] text-neutral-muted bg-gov-sand/60 px-3 py-1 rounded-full'>
-                {feat.subtitle}
+                {t(feat.subKey)}
               </span>
             </div>
           </Link>

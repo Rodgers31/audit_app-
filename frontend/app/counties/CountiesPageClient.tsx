@@ -2,8 +2,10 @@
 
 import DataFreshnessBadge from '@/components/DataFreshnessBadge';
 import InfoTip from '@/components/InfoTip';
+import { useLang } from '@/lib/i18n/LangProvider';
+import type { TranslationKey } from '@/lib/i18n/messages';
 import { useCounties } from '@/lib/react-query';
-import { generateFiscalYears, getCurrentFiscalYear } from '@/lib/utils';
+import { generateFiscalYears, getLatestReportedFiscalYear } from '@/lib/utils';
 import { County } from '@/types';
 import { motion } from 'framer-motion';
 import {
@@ -37,16 +39,16 @@ function fmtPop(n: number): string {
   return String(n);
 }
 
+// Financial-health letter grade. Scale MUST match the backend's
+// `financial_summary.grade` bands in main.py so the listing and the
+// county detail hero show the same letter for the same county.
+//   A ≥ 85 · B+ ≥ 70 · B ≥ 55 · B- ≥ 40 · else C
 function getGrade(score: number) {
   if (score >= 85) return { letter: 'A', cls: 'bg-emerald-500 text-white' };
-  if (score >= 75) return { letter: 'A-', cls: 'bg-emerald-400 text-white' };
-  if (score >= 70) return { letter: 'B+', cls: 'bg-green-200 text-green-900' };
-  if (score >= 60) return { letter: 'B', cls: 'bg-green-300 text-green-900' };
-  if (score >= 50) return { letter: 'B-', cls: 'bg-green-400 text-white' };
-  if (score >= 40) return { letter: 'C', cls: 'bg-orange-600 text-white' };
-  if (score >= 30) return { letter: 'C+', cls: 'bg-orange-700 text-white' };
-  if (score >= 20) return { letter: 'D', cls: 'bg-red-500 text-white' };
-  return { letter: 'D-', cls: 'bg-red-700 text-white' };
+  if (score >= 70) return { letter: 'B+', cls: 'bg-green-500 text-white' };
+  if (score >= 55) return { letter: 'B', cls: 'bg-amber-500 text-white' };
+  if (score >= 40) return { letter: 'B-', cls: 'bg-orange-500 text-white' };
+  return { letter: 'C', cls: 'bg-red-500 text-white' };
 }
 
 const GRADE_ALL = ['A', 'B', 'C', 'D', 'D-'] as const;
@@ -60,29 +62,39 @@ const GRADE_COLORS: Record<string, string> = {
 
 const AUDIT_STATUS_CFG: Record<
   string,
-  { label: string; dot: string; chipBg: string; chipText: string }
+  { label: string; labelKey: TranslationKey; dot: string; chipBg: string; chipText: string }
 > = {
   clean: {
     label: 'Clean',
+    labelKey: 'counties.audit_status.clean',
     dot: 'bg-emerald-500',
     chipBg: 'bg-emerald-50',
     chipText: 'text-emerald-700',
   },
   qualified: {
     label: 'Qualified',
+    labelKey: 'counties.audit_status.qualified',
     dot: 'bg-amber-500',
     chipBg: 'bg-amber-50',
     chipText: 'text-amber-700',
   },
-  adverse: { label: 'Adverse', dot: 'bg-red-500', chipBg: 'bg-red-50', chipText: 'text-red-700' },
+  adverse: {
+    label: 'Adverse',
+    labelKey: 'counties.audit_status.adverse',
+    dot: 'bg-red-500',
+    chipBg: 'bg-red-50',
+    chipText: 'text-red-700',
+  },
   disclaimer: {
     label: 'Disclaimer',
+    labelKey: 'counties.audit_status.disclaimer',
     dot: 'bg-red-700',
     chipBg: 'bg-red-100',
     chipText: 'text-red-800',
   },
   pending: {
     label: 'Pending',
+    labelKey: 'counties.audit_status.pending',
     dot: 'bg-gray-400',
     chipBg: 'bg-gray-50',
     chipText: 'text-gray-600',
@@ -98,49 +110,6 @@ function gradeCategory(score: number): string {
   if (score >= 40) return 'C';
   if (score >= 20) return 'D';
   return 'D-';
-}
-
-/* ── Accountability Grade Badge ─────────── */
-const ACCT_GRADE_COLORS: Record<string, string> = {
-  A: 'bg-emerald-500 text-white',
-  B: 'bg-teal-500 text-white',
-  C: 'bg-yellow-400 text-yellow-900',
-  D: 'bg-orange-500 text-white',
-  F: 'bg-red-600 text-white',
-};
-
-/**
- * Derive accountability grades from the health scores already present in the
- * counties list response, avoiding 47 individual /counties/{id}/summary calls.
- */
-function deriveAccountabilityGrades(counties: County[]): Record<string, string> {
-  const results: Record<string, string> = {};
-  for (const c of counties) {
-    const score = c.financial_health_score ?? 0;
-    let grade = 'D-';
-    if (score >= 85) grade = 'A';
-    else if (score >= 75) grade = 'A-';
-    else if (score >= 70) grade = 'B+';
-    else if (score >= 60) grade = 'B';
-    else if (score >= 50) grade = 'B-';
-    else if (score >= 40) grade = 'C';
-    else if (score >= 30) grade = 'C+';
-    else if (score >= 20) grade = 'D';
-    results[c.id] = grade;
-  }
-  return results;
-}
-
-function AccountabilityBadge({ grade }: { grade?: string }) {
-  if (!grade) return null;
-  const cls = ACCT_GRADE_COLORS[grade] || 'bg-gray-200 text-gray-700';
-  return (
-    <span
-      className={`inline-flex items-center justify-center w-5 h-5 text-[9px] font-bold rounded ${cls}`}
-      title={`Accountability Grade: ${grade}`}>
-      {grade}
-    </span>
-  );
 }
 
 /* ── County → Region mapping (Kenya's 8 former provinces) ─────────── */
@@ -212,11 +181,22 @@ function getCountyRegion(name: string): string {
   return '';
 }
 
-/* Trend placeholder — real sparklines require historical API data (not yet available) */
-function Sparkline({ seed: _seed, positive: _positive }: { seed: number; positive: boolean }) {
+/* Small icon badge used as the right-side accent on money KPI cards.
+   Historical sparklines aren't available yet, so this is purely decorative. */
+function KpiIcon({ tone }: { tone: 'positive' | 'negative' }) {
+  const bg = tone === 'positive' ? 'bg-emerald-50' : 'bg-rose-50';
+  const stroke = tone === 'positive' ? '#059669' : '#e11d48';
   return (
-    <div className='w-16 h-10 flex items-center justify-center'>
-      <span className='text-[10px] text-gray-400'>No trend</span>
+    <div
+      className={`w-10 h-10 rounded-full ${bg} flex items-center justify-center flex-shrink-0`}
+      aria-hidden>
+      <svg viewBox='0 0 20 20' className='w-5 h-5' fill='none' stroke={stroke} strokeWidth='2'>
+        {tone === 'positive' ? (
+          <path d='M4 14 L9 9 L12 12 L16 6' strokeLinecap='round' strokeLinejoin='round' />
+        ) : (
+          <path d='M4 6 L9 11 L12 8 L16 14' strokeLinecap='round' strokeLinejoin='round' />
+        )}
+      </svg>
     </div>
   );
 }
@@ -261,26 +241,33 @@ function GaugeMini({ value, target }: { value: number; target: number }) {
    ══════════════════════════════════════════════════════════════════════════════ */
 
 function KPICards({ counties }: { counties: County[] }) {
+  const { t } = useLang();
   const stats = useMemo(() => {
     const totalBudget = counties.reduce((s, c) => s + (c.totalBudget ?? c.budget ?? 0), 0);
     const totalDebt = counties.reduce((s, c) => s + (c.totalDebt ?? c.debt ?? 0), 0);
+    // Average only across counties that actually reported execution — otherwise
+    // the mean gets diluted by zeros and makes every year look underperforming.
+    const execReporters = counties.filter((c) => (c.budgetUtilization ?? 0) > 0);
     const avgExec =
-      counties.reduce((s, c) => s + (c.budgetUtilization ?? 0), 0) / (counties.length || 1);
+      execReporters.length > 0
+        ? execReporters.reduce((s, c) => s + (c.budgetUtilization ?? 0), 0) / execReporters.length
+        : 0;
     const auditCounts = { clean: 0, qualified: 0, adverse: 0 };
     counties.forEach((c) => {
       const st = c.auditStatus ?? 'pending';
       if (st in auditCounts) auditCounts[st as keyof typeof auditCounts]++;
     });
+    const totalAudits = auditCounts.clean + auditCounts.qualified + auditCounts.adverse;
     const byDebt = [...counties]
       .sort((a, b) => (b.totalDebt ?? b.debt ?? 0) - (a.totalDebt ?? a.debt ?? 0))
       .slice(0, 3);
-    return { totalBudget, totalDebt, avgExec, auditCounts, byDebt };
+    return { totalBudget, totalDebt, avgExec, auditCounts, totalAudits, byDebt };
   }, [counties]);
 
   const donutData = [
-    { name: 'Clean', value: stats.auditCounts.clean, color: '#22c55e' },
-    { name: 'Qualified', value: stats.auditCounts.qualified, color: '#f59e0b' },
-    { name: 'Adverse', value: stats.auditCounts.adverse, color: '#ef4444' },
+    { name: t('counties.audit_status.clean'), value: stats.auditCounts.clean, color: '#22c55e' },
+    { name: t('counties.audit_status.qualified'), value: stats.auditCounts.qualified, color: '#f59e0b' },
+    { name: t('counties.audit_status.adverse'), value: stats.auditCounts.adverse, color: '#ef4444' },
   ];
 
   return (
@@ -288,88 +275,103 @@ function KPICards({ counties }: { counties: County[] }) {
       {/* Card 1: Total Budget */}
       <Link
         href='/budget'
-        className='bg-white/40 backdrop-blur-xl rounded-2xl p-5 shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/50 flex items-center justify-between hover:shadow-lg hover:scale-[1.02] transition-all'>
-        <div>
-          <div className='text-xs font-medium text-gray-500 mb-1'>Total Budget</div>
+        className='bg-white/40 backdrop-blur-xl rounded-2xl p-5 shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/50 flex items-center justify-between gap-3 hover:shadow-lg hover:scale-[1.02] transition-all'>
+        <div className='min-w-0'>
+          <div className='text-xs font-medium text-gray-500 mb-1'>{t('counties.kpi.total_budget')}</div>
           <div className='text-2xl font-bold text-gray-900 tracking-tight'>
-            KES {fmtKES(stats.totalBudget)}
+            {fmtKES(stats.totalBudget)}
           </div>
-          <div className='text-[11px] text-gray-400 font-medium mt-0.5'>
-            Year-over-year change not available
+          <div className='text-[11px] text-gray-500 font-medium mt-0.5'>
+            {t('counties.kpi.across_counties').replace('{n}', String(counties.length))}
           </div>
         </div>
-        <Sparkline seed={42} positive />
+        <KpiIcon tone='positive' />
       </Link>
 
       {/* Card 2: Total Debt */}
       <Link
         href='/budget?tab=debt'
-        className='bg-white/40 backdrop-blur-xl rounded-2xl p-5 shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/50 flex items-center justify-between hover:shadow-lg hover:scale-[1.02] transition-all'>
-        <div>
-          <div className='text-xs font-medium text-gray-500 mb-1'>Total Debt</div>
+        className='bg-white/40 backdrop-blur-xl rounded-2xl p-5 shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/50 flex items-center justify-between gap-3 hover:shadow-lg hover:scale-[1.02] transition-all'>
+        <div className='min-w-0'>
+          <div className='text-xs font-medium text-gray-500 mb-1'>{t('counties.kpi.total_debt')}</div>
           <div className='text-2xl font-bold text-gray-900 tracking-tight'>
-            KES {fmtKES(stats.totalDebt)}
+            {fmtKES(stats.totalDebt)}
           </div>
-          <div className='text-[11px] text-gray-400 font-medium mt-0.5'>
-            Year-over-year change not available
+          <div className='text-[11px] text-gray-500 font-medium mt-0.5'>
+            {t('counties.kpi.pending_bills_loans')}
           </div>
         </div>
-        <Sparkline seed={99} positive={false} />
+        <KpiIcon tone='negative' />
       </Link>
 
       {/* Card 3: Avg. Execution Rate */}
       <div
-        className='bg-white/40 backdrop-blur-xl rounded-2xl p-5 shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/50 flex items-center justify-between hover:shadow-lg hover:scale-[1.02] transition-all cursor-pointer'
-        title='See county rankings below'>
-        <div>
+        className='bg-white/40 backdrop-blur-xl rounded-2xl p-5 shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/50 flex items-center justify-between gap-3 hover:shadow-lg hover:scale-[1.02] transition-all cursor-pointer'
+        title={t('counties.kpi.see_rankings')}>
+        <div className='min-w-0'>
           <div className='text-xs font-medium text-gray-500 mb-1'>
-            Avg. Execution Rate <InfoTip term='budget-execution' size={11} />
+            {t('counties.kpi.avg_execution_rate')} <InfoTip term='budget-execution' size={11} />
           </div>
-          <div className='text-2xl font-bold text-gray-900 tracking-tight'>
-            {stats.avgExec.toFixed(0)}%
-          </div>
-          <div className='text-[11px] text-gray-500 mt-0.5'>Target: 70%</div>
+          {stats.avgExec > 0 ? (
+            <>
+              <div className='text-2xl font-bold text-gray-900 tracking-tight'>
+                {stats.avgExec.toFixed(0)}%
+              </div>
+              <div className='text-[11px] text-gray-500 mt-0.5'>{t('counties.kpi.target_70')}</div>
+            </>
+          ) : (
+            <>
+              <div className='text-2xl font-bold text-gray-400 tracking-tight'>—</div>
+              <div className='text-[11px] text-gray-500 mt-0.5'>{t('counties.kpi.not_reported')}</div>
+            </>
+          )}
         </div>
         <GaugeMini value={stats.avgExec} target={70} />
       </div>
 
       {/* Card 4: Audit Summary */}
       <div className='bg-white/40 backdrop-blur-xl rounded-2xl p-5 shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/50'>
-        <div className='text-xs font-medium text-gray-500 mb-2'>Audit Summary</div>
-        <div className='flex items-center gap-3'>
-          <div className='w-14 h-14 flex-shrink-0'>
-            <ResponsiveContainer width='100%' height='100%'>
-              <PieChart>
-                <Pie
-                  data={donutData}
-                  dataKey='value'
-                  cx='50%'
-                  cy='50%'
-                  innerRadius={16}
-                  outerRadius={26}
-                  strokeWidth={0}>
-                  {donutData.map((d, i) => (
-                    <Cell key={i} fill={d.color} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
+        <div className='text-xs font-medium text-gray-500 mb-2'>{t('counties.kpi.audit_summary')}</div>
+        {stats.totalAudits > 0 ? (
+          <div className='flex items-center gap-3'>
+            <div className='w-14 h-14 flex-shrink-0'>
+              <ResponsiveContainer width='100%' height='100%'>
+                <PieChart>
+                  <Pie
+                    data={donutData}
+                    dataKey='value'
+                    cx='50%'
+                    cy='50%'
+                    innerRadius={16}
+                    outerRadius={26}
+                    strokeWidth={0}>
+                    {donutData.map((d, i) => (
+                      <Cell key={i} fill={d.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className='space-y-1'>
+              {donutData.map((d) => (
+                <div key={d.name} className='flex items-center gap-1.5 text-xs'>
+                  <div className='w-2 h-2 rounded-full' style={{ background: d.color }} />
+                  <span className='text-gray-600'>{d.name}</span>
+                  <span className='font-semibold text-gray-800'>{d.value}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className='space-y-1'>
-            {donutData.map((d) => (
-              <div key={d.name} className='flex items-center gap-1.5 text-xs'>
-                <div className='w-2 h-2 rounded-full' style={{ background: d.color }} />
-                <span className='text-gray-600'>{d.name}</span>
-                <span className='font-semibold text-gray-800'>{d.value}</span>
-              </div>
-            ))}
+        ) : (
+          <div className='flex items-center h-14 text-xs text-gray-400'>
+            {t('counties.kpi.no_audits_year')}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Card 5: High Debt Counties */}
       <div className='bg-white/40 backdrop-blur-xl rounded-2xl p-4 shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/50'>
-        <div className='text-xs font-medium text-gray-500 mb-2'>High Debt Counties</div>
+        <div className='text-xs font-medium text-gray-500 mb-2'>{t('counties.kpi.high_debt_counties')}</div>
         <div className='space-y-2'>
           {stats.byDebt.map((c, i) => {
             const debt = c.totalDebt ?? c.debt ?? 0;
@@ -386,7 +388,7 @@ function KPICards({ counties }: { counties: County[] }) {
                     <span className='text-xs font-semibold text-gray-800 truncate'>{c.name}</span>
                     <span
                       className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${auditCfg.chipBg} ${auditCfg.chipText}`}>
-                      {auditCfg.label}
+                      {t(auditCfg.labelKey)}
                     </span>
                   </div>
                   <div className='flex items-center gap-2 mt-0.5'>
@@ -448,6 +450,8 @@ function FiltersSidebar({
   onApply: () => void;
   onReset: () => void;
 }) {
+  const { t } = useLang();
+
   const toggleGrade = (g: string) => {
     setFilters((f) => ({
       ...f,
@@ -478,7 +482,7 @@ function FiltersSidebar({
     <div className='bg-white/40 backdrop-blur-xl rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/50 overflow-hidden'>
       {/* Header */}
       <div className='flex items-center justify-between px-5 py-4 border-b border-gray-100'>
-        <h3 className='text-sm font-bold text-gray-900'>Filters</h3>
+        <h3 className='text-sm font-bold text-gray-900'>{t('counties.filters.title')}</h3>
         <button
           onClick={() => setCollapsed(true)}
           className='text-gray-400 hover:text-gray-600 transition-colors'>
@@ -490,7 +494,7 @@ function FiltersSidebar({
         {/* Search County */}
         <div>
           <label className='text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1.5 block'>
-            Search County
+            {t('counties.filters.search_county')}
           </label>
           <div className='relative'>
             <Search size={14} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
@@ -498,7 +502,7 @@ function FiltersSidebar({
               type='text'
               value={filters.search}
               onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
-              placeholder='Type to search...'
+              placeholder={t('counties.filters.type_to_search')}
               className='w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gov-forest/20 focus:border-gov-forest/40 placeholder-gray-400'
             />
           </div>
@@ -507,22 +511,22 @@ function FiltersSidebar({
         {/* Region */}
         <div>
           <label className='text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1.5 block'>
-            Region
+            {t('counties.filter.region')}
           </label>
           <div className='relative'>
             <select
               value={filters.region}
               onChange={(e) => setFilters((f) => ({ ...f, region: e.target.value }))}
               className='w-full appearance-none bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gov-forest/20'>
-              <option value='all'>All Regions</option>
-              <option value='central'>Central</option>
-              <option value='coast'>Coast</option>
-              <option value='eastern'>Eastern</option>
-              <option value='nairobi'>Nairobi</option>
-              <option value='north-eastern'>North Eastern</option>
-              <option value='nyanza'>Nyanza</option>
-              <option value='rift-valley'>Rift Valley</option>
-              <option value='western'>Western</option>
+              <option value='all'>{t('counties.filters.all_regions')}</option>
+              <option value='central'>{t('counties.region.central')}</option>
+              <option value='coast'>{t('counties.region.coast')}</option>
+              <option value='eastern'>{t('counties.region.eastern')}</option>
+              <option value='nairobi'>{t('counties.region.nairobi')}</option>
+              <option value='north-eastern'>{t('counties.region.north_eastern')}</option>
+              <option value='nyanza'>{t('counties.region.nyanza')}</option>
+              <option value='rift-valley'>{t('counties.region.rift_valley')}</option>
+              <option value='western'>{t('counties.region.western')}</option>
             </select>
             <ChevronDown
               size={14}
@@ -534,7 +538,7 @@ function FiltersSidebar({
         {/* Grade */}
         <div>
           <label className='text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1.5 block'>
-            Grade
+            {t('counties.filters.grade')}
           </label>
           <div className='flex items-center gap-1.5 flex-wrap'>
             {GRADE_ALL.map((g) => {
@@ -561,7 +565,7 @@ function FiltersSidebar({
         {/* Audit Status */}
         <div>
           <label className='text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1.5 block'>
-            Audit Status <InfoTip term='audit-clean' size={11} />
+            {t('counties.filters.audit_status')} <InfoTip term='audit-clean' size={11} />
           </label>
           <div className='space-y-2'>
             {(['clean', 'qualified', 'adverse'] as const).map((status) => {
@@ -589,7 +593,7 @@ function FiltersSidebar({
                     )}
                   </div>
                   <div className={`w-2.5 h-2.5 rounded-full ${cfg.dot}`} />
-                  <span className='text-sm text-gray-700'>{cfg.label}</span>
+                  <span className='text-sm text-gray-700'>{t(cfg.labelKey)}</span>
                 </label>
               );
             })}
@@ -599,7 +603,7 @@ function FiltersSidebar({
         {/* Spending Range */}
         <div>
           <label className='text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-2 block'>
-            Spending Range
+            {t('counties.filters.spending_range')}
           </label>
           <input
             type='range'
@@ -621,19 +625,19 @@ function FiltersSidebar({
         {/* Sort by */}
         <div>
           <label className='text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1.5 block'>
-            Sort by
+            {t('counties.filter.sort')}
           </label>
           <div className='relative'>
             <select
               value={filters.sortBy}
               onChange={(e) => setFilters((f) => ({ ...f, sortBy: e.target.value }))}
               className='w-full appearance-none bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gov-forest/20'>
-              <option value='budget-desc'>Budget (High → Low)</option>
-              <option value='budget-asc'>Budget (Low → High)</option>
-              <option value='debt-desc'>Debt (High → Low)</option>
-              <option value='population-desc'>Population (High → Low)</option>
-              <option value='health-desc'>Grade (Best → Worst)</option>
-              <option value='utilization-desc'>Execution (High → Low)</option>
+              <option value='budget-desc'>{t('counties.sort.budget_high_low')}</option>
+              <option value='budget-asc'>{t('counties.sort.budget_low_high')}</option>
+              <option value='debt-desc'>{t('counties.sort.debt_high_low')}</option>
+              <option value='population-desc'>{t('counties.sort.population_high_low')}</option>
+              <option value='health-desc'>{t('counties.sort.grade_best_worst')}</option>
+              <option value='utilization-desc'>{t('counties.sort.execution_high_low')}</option>
             </select>
             <ChevronDown
               size={14}
@@ -648,12 +652,12 @@ function FiltersSidebar({
         <button
           onClick={onApply}
           className='flex-1 bg-gov-forest text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-gov-forest/90 transition-colors'>
-          Apply Filters
+          {t('counties.filters.apply')}
         </button>
         <button
           onClick={onReset}
           className='px-4 bg-gray-100 text-gray-700 text-sm font-medium py-2.5 rounded-lg hover:bg-gray-200 transition-colors'>
-          Reset
+          {t('counties.filters.reset')}
         </button>
       </div>
     </div>
@@ -696,6 +700,7 @@ function CountyPerformanceMap({
   onToggleGrade: (grade: string) => void;
   selectedRegion: string;
 }) {
+  const { t } = useLang();
   const router = useRouter();
   const [hoveredCounty, setHoveredCounty] = useState<County | null>(null);
   const [hoveredGadm, setHoveredGadm] = useState<string | null>(null);
@@ -755,7 +760,7 @@ function CountyPerformanceMap({
 
   return (
     <div className='bg-white/40 backdrop-blur-xl rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/50 p-5 h-full'>
-      <h3 className='text-sm font-bold text-gray-900 mb-3'>County Performance Map</h3>
+      <h3 className='text-sm font-bold text-gray-900 mb-3'>{t('counties.map.title')}</h3>
       <div
         ref={containerRef}
         className='relative bg-gov-forest/5 rounded-xl overflow-hidden flex items-center justify-center'
@@ -835,18 +840,18 @@ function CountyPerformanceMap({
             }}>
             <div className='font-semibold'>{hoveredCounty.name}</div>
             <div className='text-white/70 mt-0.5'>
-              Grade: {getGrade(hoveredCounty.financial_health_score).letter} · Exec:{' '}
+              {t('counties.map.tooltip_grade')}: {getGrade(hoveredCounty.financial_health_score).letter} · {t('counties.map.tooltip_exec')}:{' '}
               {(hoveredCounty.budgetUtilization ?? 0).toFixed(0)}%
             </div>
             <div className='text-white/60'>
-              Budget: KES {fmtKES(hoveredCounty.totalBudget ?? hoveredCounty.budget ?? 0)}
+              {t('counties.map.tooltip_budget')}: KES {fmtKES(hoveredCounty.totalBudget ?? hoveredCounty.budget ?? 0)}
             </div>
           </div>
         )}
       </div>
       {/* Grade legend — clickable to filter */}
       <div className='flex items-center gap-2 mt-3'>
-        <span className='text-[11px] text-gray-500 font-medium'>Performance:</span>
+        <span className='text-[11px] text-gray-500 font-medium'>{t('counties.map.performance')}:</span>
         {GRADE_ALL.map((g) => {
           const isActive = activeGrades.length === 0 || activeGrades.includes(g);
           return (
@@ -866,7 +871,7 @@ function CountyPerformanceMap({
           <button
             onClick={() => activeGrades.forEach((g) => onToggleGrade(g))}
             className='text-[10px] text-gray-400 hover:text-gray-600 ml-1 underline'>
-            clear
+            {t('counties.map.clear')}
           </button>
         )}
       </div>
@@ -880,6 +885,8 @@ function CountyPerformanceMap({
    ══════════════════════════════════════════════════════════════════════════════ */
 
 function CountyInsightsPanel({ counties }: { counties: County[] }) {
+  const { t } = useLang();
+
   const { best, worst, stats } = useMemo(() => {
     const sorted = [...counties].sort(
       (a, b) => b.financial_health_score - a.financial_health_score
@@ -906,7 +913,7 @@ function CountyInsightsPanel({ counties }: { counties: County[] }) {
   if (counties.length === 0) {
     return (
       <div className='bg-white/40 backdrop-blur-xl rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/50 p-5 md:col-span-2 flex items-center justify-center text-sm text-gray-400'>
-        No counties match the current filters
+        {t('counties.insights.no_match')}
       </div>
     );
   }
@@ -916,22 +923,22 @@ function CountyInsightsPanel({ counties }: { counties: County[] }) {
       {/* Region summary bar */}
       <div className='flex items-center gap-4 mb-4 pb-3 border-b border-gray-200/60 flex-wrap'>
         <span className='text-sm font-bold text-gray-900'>
-          {stats.count} {stats.count === 1 ? 'County' : 'Counties'}
+          {stats.count} {stats.count === 1 ? t('common.county') : t('common.counties')}
         </span>
         <div className='flex items-center gap-1.5 text-xs text-gray-500'>
-          <span className='font-semibold text-gray-700'>Budget:</span>
+          <span className='font-semibold text-gray-700'>{t('counties.insights.budget')}:</span>
           <span className='tabular-nums'>{fmtKES(stats.totalBudget)}</span>
         </div>
         <div className='flex items-center gap-1.5 text-xs text-gray-500'>
-          <span className='font-semibold text-gray-700'>Debt:</span>
+          <span className='font-semibold text-gray-700'>{t('counties.insights.debt')}:</span>
           <span className='tabular-nums text-red-600'>{fmtKES(stats.totalDebt)}</span>
         </div>
         <div className='flex items-center gap-1.5 text-xs text-gray-500'>
-          <span className='font-semibold text-gray-700'>Avg Exec:</span>
+          <span className='font-semibold text-gray-700'>{t('counties.insights.avg_exec')}:</span>
           <span className='tabular-nums'>{stats.avgUtil.toFixed(0)}%</span>
         </div>
         <div className='flex items-center gap-1.5 text-xs'>
-          <span className='font-semibold text-gray-700'>Avg Health:</span>
+          <span className='font-semibold text-gray-700'>{t('counties.insights.avg_health')}:</span>
           <span
             className={`px-1.5 py-0.5 rounded font-bold text-[10px] ${GRADE_COLORS[gradeCategory(stats.avgHealth)]}`}>
             {gradeCategory(stats.avgHealth)} ({stats.avgHealth.toFixed(0)})
@@ -943,7 +950,7 @@ function CountyInsightsPanel({ counties }: { counties: County[] }) {
         {/* Best performers */}
         <div>
           <h4 className='flex items-center gap-1.5 text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2'>
-            <TrendingUp size={13} /> Best Performers
+            <TrendingUp size={13} /> {t('counties.insights.best_performers')}
           </h4>
           <div className='space-y-2'>
             {best.map((c, i) => (
@@ -955,7 +962,7 @@ function CountyInsightsPanel({ counties }: { counties: County[] }) {
         {/* Needs attention */}
         <div>
           <h4 className='flex items-center gap-1.5 text-xs font-bold text-red-700 uppercase tracking-wider mb-2'>
-            <AlertTriangle size={13} /> Needs Attention
+            <AlertTriangle size={13} /> {t('counties.insights.needs_attention')}
           </h4>
           <div className='space-y-2'>
             {worst.map((c, i) => (
@@ -977,6 +984,7 @@ function InsightRow({
   rank: number;
   variant: 'best' | 'worst';
 }) {
+  const { t } = useLang();
   const util = c.budgetUtilization ?? 0;
   const debt = c.totalDebt ?? c.debt ?? 0;
   const budget = c.totalBudget ?? c.budget ?? 0;
@@ -999,13 +1007,13 @@ function InsightRow({
           <span
             className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ml-auto flex items-center gap-1 ${auditCfg.chipBg} ${auditCfg.chipText}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${auditCfg.dot}`} />
-            {auditCfg.label}
+            {t(auditCfg.labelKey)}
           </span>
         </div>
         <div className='flex items-center gap-3'>
           {/* Utilization bar */}
           <div className='flex items-center gap-1.5 flex-1'>
-            <span className='text-[10px] text-gray-500 w-7'>Exec</span>
+            <span className='text-[10px] text-gray-500 w-7'>{t('counties.insights.exec_short')}</span>
             <div className='flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden'>
               <div
                 className={`h-full rounded-full ${util >= 70 ? 'bg-emerald-500' : util >= 50 ? 'bg-amber-500' : 'bg-red-400'}`}
@@ -1018,7 +1026,7 @@ function InsightRow({
           </div>
           {/* Debt ratio */}
           <div className='flex items-center gap-1.5'>
-            <span className='text-[10px] text-gray-500'>Debt</span>
+            <span className='text-[10px] text-gray-500'>{t('counties.insights.debt_short')}</span>
             <span
               className={`text-[10px] font-bold tabular-nums ${
                 Number(debtRatio) > 50 ? 'text-red-600' : 'text-gray-600'
@@ -1107,7 +1115,7 @@ function CountyRankingsTable({
   onSort,
   showAll,
   setShowAll,
-  acctGrades,
+  fiscalYear,
 }: {
   counties: County[];
   sortField: SortField;
@@ -1115,8 +1123,9 @@ function CountyRankingsTable({
   onSort: (f: SortField) => void;
   showAll: boolean;
   setShowAll: React.Dispatch<React.SetStateAction<boolean>>;
-  acctGrades?: Record<string, string>;
+  fiscalYear: string;
 }) {
+  const { t } = useLang();
   const [page, setPage] = useState(1);
   const totalPages = Math.ceil(counties.length / PAGE_SIZE);
   const paged = showAll ? counties : counties.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -1137,10 +1146,12 @@ function CountyRankingsTable({
     <div className='bg-white/40 backdrop-blur-xl rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/50 overflow-hidden'>
       <div className='flex items-center justify-between px-5 py-4 border-b border-gray-100'>
         <div className='flex items-center gap-2'>
-          <h3 className='text-sm font-bold text-gray-900'>County Rankings</h3>
+          <h3 className='text-sm font-bold text-gray-900'>{t('counties.rankings.title')}</h3>
           <span className='text-xs text-gray-400'>
-            ({(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, counties.length)} of{' '}
-            {counties.length})
+            ({t('counties.rankings.range_of')
+              .replace('{from}', String((page - 1) * PAGE_SIZE + 1))
+              .replace('{to}', String(Math.min(page * PAGE_SIZE, counties.length)))
+              .replace('{total}', String(counties.length))})
           </span>
         </div>
       </div>
@@ -1153,28 +1164,25 @@ function CountyRankingsTable({
                 #
               </th>
               <Th field='name' current={sortField} dir={sortDir} onSort={onSort}>
-                County
+                {t('counties.rankings.col_county')}
               </Th>
               <Th field='population' current={sortField} dir={sortDir} onSort={onSort}>
-                Population
+                {t('counties.rankings.col_population')}
               </Th>
               <Th field='health' current={sortField} dir={sortDir} onSort={onSort}>
-                Grade <InfoTip term='financial-health' size={10} />
+                {t('counties.rankings.col_health')} <InfoTip term='financial-health' size={10} />
               </Th>
               <Th field='budget' current={sortField} dir={sortDir} onSort={onSort} suffix='(KES)'>
-                Budget
+                {t('counties.rankings.col_budget')}
               </Th>
               <Th field='utilization' current={sortField} dir={sortDir} onSort={onSort}>
-                Execution <InfoTip term='budget-execution' size={10} />
+                {t('counties.rankings.col_execution')} <InfoTip term='budget-execution' size={10} />
               </Th>
               <Th field='debt' current={sortField} dir={sortDir} onSort={onSort}>
-                Debt
+                {t('counties.rankings.col_debt')}
               </Th>
               <th className='text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-3'>
-                Audit <InfoTip term='audit-clean' size={10} />
-              </th>
-              <th className='text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-3'>
-                Trends
+                {t('counties.rankings.col_audit')} <InfoTip term='audit-clean' size={10} />
               </th>
             </tr>
           </thead>
@@ -1186,9 +1194,8 @@ function CountyRankingsTable({
               const grade = getGrade(county.financial_health_score);
               const issues = county.auditIssues?.length ?? 0;
               const auditCfg = AUDIT_STATUS_CFG[county.auditStatus ?? 'pending'];
-              const base = `/counties/${county.id}`;
+              const base = `/counties/${county.id}?fy=${encodeURIComponent(fiscalYear)}`;
               const rank = showAll ? i + 1 : (page - 1) * PAGE_SIZE + i + 1;
-              const improving = util >= 50;
 
               return (
                 <tr
@@ -1203,7 +1210,6 @@ function CountyRankingsTable({
                       <span className='font-semibold text-sm text-gray-900 group-hover:text-gov-forest transition-colors'>
                         {county.name}
                       </span>
-                      <AccountabilityBadge grade={acctGrades?.[county.id]} />
                     </Link>
                   </td>
                   <td className='py-3 px-3 text-sm text-gray-600 tabular-nums'>
@@ -1212,7 +1218,7 @@ function CountyRankingsTable({
                     </Link>
                   </td>
                   <td className='py-3 px-3'>
-                    <Link href={`${base}?tab=budget`} className='block'>
+                    <Link href={`${base}&tab=budget`} className='block'>
                       <span
                         className={`inline-flex items-center justify-center w-8 h-6 text-[11px] font-bold rounded-md ${grade.cls}`}>
                         {grade.letter}
@@ -1221,19 +1227,19 @@ function CountyRankingsTable({
                   </td>
                   <td className='py-3 px-3'>
                     <Link
-                      href={`${base}?tab=budget`}
+                      href={`${base}&tab=budget`}
                       className='block text-sm text-gray-700 tabular-nums font-medium hover:text-gov-forest transition-colors'>
                       {fmtKES(budget)}
                     </Link>
                   </td>
                   <td className='py-3 px-3'>
-                    <Link href={`${base}?tab=budget`} className='block'>
+                    <Link href={`${base}&tab=budget`} className='block'>
                       <ExecBar pct={util} />
                     </Link>
                   </td>
                   <td className='py-3 px-3'>
                     <Link
-                      href={`${base}?tab=budget`}
+                      href={`${base}&tab=budget`}
                       className='flex items-center gap-1.5 text-sm text-gray-700 tabular-nums hover:text-gov-forest transition-colors'>
                       <span
                         className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${debt > 50e9 ? 'bg-red-500' : debt > 15e9 ? 'bg-amber-500' : 'bg-emerald-500'}`}
@@ -1242,7 +1248,7 @@ function CountyRankingsTable({
                     </Link>
                   </td>
                   <td className='py-3 px-3'>
-                    <Link href={`${base}?tab=audit`} className='flex items-center gap-1.5'>
+                    <Link href={`${base}&tab=audit`} className='flex items-center gap-1.5'>
                       <span
                         className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full ${auditCfg.chipBg} ${auditCfg.chipText}`}>
                         {auditCfg.label === 'Adverse'
@@ -1250,15 +1256,12 @@ function CountyRankingsTable({
                           : auditCfg.label === 'Clean'
                             ? '✅'
                             : '⚠️'}{' '}
-                        {auditCfg.label}
+                        {t(auditCfg.labelKey)}
                       </span>
                       {issues > 0 && (
                         <span className='text-[10px] text-gray-500 font-medium'>({issues})</span>
                       )}
                     </Link>
-                  </td>
-                  <td className='py-3 px-3'>
-                    <Sparkline seed={rank * 7 + (county.population % 100)} positive={improving} />
                   </td>
                 </tr>
               );
@@ -1270,7 +1273,7 @@ function CountyRankingsTable({
       {counties.length === 0 && (
         <div className='text-center py-12 px-4'>
           <Search size={28} className='mx-auto text-gray-300 mb-2' />
-          <p className='text-sm text-gray-500'>No counties match your filters</p>
+          <p className='text-sm text-gray-500'>{t('counties.rankings.no_match')}</p>
         </div>
       )}
 
@@ -1278,8 +1281,11 @@ function CountyRankingsTable({
         <div className='flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50/40'>
           <span className='text-xs text-gray-500'>
             {showAll
-              ? `Showing all ${counties.length} Counties`
-              : `Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, counties.length)} of ${counties.length} Counties`}
+              ? t('counties.rankings.showing_all').replace('{n}', String(counties.length))
+              : t('counties.rankings.showing_range')
+                  .replace('{from}', String((page - 1) * PAGE_SIZE + 1))
+                  .replace('{to}', String(Math.min(page * PAGE_SIZE, counties.length)))
+                  .replace('{total}', String(counties.length))}
           </span>
           {!showAll && (
             <div className='flex items-center gap-1'>
@@ -1287,7 +1293,7 @@ function CountyRankingsTable({
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
                 className='px-2.5 py-1.5 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30 disabled:cursor-not-allowed rounded-md hover:bg-gray-100'>
-                &lt; Prev
+                {t('counties.rankings.prev')}
               </button>
               {pageNums.map((n) => (
                 <button
@@ -1303,14 +1309,14 @@ function CountyRankingsTable({
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
                 className='px-2.5 py-1.5 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-30 disabled:cursor-not-allowed rounded-md hover:bg-gray-100'>
-                Next &gt;
+                {t('counties.rankings.next')}
               </button>
             </div>
           )}
           <button
             onClick={() => setShowAll((v) => !v)}
             className='text-xs text-gov-forest font-medium hover:underline'>
-            {showAll ? 'Show Paginated' : 'View All Counties'}
+            {showAll ? t('counties.rankings.show_paginated') : t('counties.rankings.view_all')}
           </button>
         </div>
       )}
@@ -1323,15 +1329,15 @@ function CountyRankingsTable({
    ══════════════════════════════════════════════════════════════════════════════ */
 
 export default function CountyExplorerPage() {
+  const { t } = useLang();
   // Year dropdown state (must be declared before useCounties which depends on it)
+  // Default to the latest *reported* FY — the current FY usually has allocations
+  // but no execution/audit data yet, which makes the KPI row look broken.
   const YEARS = generateFiscalYears(4);
-  const [selectedYear, setSelectedYear] = useState(getCurrentFiscalYear());
+  const [selectedYear, setSelectedYear] = useState(getLatestReportedFiscalYear());
   const [yearOpen, setYearOpen] = useState(false);
 
   const { data: counties, isLoading, error, refetch } = useCounties({ fiscalYear: selectedYear });
-
-  // Derive accountability grades from health scores already in counties data (no extra API calls)
-  const acctGrades = useMemo(() => deriveAccountabilityGrades(counties || []), [counties]);
 
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -1450,7 +1456,7 @@ export default function CountyExplorerPage() {
       'Rank',
       'County',
       'Population',
-      'Grade',
+      'Health Grade',
       'Budget (KES)',
       'Execution %',
       'Debt (KES)',
@@ -1505,17 +1511,17 @@ export default function CountyExplorerPage() {
             <div className='h-[72px]' />
             <div className='max-w-[1340px] mx-auto px-5 lg:px-8 pt-8 pb-10'>
               <h1 className='font-display text-3xl sm:text-4xl lg:text-[2.75rem] text-white leading-[1.12] drop-shadow-lg'>
-                County Explorer
+                {t('counties.title')}
               </h1>
             </div>
           </div>
           <div className='max-w-[1340px] mx-auto px-5 lg:px-8 py-8 text-center'>
             <AlertTriangle size={40} className='mx-auto text-red-400 mb-3' />
-            <p className='text-red-600 mb-4'>Failed to load county data</p>
+            <p className='text-red-600 mb-4'>{t('counties.error.title')}</p>
             <button
               onClick={() => refetch()}
               className='px-4 py-2 bg-gov-dark text-white rounded-lg text-sm'>
-              Retry
+              {t('counties.header.retry')}
             </button>
           </div>
         </div>
@@ -1582,11 +1588,21 @@ export default function CountyExplorerPage() {
                 transition={{ duration: 0.5, ease: 'easeOut' }}
                 className='max-w-3xl'>
                 <h1 className='font-display text-3xl sm:text-4xl lg:text-[2.75rem] text-white leading-[1.12] mb-2 drop-shadow-lg'>
-                  County Explorer
+                  {t('counties.title')}
                 </h1>
                 <p className='text-base sm:text-lg text-white/70 font-light tracking-wide drop-shadow-md'>
-                  Compare <strong className='text-white/90'>47 Counties</strong> · Budgets,
-                  Spending, Debts &amp; Audit Outcomes
+                  {(() => {
+                    const tpl = t('counties.header.subtitle_rich');
+                    const strong = t('counties.header.subtitle_strong');
+                    const [before, after] = tpl.split('{strong}');
+                    return (
+                      <>
+                        {before}
+                        <strong className='text-white/90'>{strong}</strong>
+                        {after}
+                      </>
+                    );
+                  })()}
                 </p>
               </motion.div>
               <div className='flex items-center gap-3'>
@@ -1594,7 +1610,7 @@ export default function CountyExplorerPage() {
                   <button
                     onClick={() => setYearOpen((v) => !v)}
                     className='inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 text-white text-sm font-medium px-4 py-2 rounded-lg border border-white/20 transition-colors'>
-                    Year: {selectedYear}
+                    {t('counties.header.year')}: {selectedYear}
                     <ChevronDown
                       size={14}
                       className={`transition-transform ${yearOpen ? 'rotate-180' : ''}`}
@@ -1624,7 +1640,7 @@ export default function CountyExplorerPage() {
                   onClick={handleExport}
                   className='inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 text-white text-sm font-medium px-4 py-2 rounded-lg border border-white/20 transition-colors'>
                   <Download size={14} />
-                  Export
+                  {t('counties.header.export')}
                 </button>
               </div>
             </div>
@@ -1694,7 +1710,7 @@ export default function CountyExplorerPage() {
                   onSort={handleSort}
                   showAll={showAll}
                   setShowAll={setShowAll}
-                  acctGrades={acctGrades}
+                  fiscalYear={selectedYear}
                 />
               </motion.div>
             </div>

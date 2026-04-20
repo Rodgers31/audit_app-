@@ -2,6 +2,7 @@
 
 import InfoTip from '@/components/InfoTip';
 import { SkeletonCard } from '@/components/ui/Skeleton';
+import { useLang } from '@/lib/i18n/LangProvider';
 import { useNationalBudgetSummary } from '@/lib/react-query/useBudget';
 import { fmtKES } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -60,6 +61,7 @@ function sectorIcon(name: string): string {
 }
 
 export default function BudgetSnapshotCard() {
+  const { t } = useLang();
   const { data: resp, isLoading, error } = useNationalBudgetSummary();
 
   if (isLoading) {
@@ -70,7 +72,7 @@ export default function BudgetSnapshotCard() {
     return (
       <div className='glass-card p-8 flex flex-col items-center justify-center min-h-[340px] gap-2'>
         <Banknote className='w-6 h-6 text-neutral-muted/25' />
-        <p className='text-xs text-neutral-muted'>Budget data unavailable</p>
+        <p className='text-xs text-neutral-muted'>{t('home.budget.unavailable')}</p>
       </div>
     );
   }
@@ -116,9 +118,9 @@ export default function BudgetSnapshotCard() {
       className='glass-card overflow-hidden flex flex-col'>
       {/* Header */}
       <div className='bg-gradient-to-r from-gov-sand/60 via-gov-cream/40 to-transparent px-6 sm:px-8 pt-5 pb-4 border-b border-neutral-border/20'>
-        <h3 className='font-display text-lg text-gov-dark mb-0.5'>Where Your Taxes Go</h3>
+        <h3 className='font-display text-lg text-gov-dark mb-0.5'>{t('home.budget.where_taxes_go')}</h3>
         <p className='text-xs text-neutral-muted'>
-          National budget allocation by sector
+          {t('home.budget.allocation_by_sector')}
           {budget?.fiscal_year ? ` — ${budget.fiscal_year}` : ''}
         </p>
       </div>
@@ -130,7 +132,7 @@ export default function BudgetSnapshotCard() {
             <div className='flex items-center gap-1.5 mb-1'>
               <Banknote className='w-3.5 h-3.5 text-gov-forest opacity-70' />
               <span className='text-[10px] text-neutral-muted font-medium uppercase tracking-wider'>
-                Total Budget
+                {t('home.budget.total_label')}
               </span>
             </div>
             <span className='text-lg font-bold text-gov-forest tabular-nums leading-none'>
@@ -141,7 +143,7 @@ export default function BudgetSnapshotCard() {
             <div className='flex items-center gap-1.5 mb-1'>
               <TrendingUp className='w-3.5 h-3.5 text-gov-gold opacity-70' />
               <span className='text-[10px] text-neutral-muted font-medium uppercase tracking-wider'>
-                Budget Execution
+                {t('home.budget.execution_label')}
               </span>
               <InfoTip term='budget-execution' size={11} />
             </div>
@@ -199,7 +201,7 @@ export default function BudgetSnapshotCard() {
                             ? 'text-gov-gold'
                             : 'text-gov-copper'
                       }`}>
-                      {utilization}% spent
+                      {t('home.budget.pct_spent').replace('{pct}', String(utilization))}
                     </span>
                   </div>
                 )}
@@ -210,14 +212,14 @@ export default function BudgetSnapshotCard() {
 
         {allSectors.length > VISIBLE_ROWS && (
           <p className='text-[10px] text-neutral-muted text-center pt-2'>
-            +{allSectors.length - VISIBLE_ROWS} more sectors
+            {t('home.budget.more_sectors').replace('{n}', String(allSectors.length - VISIBLE_ROWS))}
           </p>
         )}
 
         <Link
           href='/budget'
           className='group mt-auto pt-4 flex items-center justify-center gap-1.5 w-full rounded-lg bg-white/60 border border-neutral-border/40 hover:border-gov-sage/40 hover:bg-gov-sage/[0.04] px-4 py-2.5 transition-all text-xs font-medium text-gov-dark'>
-          View Full Budget Breakdown →
+          {t('home.budget.view_full')}
         </Link>
       </div>
     </motion.div>

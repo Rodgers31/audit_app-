@@ -1,16 +1,19 @@
 'use client';
 
 import { useAuth } from '@/lib/auth/AuthProvider';
+import { useLang } from '@/lib/i18n/LangProvider';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bell, Bookmark, Grid, LogIn, LogOut, Menu, Settings, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import AuthModal from './AuthModal';
+import LangSwitcher from './LangSwitcher';
 
 export default function Navigation() {
   const pathname = usePathname();
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { t } = useLang();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -45,12 +48,12 @@ export default function Navigation() {
   }, []);
 
   const navItems = [
-    { href: '/', label: 'Dashboard' },
-    { href: '/debt', label: 'National Debt' },
-    { href: '/budget', label: 'Budget & Spending' },
-    { href: '/counties', label: 'County Explorer' },
-    { href: '/transparency', label: 'Follow the Money' },
-    { href: '/learn', label: 'Learn' },
+    { href: '/', label: t('nav.dashboard') },
+    { href: '/debt', label: t('nav.debt') },
+    { href: '/budget', label: t('nav.budget') },
+    { href: '/counties', label: t('nav.counties') },
+    { href: '/transparency', label: t('nav.transparency') },
+    { href: '/learn', label: t('nav.learn') },
   ];
 
   return (
@@ -114,6 +117,9 @@ export default function Navigation() {
 
           {/* Right: Auth / Profile & Menu */}
           <div className='flex items-center gap-2 md:gap-3 relative z-50 shrink-0'>
+            <div className='hidden lg:block'>
+              <LangSwitcher />
+            </div>
             <button className='p-2 rounded-full bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors border border-white/10 backdrop-blur-sm hidden xl:flex items-center justify-center group'>
               <Grid className='w-5 h-5 group-hover:rotate-90 transition-transform duration-300' />
             </button>
@@ -199,7 +205,7 @@ export default function Navigation() {
                 onClick={() => setAuthModalOpen(true)}
                 className='flex items-center gap-2 px-4 py-2 rounded-full bg-gov-sage/80 hover:bg-gov-sage text-white text-sm font-medium transition-all border border-gov-sage/40 shadow-md hover:shadow-lg active:scale-95'>
                 <LogIn className='w-4 h-4' />
-                <span className='hidden sm:inline'>Sign In</span>
+                <span className='hidden sm:inline'>{t('nav.sign_in')}</span>
               </button>
             )}
 
@@ -242,6 +248,7 @@ export default function Navigation() {
               );
             })}
             <div className='w-16 h-1 bg-gov-sage/30 rounded-full mt-8' />
+            <LangSwitcher />
 
             {/* Mobile auth links */}
             {isAuthenticated ? (

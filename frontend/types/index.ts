@@ -113,6 +113,9 @@ export interface CountyComprehensive {
     pending_bills_ratio: number;
     debt_sustainability: string;
   };
+  /** Per-FY health scores, oldest → newest. Only periods with actual
+   * execution are included; allocated-only years are skipped. */
+  health_history?: Array<{ fy: string; score: number; grade: string }>;
   data_sources: Record<string, string>;
 }
 
@@ -202,6 +205,16 @@ export interface AccountabilityScorecard {
   county_id: string;
   county_name: string;
   audit_opinion_history: Array<{ year: number; opinion: string }>;
+  /** Per-year audit findings severity score (0-100, higher = fewer/less-severe findings).
+   * Used for the hero AUDIT trend sparkline. Separate from opinion_history so we
+   * never conflate "critical findings" with "adverse opinion" in scoring. */
+  audit_severity_history?: Array<{
+    year: number;
+    score: number;
+    info: number;
+    warning: number;
+    critical: number;
+  }>;
   total_flagged_amount: number;
   /** Total raw findings count (may not equal sum of critical+warning if some have no severity). */
   total_findings?: number;
