@@ -256,7 +256,9 @@ export default function FollowTheMoney({ data, isLoading, compact }: FollowTheMo
         <div className='flex items-center justify-between mb-4'>
           <div>
             <h3 className='text-sm font-semibold text-gray-800'>{data.county_name}</h3>
-            <p className='text-xs text-gray-500'>FY {data.fiscal_year}</p>
+            <p className='text-xs text-gray-500'>
+              FY {data.fiscal_year?.startsWith('FY') ? data.fiscal_year.slice(2) : data.fiscal_year}
+            </p>
           </div>
           {data.efficiency_score != null && <EfficiencyRing score={data.efficiency_score} />}
         </div>

@@ -275,14 +275,38 @@ async def county_money_flow(
 ):
     """Trace the full money flow for a county in a fiscal year.
 
-    ``county_id`` accepts either the numeric ``Entity.id`` or the county
-    ``slug`` (e.g. ``nairobi-city``) so the frontend can link by either.
+    ``county_id`` accepts any of:
+      * the 3-digit Kenyan county code ("001" → Nairobi, "047" → Mombasa),
+      * the raw numeric ``Entity.id`` (database primary key),
+      * the county ``slug`` (e.g. ``nairobi-city``).
+    The 3-digit-code path is what the frontend actually links from, so
+    resolve it first via the canonical COUNTY_MAPPING.
     """
     q = db.query(Entity).filter(Entity.type == EntityType.COUNTY)
-    if county_id.isdigit():
-        entity = q.filter(Entity.id == int(county_id)).first()
-    else:
-        entity = q.filter(Entity.slug == county_id).first()
+    entity = None
+
+    # 3-digit county-code lookup (most common path from the UI).
+    if county_id.isdigit() and len(county_id) == 3:
+        try:
+            from main import COUNTY_MAPPING  # avoid circular import at module load
+        except ImportError:
+            COUNTY_MAPPING = {}
+        county_name = COUNTY_MAPPING.get(county_id)
+        if county_name:
+            entity = q.filter(
+                Entity.canonical_name == f"{county_name} County"
+            ).first()
+            if not entity:
+                slug = county_name.lower().replace(" ", "-") + "-county"
+                entity = q.filter(Entity.slug == slug).first()
+
+    # Fallbacks: raw Entity.id then slug.
+    if not entity:
+        if county_id.isdigit():
+            entity = q.filter(Entity.id == int(county_id)).first()
+        else:
+            entity = q.filter(Entity.slug == county_id).first()
+
     if not entity:
         raise HTTPException(status_code=404, detail="County not found")
 
