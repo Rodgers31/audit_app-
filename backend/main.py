@@ -26,6 +26,7 @@ from services.trust_guards import (
 )
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel
 from sqlalchemy import or_
@@ -903,8 +904,12 @@ async def bootstrap_reference_data() -> None:
         raise
 
 
-# Auto-seeder for automated data refresh
-AUTO_SEEDER_ENABLED = os.getenv("AUTO_SEEDER_ENABLED", "true").lower() in (
+# Auto-seeder for automated data refresh.
+# Default OFF in development (it blocks startup and fires on every
+# uvicorn --reload) and ON in production (the scheduled refresh job
+# actually needs it). Override with AUTO_SEEDER_ENABLED=true/false.
+_default_seeder = "true" if getattr(settings, "ENVIRONMENT", "") == "production" else "false"
+AUTO_SEEDER_ENABLED = os.getenv("AUTO_SEEDER_ENABLED", _default_seeder).lower() in (
     "true",
     "1",
     "yes",
@@ -936,6 +941,100 @@ async def stop_auto_seeder_service() -> None:
         await stop_auto_seeder()
     except Exception:
         pass
+
+
+# Hot endpoints that are expensive on cold cache — we pre-warm them on
+# startup so the first real user never sees the 3-5 s cold path. List is
+# in priority order; later entries depend on prior endpoints' data.
+# Disable via AUTO_WARMUP_ENABLED=false (useful for lightweight dev boots).
+_WARMUP_ENABLED = os.getenv("AUTO_WARMUP_ENABLED", "true").lower() in ("true", "1", "yes")
+_WARMUP_PATHS: List[str] = [
+    "/api/v1/fiscal/summary",
+    "/api/v1/debt/national",
+    "/api/v1/debt/timeline",
+    "/api/v1/debt/national-loans",
+    "/api/v1/budget/national",
+    "/api/v1/counties",
+    "/api/v1/audits/federal",
+    "/api/v1/audits/statistics",
+    "/api/v1/sectors/spending",
+    "/api/v1/accountability/missing-funds",
+    "/api/v1/sources/summary",
+]
+
+
+@app.on_event("startup")
+async def warm_cache_on_startup() -> None:
+    """Pre-warm the response cache for high-traffic endpoints.
+
+    Without this, the first user after a deploy pays the full cold-path
+    latency on each endpoint they hit. We fire the warm-ups
+    concurrently; on a fast local DB the whole batch finishes in under
+    a second, and even with the rewritten batch queries each one is
+    single-digit seconds in the worst case.
+    """
+    if not _WARMUP_ENABLED:
+        logger.info("Cache warmup disabled via AUTO_WARMUP_ENABLED=false")
+        return
+
+    # Delay slightly so the app is fully initialised (routers mounted,
+    # DB engine ready) before we self-call.
+    async def _warm() -> None:
+        await asyncio.sleep(2.0)
+        import httpx
+
+        # Use the same port uvicorn is bound to — read from env set by
+        # the launch script, default to 8000.
+        port = int(os.getenv("PORT", "8000"))
+        base = f"http://127.0.0.1:{port}"
+
+        async def _hit(client: "httpx.AsyncClient", path: str) -> None:
+            try:
+                r = await client.get(f"{base}{path}", timeout=30.0)
+                logger.info(
+                    f"[WARMUP] {path} → {r.status_code} ({r.elapsed.total_seconds():.2f}s)"
+                )
+            except Exception as exc:
+                logger.warning(f"[WARMUP] {path} failed: {exc}")
+
+        async with httpx.AsyncClient() as client:
+            await asyncio.gather(*[_hit(client, p) for p in _WARMUP_PATHS])
+        logger.info("[WARMUP] Cache pre-warm complete")
+
+    # Don't await — run in the background so startup isn't blocked.
+    asyncio.create_task(_warm())
+
+
+# Gzip responses ≥1 KB so list/detail JSON payloads ship 3-8× smaller
+# over the wire. Applied before other middleware so every downstream
+# response benefits.
+app.add_middleware(GZipMiddleware, minimum_size=1024)
+
+
+# Cache-Control middleware: attach HTTP caching headers to GET /api/v1/*
+# responses. The frontend uses React Query (which already has in-memory
+# cache), but without HTTP cache headers the browser still pays full
+# payload cost on back/forward nav and hard reloads. We set a short
+# max-age (60s) with a long stale-while-revalidate window so pages feel
+# instant on navigation while revalidating in the background.
+@app.middleware("http")
+async def add_cache_headers(request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if (
+        request.method == "GET"
+        and path.startswith("/api/v1/")
+        and response.status_code == 200
+        # Skip auth-scoped or mutation-adjacent endpoints
+        and not path.startswith("/api/v1/auth/")
+        and not path.startswith("/api/v1/account/")
+        and not path.startswith("/api/v1/watchlist")
+        and "cache-control" not in {k.lower() for k in response.headers.keys()}
+    ):
+        response.headers["Cache-Control"] = (
+            "public, max-age=60, stale-while-revalidate=3600"
+        )
+    return response
 
 
 # CORS middleware – uses CORS_ORIGINS from settings / env var
@@ -1042,26 +1141,34 @@ except Exception as e:
     logger.warning(f"Could not register data provenance router: {e}")
 
 
-# Request logging middleware
+# Request logging middleware.
+# We only log completions (not the "PROCESSING" pre-event), and we
+# downgrade fast healthy responses to DEBUG so production logs show just
+# errors and slow requests — the signal engineers actually scan for.
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start_time = datetime.datetime.now()
-    client_ip = request.client.host
     method = request.method
     url = str(request.url)
 
-    logger.info(f"PROCESSING {method} {url} from {client_ip} - Processing...")
     try:
         response = await call_next(request)
         process_time = (datetime.datetime.now() - start_time).total_seconds()
         response.headers["X-Process-Time"] = f"{process_time:.3f}"
-        logger.info(
-            f"SUCCESS {method} {url} - {response.status_code} - {process_time:.3f}s"
-        )
+        # Escalate severity for slow or non-2xx responses so scanning logs
+        # highlights real problems without drowning them in noise.
+        if process_time > 0.5 or response.status_code >= 400:
+            logger.warning(
+                f"{method} {url} - {response.status_code} - {process_time:.3f}s"
+            )
+        else:
+            logger.debug(
+                f"{method} {url} - {response.status_code} - {process_time:.3f}s"
+            )
         return response
     except Exception as e:
         process_time = (datetime.datetime.now() - start_time).total_seconds()
-        logger.error(f"ERROR {method} {url} - ERROR: {str(e)} - {process_time:.3f}s")
+        logger.error(f"ERROR {method} {url} - {str(e)} - {process_time:.3f}s")
         raise
 
 
@@ -2324,7 +2431,11 @@ async def get_county_details(county_id: str, fiscal_year: Optional[str] = None):
 
 @app.get("/api/v1/counties/{county_id}/comprehensive")
 @cached(key_prefix="county:comprehensive", ttl=1800)
-async def get_county_comprehensive(county_id: str, fiscal_year: Optional[str] = None):
+async def get_county_comprehensive(
+    county_id: str,
+    fiscal_year: Optional[str] = None,
+    include_findings: bool = False,
+):
     """Comprehensive county detail — one-stop aggregation of every data dimension.
 
     Returns budget breakdown (by sector), audit findings, debt/loans,
@@ -2744,16 +2855,32 @@ async def get_county_comprehensive(county_id: str, fiscal_year: Optional[str] = 
                     "per_capita_debt": per_capita_debt,
                     "breakdown": debt_breakdown,
                 },
-                # Audit
-                "audit": {
-                    "status": audit_status,
-                    "grade": grade,
-                    "health_score": round(health_score, 1),
-                    "findings_count": len(audits),
-                    "total_amount_involved": total_audit_amount,
-                    "by_severity": by_severity,
-                    "findings": audit_findings,
-                },
+                # Audit — findings list is ONLY included when the caller
+                # passes `?include_findings=true`. By default the endpoint
+                # ships headline counts; the full list (which can be
+                # 5+ KB per county) is fetched lazily by the Audit tab
+                # via `/api/v1/counties/{id}/audits`. Keeps the comprehensive
+                # payload small for pages that only render badges.
+                "audit": (
+                    {
+                        "status": audit_status,
+                        "grade": grade,
+                        "health_score": round(health_score, 1),
+                        "findings_count": len(audits),
+                        "total_amount_involved": total_audit_amount,
+                        "by_severity": by_severity,
+                        "findings": audit_findings,
+                    }
+                    if include_findings
+                    else {
+                        "status": audit_status,
+                        "grade": grade,
+                        "health_score": round(health_score, 1),
+                        "findings_count": len(audits),
+                        "total_amount_involved": total_audit_amount,
+                        "by_severity": by_severity,
+                    }
+                ),
                 # Health score over time (oldest → newest)
                 "health_history": health_history,
                 # Missing funds
@@ -3200,17 +3327,32 @@ async def get_audit_statistics():
                 db.query(func.count(func.distinct(DBAudit.entity_id))).scalar() or 0
             )
 
-            # Total amount involved across all findings
-            all_audits = db.query(DBAudit.finding_text).all()
-            total_amount = 0.0
-            for (text_val,) in all_audits:
+            # Total amount involved across all findings — prefer the
+            # structured `amount` column (populated from OAG parsers).
+            # Fall back to regex over `finding_text` only for rows that
+            # lack an `amount` value, so we don't lose data but also don't
+            # pull the entire text column across the wire when unnecessary.
+            amount_from_col = (
+                db.query(func.coalesce(func.sum(DBAudit.amount), 0))
+                .filter(DBAudit.amount.isnot(None))
+                .scalar()
+                or 0.0
+            )
+            # Regex fallback only over rows where amount is NULL.
+            fallback_amount = 0.0
+            for (text_val,) in (
+                db.query(DBAudit.finding_text)
+                .filter(DBAudit.amount.is_(None))
+                .all()
+            ):
                 if text_val:
                     match = re.search(r"KES\s*([\d,]+)", text_val)
                     if match:
                         try:
-                            total_amount += float(match.group(1).replace(",", ""))
+                            fallback_amount += float(match.group(1).replace(",", ""))
                         except Exception:
                             pass
+            total_amount = float(amount_from_col) + fallback_amount
 
             # Latest fiscal year covered by the Audit table (derived, NOT hardcoded)
             latest_period_label = (
@@ -4298,10 +4440,6 @@ def _compute_accountability(db, entity, county_id: str) -> Dict[str, Any]:
     else:
         pop_bracket = ">2M"
 
-    # Collect peer stats for region
-    region_flagged_amounts: List[float] = []
-    region_grades: List[str] = []
-
     def _grade_to_num(g: str) -> float:
         return {"A": 4.0, "B": 3.0, "C": 2.0, "D": 1.0, "F": 0.0}.get(g, 0.0)
 
@@ -4316,21 +4454,83 @@ def _compute_accountability(db, entity, county_id: str) -> Dict[str, Any]:
             return "D"
         return "F"
 
+    # ─── Peer comparison — batch-loaded to avoid N+1 ────────────────
+    # Previously this section issued ~141 queries per request (one
+    # DBEntity.first() + DBAudit.all() per region-peer + one DBEntity +
+    # DBPopulationData + DBAudit per county in COUNTY_MAPPING). That
+    # pushed cold-cache latency to ~43 s on a 47-county dataset.
+    #
+    # We now do the whole peer roll-up in three bounded queries:
+    #   1. All county entities (1 row per county, ~47).
+    #   2. All audits for peers (DBAudit.entity_id IN (...)).
+    #   3. Latest DBPopulationData per entity (DISTINCT ON / MAX year).
+    # Peer stats are then computed in Python, reusing the same logic.
+    all_peer_entities = (
+        db.query(DBEntity).filter(DBEntity.type == EntityType.COUNTY).all()
+    )
+    # Map canonical_name ("Nairobi County") → entity for the lookup below.
+    peers_by_name: Dict[str, Any] = {
+        (e.canonical_name or ""): e for e in all_peer_entities
+    }
+    peer_entity_ids = [e.id for e in all_peer_entities if e.id != entity.id]
+
+    # Pull all audits for every peer in a single IN(...) query, then
+    # group by entity_id in Python. For 47 counties × ~20 audits this
+    # is <1000 rows.
+    from collections import defaultdict
+    from sqlalchemy import func as _sqlfunc3
+
+    peer_audits_by_entity: Dict[int, List[Any]] = defaultdict(list)
+    if peer_entity_ids:
+        for pa in (
+            db.query(DBAudit).filter(DBAudit.entity_id.in_(peer_entity_ids)).all()
+        ):
+            peer_audits_by_entity[pa.entity_id].append(pa)
+
+    # Latest population per entity via a correlated subquery (one round-trip).
+    # (entity_id, MAX(year)) → join back to get the row; but a straight
+    # "select all, keep max per entity in Python" is simpler and bounded.
+    peer_pop_by_entity: Dict[int, int] = {}
+    if peer_entity_ids:
+        pop_rows = (
+            db.query(
+                DBPopulationData.entity_id,
+                DBPopulationData.total_population,
+                DBPopulationData.year,
+            )
+            .filter(DBPopulationData.entity_id.in_(peer_entity_ids))
+            .all()
+        )
+        # Keep the max-year row per entity (total_population snapshot).
+        latest_year_by_entity: Dict[int, int] = {}
+        for eid, total_pop, yr in pop_rows:
+            cur = latest_year_by_entity.get(eid, -1)
+            if yr > cur:
+                latest_year_by_entity[eid] = yr
+                peer_pop_by_entity[eid] = int(total_pop or 0)
+
+    def _bracket_for(pop: int) -> str:
+        if pop < 500_000:
+            return "<500k"
+        if pop < 1_000_000:
+            return "500k-1M"
+        if pop < 2_000_000:
+            return "1M-2M"
+        return ">2M"
+
+    # Region peers: those in the same region as this county.
+    region_flagged_amounts: List[float] = []
+    region_grades: List[str] = []
+    bracket_flagged_amounts: List[float] = []
+
     for peer_cid in region_county_ids:
         peer_name = COUNTY_MAPPING.get(peer_cid)
         if not peer_name:
             continue
-        peer_entity = (
-            db.query(DBEntity)
-            .filter(DBEntity.type == EntityType.COUNTY)
-            .filter(DBEntity.canonical_name == f"{peer_name} County")
-            .first()
-        )
+        peer_entity = peers_by_name.get(f"{peer_name} County")
         if not peer_entity:
             continue
-        peer_audits = (
-            db.query(DBAudit).filter(DBAudit.entity_id == peer_entity.id).all()
-        )
+        peer_audits = peer_audits_by_entity.get(peer_entity.id, [])
         peer_flagged = float(sum(float(pa.amount or 0) for pa in peer_audits))
         region_flagged_amounts.append(peer_flagged)
 
@@ -4350,6 +4550,20 @@ def _compute_accountability(db, entity, county_id: str) -> Dict[str, Any]:
                 pg = "C"
         region_grades.append(pg)
 
+    # Population-bracket peers: iterate every county and keep same-bracket ones.
+    for cid, cname in COUNTY_MAPPING.items():
+        if cid == county_id:
+            continue
+        ce = peers_by_name.get(f"{cname} County")
+        if not ce:
+            continue
+        cpop = peer_pop_by_entity.get(ce.id, 0)
+        if _bracket_for(cpop) == pop_bracket:
+            ca = peer_audits_by_entity.get(ce.id, [])
+            bracket_flagged_amounts.append(
+                float(sum(float(x.amount or 0) for x in ca))
+            )
+
     region_avg_flagged = (
         round(sum(region_flagged_amounts) / len(region_flagged_amounts), 2)
         if region_flagged_amounts
@@ -4360,39 +4574,6 @@ def _compute_accountability(db, entity, county_id: str) -> Dict[str, Any]:
         if region_grades
         else None
     )
-
-    # Population bracket average
-    bracket_flagged_amounts: List[float] = []
-    for cid, cname in COUNTY_MAPPING.items():
-        if cid == county_id:
-            continue
-        ce = (
-            db.query(DBEntity)
-            .filter(DBEntity.type == EntityType.COUNTY)
-            .filter(DBEntity.canonical_name == f"{cname} County")
-            .first()
-        )
-        if not ce:
-            continue
-        cp = (
-            db.query(DBPopulationData)
-            .filter(DBPopulationData.entity_id == ce.id)
-            .order_by(DBPopulationData.year.desc())
-            .first()
-        )
-        cpop = cp.total_population if cp else 0
-        if cpop < 500_000:
-            cb = "<500k"
-        elif cpop < 1_000_000:
-            cb = "500k-1M"
-        elif cpop < 2_000_000:
-            cb = "1M-2M"
-        else:
-            cb = ">2M"
-        if cb == pop_bracket:
-            ca = db.query(DBAudit).filter(DBAudit.entity_id == ce.id).all()
-            bracket_flagged_amounts.append(float(sum(float(x.amount or 0) for x in ca)))
-
     population_bracket_avg = (
         round(sum(bracket_flagged_amounts) / len(bracket_flagged_amounts), 2)
         if bracket_flagged_amounts
@@ -4650,44 +4831,164 @@ async def get_sector_spending():
     if not DATABASE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Database unavailable")
 
+    from collections import defaultdict
+    from sqlalchemy import func as _sqlfunc4
+
     with next(get_db()) as db:
         counties = (
             db.query(DBEntity).filter(DBEntity.type == EntityType.COUNTY).all()
         )
+        if not counties:
+            return {
+                "total_allocated": 0.0,
+                "total_spent": 0.0,
+                "counties_reporting": 0,
+                "sectors": [],
+            }
+
+        entity_id_to_name: Dict[int, str] = {
+            c.id: (c.canonical_name or "").replace(" County", "").strip()
+            for c in counties
+        }
+        entity_ids = list(entity_id_to_name.keys())
+
+        # Resolve the "latest executed period" per entity in one query.
+        # Preference: max(period.start_date) WHERE sum(actual_spent) > 0.
+        # Fallback: max(period.start_date) overall when nothing executed.
+        # Both are expressed as window-free GROUP BY aggregates so we can
+        # replace the per-entity loop that used to fire two sub-queries
+        # each time (~141 queries for 47 counties).
+        executed_periods = (
+            db.query(
+                DBBudgetLine.entity_id,
+                _sqlfunc4.max(DBFiscalPeriod.start_date).label("start_date"),
+            )
+            .join(DBFiscalPeriod, DBBudgetLine.period_id == DBFiscalPeriod.id)
+            .filter(
+                DBBudgetLine.entity_id.in_(entity_ids),
+                DBBudgetLine.category != "Total Budget",
+            )
+            .group_by(DBBudgetLine.entity_id, DBFiscalPeriod.id, DBFiscalPeriod.start_date)
+            .having(_sqlfunc4.coalesce(_sqlfunc4.sum(DBBudgetLine.actual_spent), 0) > 0)
+            .all()
+        )
+        # Keep only the max start_date per entity.
+        latest_executed_date: Dict[int, Any] = {}
+        for eid, sd in executed_periods:
+            cur = latest_executed_date.get(eid)
+            if cur is None or sd > cur:
+                latest_executed_date[eid] = sd
+
+        # Entities with no execution: fall back to their latest period by date.
+        fallback_ids = [e for e in entity_ids if e not in latest_executed_date]
+        if fallback_ids:
+            fallback_rows = (
+                db.query(
+                    DBBudgetLine.entity_id,
+                    _sqlfunc4.max(DBFiscalPeriod.start_date).label("start_date"),
+                )
+                .join(DBFiscalPeriod, DBBudgetLine.period_id == DBFiscalPeriod.id)
+                .filter(
+                    DBBudgetLine.entity_id.in_(fallback_ids),
+                    DBBudgetLine.category != "Total Budget",
+                )
+                .group_by(DBBudgetLine.entity_id)
+                .all()
+            )
+            for eid, sd in fallback_rows:
+                latest_executed_date[eid] = sd
+
+        # Resolve start_date → period_id per entity. One round-trip via
+        # tuple-IN: (entity_id, start_date) pairs, which SQLite doesn't
+        # support natively; fall back to a simple filter on the distinct
+        # start_dates plus a Python lookup.
+        if not latest_executed_date:
+            return {
+                "total_allocated": 0.0,
+                "total_spent": 0.0,
+                "counties_reporting": 0,
+                "sectors": [],
+            }
+
+        unique_dates = list({d for d in latest_executed_date.values() if d is not None})
+        period_rows = (
+            db.query(DBFiscalPeriod.id, DBFiscalPeriod.start_date)
+            .filter(DBFiscalPeriod.start_date.in_(unique_dates))
+            .all()
+        )
+        date_to_period_ids: Dict[Any, List[int]] = defaultdict(list)
+        for pid, sd in period_rows:
+            date_to_period_ids[sd].append(pid)
+
+        # Build (entity_id, period_id) filter set.
+        entity_period_pairs: List[Tuple[int, int]] = []
+        for eid, sd in latest_executed_date.items():
+            for pid in date_to_period_ids.get(sd, []):
+                entity_period_pairs.append((eid, pid))
+
+        if not entity_period_pairs:
+            return {
+                "total_allocated": 0.0,
+                "total_spent": 0.0,
+                "counties_reporting": 0,
+                "sectors": [],
+            }
+
+        # One final query: pull every budget line in those (entity, period)
+        # pairs. This is bounded by "47 counties × ~15 categories" ≈ 700
+        # rows — tiny compared to the 141 queries we used to issue.
+        eids_for_filter = list({p[0] for p in entity_period_pairs})
+        pids_for_filter = list({p[1] for p in entity_period_pairs})
+        valid_pairs = set(entity_period_pairs)
+        all_lines = (
+            db.query(
+                DBBudgetLine.entity_id,
+                DBBudgetLine.period_id,
+                DBBudgetLine.category,
+                DBBudgetLine.allocated_amount,
+                DBBudgetLine.actual_spent,
+            )
+            .filter(
+                DBBudgetLine.entity_id.in_(eids_for_filter),
+                DBBudgetLine.period_id.in_(pids_for_filter),
+                DBBudgetLine.category != "Total Budget",
+            )
+            .all()
+        )
 
         sectors: Dict[str, Dict[str, Any]] = {}
-        counties_seen = 0
+        counties_seen_set: set = set()
         total_allocated = 0.0
         total_spent = 0.0
 
-        for county in counties:
-            lines = _entity_period_budget_query(db, county.id).all()
-            if not lines:
+        for eid, pid, category, alloc_raw, spent_raw in all_lines:
+            if (eid, pid) not in valid_pairs:
                 continue
-            counties_seen += 1
-            county_name = (county.canonical_name or "").replace(" County", "").strip()
-            for bl in lines:
-                bucket = _sector_bucket(bl.category or "")
-                alloc = float(bl.allocated_amount or 0)
-                spent = float(bl.actual_spent or 0)
-                total_allocated += alloc
-                total_spent += spent
-                s = sectors.setdefault(
-                    bucket,
-                    {
-                        "sector": bucket,
-                        "allocated": 0.0,
-                        "spent": 0.0,
-                        "counties": {},
-                    },
-                )
-                s["allocated"] += alloc
-                s["spent"] += spent
-                cs = s["counties"].setdefault(
-                    county_name, {"county": county_name, "allocated": 0.0, "spent": 0.0}
-                )
-                cs["allocated"] += alloc
-                cs["spent"] += spent
+            counties_seen_set.add(eid)
+            county_name = entity_id_to_name.get(eid, "")
+            bucket = _sector_bucket(category or "")
+            alloc = float(alloc_raw or 0)
+            spent = float(spent_raw or 0)
+            total_allocated += alloc
+            total_spent += spent
+            s = sectors.setdefault(
+                bucket,
+                {
+                    "sector": bucket,
+                    "allocated": 0.0,
+                    "spent": 0.0,
+                    "counties": {},
+                },
+            )
+            s["allocated"] += alloc
+            s["spent"] += spent
+            cs = s["counties"].setdefault(
+                county_name, {"county": county_name, "allocated": 0.0, "spent": 0.0}
+            )
+            cs["allocated"] += alloc
+            cs["spent"] += spent
+
+        counties_seen = len(counties_seen_set)
 
     out = []
     for label, s in sectors.items():
