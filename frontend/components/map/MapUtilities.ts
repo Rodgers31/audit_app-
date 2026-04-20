@@ -131,9 +131,10 @@ export const getNextAnimationMode = (
 
 /* ────────────────── legend items (for header bar) ────────────────── */
 
+/** Translation keys for legend labels — the consumer resolves via useLang.t() */
 export const LEGEND_ITEMS = [
-  { label: 'Clean / A+', color: '#4A7C5C' },
-  { label: 'Qualified / B', color: '#D9A441' },
-  { label: 'Adverse / C', color: '#C94A4A' },
-  { label: 'Disclaimer', color: '#7c5cbf' },
+  { labelKey: 'home.map.legend.clean' as const, color: '#4A7C5C' },
+  { labelKey: 'home.map.legend.qualified' as const, color: '#D9A441' },
+  { labelKey: 'home.map.legend.adverse' as const, color: '#C94A4A' },
+  { labelKey: 'home.map.legend.disclaimer' as const, color: '#7c5cbf' },
 ] as const;

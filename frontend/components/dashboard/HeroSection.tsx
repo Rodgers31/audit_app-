@@ -3,6 +3,7 @@
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useDebtTimeline, useNationalDebtOverview } from '@/lib/react-query/useDebt';
 import { useFiscalSummary } from '@/lib/react-query/useFiscal';
+import { useLang } from '@/lib/i18n/LangProvider';
 import { classifyDebtRisk, fmtBillionKES } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
@@ -26,6 +27,7 @@ import DebtExplainerModal from './DebtExplainerModal';
  *  └─────────────────────────────────────────────────────────┴──────────────┘
  */
 export default function HeroSection() {
+  const { t } = useLang();
   return (
     <div className='max-w-[1340px] mx-auto px-5 lg:px-8 pt-24 pb-6'>
       <motion.div
@@ -34,32 +36,54 @@ export default function HeroSection() {
         transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
         className='max-w-2xl'>
         <h1 className='font-display text-[1.75rem] sm:text-5xl lg:text-[3.5rem] text-white leading-[1.08] mb-2 drop-shadow-lg sm:whitespace-nowrap'>
-          Kenya Public Money Tracker
+          {t('home.hero.title')}
         </h1>
         <p className='text-base sm:text-lg text-white/70 font-light tracking-wide drop-shadow-md'>
-          Where your taxes go, in real time
+          {t('home.hero.subtitle')}
         </p>
       </motion.div>
     </div>
   );
 }
 
-/** Summary strip — pulls latest figures from the debt timeline API */
+/** Summary strip — headline figures from the authoritative /debt/national endpoint.
+ *
+ *  The backend exposes two debt data sources and explicitly flags which is
+ *  authoritative via a reconciliation block:
+ *    • loans_table        (loan-level register, ~11.85T) ← authoritative
+ *    • debt_timeline_table (aggregate annual snapshot, ~12.5T)
+ *
+ *  The two disagree by ~5.5% — the timeline row for the current year can
+ *  lag or include items not represented in the loan register (e.g. forex
+ *  revaluation). We surface the register value here so this strip agrees
+ *  with the /debt detail page and with the tiles in NationalDebtCard below.
+ */
 export function SummaryStrip() {
+  const { t } = useLang();
   const { data: timelineResp } = useDebtTimeline();
   const { data: overviewResp } = useNationalDebtOverview();
 
+  const apiData = overviewResp?.data ?? overviewResp;
   const latest = timelineResp?.timeline?.length
     ? timelineResp.timeline[timelineResp.timeline.length - 1]
     : null;
 
-  const totalT = latest ? (latest.total / 1000).toFixed(1) : '—';
-  const gdpPct = latest?.gdp_ratio ?? overviewResp?.data?.debt_to_gdp_ratio ?? '—';
-  const year = latest?.year ?? '—';
+  // Headline total (KES) — prefer the authoritative loans-register sum.
+  const totalKES =
+    apiData?.total_outstanding ??
+    apiData?.total_debt ??
+    (latest ? latest.total * 1_000_000_000 : null);
+  const totalT = totalKES != null ? (totalKES / 1_000_000_000_000).toFixed(2) : '—';
+
+  // Debt-to-GDP — prefer overview's canonical ratio (uses fresher GDP base
+  // than the timeline row, which can carry stale nominal-GDP figures).
+  const gdpPct = apiData?.debt_to_gdp_ratio ?? latest?.gdp_ratio ?? '—';
+  const year = apiData?.gdp_year ?? latest?.year ?? '—';
+
   // Trust the backend's risk_level when present (canonical source); fall back
   // to the centralized classifier so thresholds stay consistent across the UI.
   const riskLevel =
-    overviewResp?.data?.debt_sustainability?.risk_level ||
+    apiData?.debt_sustainability?.risk_level ||
     classifyDebtRisk(typeof gdpPct === 'number' ? gdpPct : undefined);
   const isHigh = riskLevel === 'High';
 
@@ -91,18 +115,18 @@ export function SummaryStrip() {
           <span
             className={`w-1.5 h-1.5 rounded-full ${isHigh ? 'bg-gov-copper' : 'bg-gov-gold'} inline-block`}
           />
-          {riskLevel} Risk
+          {riskLevel} {t('home.hero.risk_suffix')}
         </span>
       </div>
 
       {/* Labels row */}
       <div className='w-full flex gap-8 mt-0.5'>
         <span className='text-xs text-gov-dark/60 font-medium inline-flex items-center gap-1'>
-          Total Debt as of {year}
+          {t('home.hero.total_debt_as_of')} {year}
           <DebtExplainerModal context='hero' />
         </span>
         <span className='text-xs text-gov-dark/60 font-medium'>
-          Risk Level{' '}
+          {t('home.hero.risk_level')}{' '}
           <span className='inline-flex gap-0.5 ml-1'>
             <span>👍</span>
             <span>❓</span>
@@ -120,6 +144,7 @@ export function SummaryStrip() {
    links to the National Debt page for the full picture.
    ═══════════════════════════════════════════════════════════ */
 export function KenyanGovCard() {
+  const { t } = useLang();
   const { data: fiscal, isLoading } = useFiscalSummary();
   const fy = fiscal?.current;
 
@@ -142,19 +167,19 @@ export function KenyanGovCard() {
       dot: 'bg-gov-copper',
       ring: 'ring-gov-copper/30',
       text: 'text-gov-copper',
-      label: 'Under Strain',
+      label: t('home.govcard.under_strain'),
     },
     warning: {
       dot: 'bg-gov-gold',
       ring: 'ring-gov-gold/30',
       text: 'text-gov-gold',
-      label: 'Watch List',
+      label: t('home.govcard.watch_list'),
     },
     stable: {
       dot: 'bg-emerald-500',
       ring: 'ring-emerald-500/30',
       text: 'text-emerald-600',
-      label: 'Stable',
+      label: t('home.govcard.stable'),
     },
     loading: { dot: 'bg-gray-400', ring: 'ring-gray-400/20', text: 'text-gray-400', label: '...' },
   };
@@ -179,10 +204,10 @@ export function KenyanGovCard() {
           </div>
           <div className='flex-1 min-w-0'>
             <h3 className='text-[15px] font-bold text-white leading-tight tracking-tight'>
-              Kenyan Government
+              {t('home.govcard.title')}
             </h3>
             <p className='text-[11px] text-white/50 font-medium mt-0.5'>
-              {fyLabel} Fiscal Snapshot
+              {fyLabel} {t('home.govcard.fiscal_snapshot')}
             </p>
           </div>
           {isLoading && <Loader2 className='w-4 h-4 animate-spin text-white/30' />}
@@ -198,7 +223,7 @@ export function KenyanGovCard() {
           </span>
           <span
             className={`text-[10px] font-semibold uppercase tracking-widest ${healthTier === 'loading' ? 'text-white/40' : 'text-white/70'}`}>
-            Fiscal Health: {tier.label}
+            {t('home.govcard.fiscal_health')}: {tier.label}
           </span>
         </div>
       </div>
@@ -226,16 +251,16 @@ export function KenyanGovCard() {
             {/* Row 1: Budget + Revenue side by side */}
             <div className='grid grid-cols-2 gap-2'>
               <StatMiniCard
-                label='Budget'
+                label={t('home.govcard.stat_budget')}
                 value={fmtBillionKES(fy.appropriated_budget)}
                 sub={fy.fiscal_year}
                 color='forest'
                 icon='📊'
               />
               <StatMiniCard
-                label='Revenue'
+                label={t('home.govcard.stat_revenue')}
                 value={fmtBillionKES(fy.total_revenue)}
-                sub='Tax + non-tax'
+                sub={t('home.govcard.tax_nontax')}
                 color='teal'
                 icon='💰'
               />
@@ -244,17 +269,17 @@ export function KenyanGovCard() {
             {/* Row 2: Borrowed + Debt Service side by side */}
             <div className='grid grid-cols-2 gap-2'>
               <StatMiniCard
-                label='Borrowed'
+                label={t('home.govcard.stat_borrowed')}
                 value={fmtBillionKES(fy.total_borrowing)}
-                sub={`${fy.borrowing_pct_of_budget}% of budget`}
+                sub={t('home.govcard.pct_of_budget').replace('{pct}', String(fy.borrowing_pct_of_budget))}
                 color='copper'
                 icon='📉'
                 alert
               />
               <StatMiniCard
-                label='Debt Service'
+                label={t('home.govcard.stat_debt_service')}
                 value={fmtBillionKES(fy.debt_service_cost)}
-                sub={`${fy.debt_service_per_shilling}¢/KES`}
+                sub={t('home.govcard.cents_per_kes').replace('{cents}', String(fy.debt_service_per_shilling))}
                 color='gold'
                 icon='⚖️'
               />
@@ -264,7 +289,7 @@ export function KenyanGovCard() {
             <div className='mt-1 px-2 py-3 rounded-lg bg-white/50 border border-gray-100'>
               <div className='flex items-center justify-between mb-2'>
                 <span className='text-[10px] uppercase tracking-wider text-gray-500 font-semibold'>
-                  Debt Ceiling
+                  {t('home.govcard.debt_ceiling')}
                 </span>
                 <span
                   className={`text-xs font-black tabular-nums ${ceilingOver ? 'text-gov-copper' : 'text-gov-dark'}`}>
@@ -308,7 +333,7 @@ export function KenyanGovCard() {
                 <p
                   className='text-[9px] text-gov-copper font-medium mt-1.5 text-center'
                   suppressHydrationWarning>
-                  ⚠ Ceiling breached by {(ceilingRaw - 100).toFixed(0)}%
+                  ⚠ {t('home.govcard.ceiling_breached').replace('{pct}', (ceilingRaw - 100).toFixed(0))}
                 </p>
               )}
             </div>
@@ -330,33 +355,33 @@ export function KenyanGovCard() {
 
               const segments = [
                 {
-                  label: 'Recurrent',
+                  label: t('home.govcard.seg_recurrent'),
                   value: recurrentExclDebt,
                   color: 'bg-gov-forest',
                   dot: 'bg-gov-forest',
                 },
                 {
-                  label: 'Debt Service',
+                  label: t('home.govcard.seg_debt_service'),
                   value: debtSvc,
                   color: 'bg-gov-copper',
                   dot: 'bg-gov-copper',
                 },
                 {
-                  label: 'Development',
+                  label: t('home.govcard.seg_development'),
                   value: development,
                   color: 'bg-gov-gold',
                   dot: 'bg-gov-gold',
                 },
-                { label: 'Counties', value: county, color: 'bg-[#0D7377]', dot: 'bg-[#0D7377]' },
+                { label: t('home.govcard.seg_counties'), value: county, color: 'bg-[#0D7377]', dot: 'bg-[#0D7377]' },
                 ...(other > total * 0.01
-                  ? [{ label: 'Other', value: other, color: 'bg-gray-300', dot: 'bg-gray-300' }]
+                  ? [{ label: t('home.govcard.seg_other'), value: other, color: 'bg-gray-300', dot: 'bg-gray-300' }]
                   : []),
               ];
 
               return (
                 <div className='px-2 py-2.5 rounded-lg bg-white/50 border border-gray-100'>
                   <span className='text-[10px] uppercase tracking-wider text-gray-500 font-semibold block mb-2'>
-                    Where the Money Goes
+                    {t('home.govcard.where_money_goes')}
                   </span>
                   {/* Stacked horizontal bar */}
                   <div className='flex h-3 rounded-full overflow-hidden gap-[1px]'>
@@ -394,7 +419,7 @@ export function KenyanGovCard() {
             className='group w-full py-2.5 rounded-xl bg-gov-forest text-white text-sm font-semibold
                        hover:bg-gov-dark transition-all duration-300 shadow-md hover:shadow-lg
                        text-center flex items-center justify-center gap-2'>
-            Explore National Debt
+            {t('home.govcard.explore_debt')}
             <span className='inline-block transition-transform duration-300 group-hover:translate-x-1'>
               →
             </span>

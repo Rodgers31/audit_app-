@@ -6,6 +6,7 @@
 'use client';
 
 import { KENYA_COUNTIES_GEOJSON } from '@/data/kenya-counties.geojson';
+import { useLang } from '@/lib/i18n/LangProvider';
 import { County } from '@/types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Eye, Layers, MapPin } from 'lucide-react';
@@ -42,6 +43,7 @@ export default function InteractiveKenyaMap({
   isInteractingWithDetails = false,
   className = '',
 }: InteractiveKenyaMapProps) {
+  const { t } = useLang();
   /* ── state ── */
   const [hoveredCounty, setHoveredCounty] = useState<string | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -180,9 +182,9 @@ export default function InteractiveKenyaMap({
             <MapPin className='w-4 h-4 text-gov-forest' />
           </div>
           <div>
-            <h3 className='text-sm font-semibold text-gov-dark leading-tight'>County Explorer</h3>
+            <h3 className='text-sm font-semibold text-gov-dark leading-tight'>{t('home.map.title')}</h3>
             <p className='text-[11px] text-gray-500 leading-tight'>
-              {matchedCount} counties &middot; audit-status colour coded
+              {matchedCount} {t('home.map.subtitle_prefix')} &middot; {t('home.map.subtitle_suffix')}
             </p>
           </div>
         </div>
@@ -191,13 +193,13 @@ export default function InteractiveKenyaMap({
         <div className='flex flex-wrap items-center gap-1.5'>
           {LEGEND_ITEMS.map((item) => (
             <span
-              key={item.label}
+              key={item.labelKey}
               className='inline-flex items-center gap-1 text-[10px] font-medium text-gray-600 bg-white/70 rounded-full px-2 py-0.5 border border-gray-200/60'>
               <span
                 className='w-2 h-2 rounded-full ring-1 ring-black/10'
                 style={{ backgroundColor: item.color }}
               />
-              {item.label}
+              {t(item.labelKey)}
             </span>
           ))}
         </div>
@@ -212,7 +214,7 @@ export default function InteractiveKenyaMap({
                 : 'text-gray-500 hover:text-gray-700'
             }`}>
             <Layers className='w-3 h-3' />
-            All
+            {t('home.map.view_all')}
           </button>
           <button
             onClick={() => setVisualMode('focus')}
@@ -222,7 +224,7 @@ export default function InteractiveKenyaMap({
                 : 'text-gray-500 hover:text-gray-700'
             }`}>
             <Eye className='w-3 h-3' />
-            Focus
+            {t('home.map.view_focus')}
           </button>
         </div>
       </div>
@@ -231,7 +233,7 @@ export default function InteractiveKenyaMap({
       <div
         className='relative w-full flex-1 rounded-xl overflow-hidden border border-white/30'
         role="application"
-        aria-label="Interactive map of Kenya's 47 counties. Hover to see county details, click to select a county. Counties are color-coded by audit status."
+        aria-label={t('home.map.aria_label')}
         style={{ minHeight: 560 }}>
         {/* Subtle radial vignette overlay */}
         <div

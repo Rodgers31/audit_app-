@@ -1,6 +1,8 @@
 'use client';
 
 import { SkeletonCard } from '@/components/ui/Skeleton';
+import { useLang } from '@/lib/i18n/LangProvider';
+import type { TranslationKey } from '@/lib/i18n/messages';
 import { useFederalAudits } from '@/lib/react-query/useAudits';
 import { motion } from 'framer-motion';
 import {
@@ -34,14 +36,18 @@ const shortMinistry = (n: string) =>
     .replace(', Housing & Urban Development', '')
     .replace(' and ', ' & ');
 
-const SEV_CFG = {
-  CRITICAL: { color: 'var(--gov-copper, #C94A4A)', label: 'Critical', ring: '#C94A4A' },
-  WARNING: { color: 'var(--gov-gold, #D9A441)', label: 'Significant', ring: '#D9A441' },
-  INFO: { color: 'var(--gov-sage, #4A7C5C)', label: 'Minor', ring: '#4A7C5C' },
-} as const;
+const SEV_CFG: Record<
+  'CRITICAL' | 'WARNING' | 'INFO',
+  { color: string; labelKey: TranslationKey; ring: string }
+> = {
+  CRITICAL: { color: 'var(--gov-copper, #C94A4A)', labelKey: 'home.audits.sev_critical', ring: '#C94A4A' },
+  WARNING: { color: 'var(--gov-gold, #D9A441)', labelKey: 'home.audits.sev_significant', ring: '#D9A441' },
+  INFO: { color: 'var(--gov-sage, #4A7C5C)', labelKey: 'home.audits.sev_minor', ring: '#4A7C5C' },
+};
 
 /* ─── SVG donut ─── */
 function SeverityDonut({ sev }: { sev: Record<string, number> }) {
+  const { t } = useLang();
   const total = Object.values(sev).reduce((a, b) => a + b, 0) || 1;
   const r = 44;
   const circ = 2 * Math.PI * r;
@@ -77,7 +83,7 @@ function SeverityDonut({ sev }: { sev: Record<string, number> }) {
       </svg>
       <div className='absolute inset-0 flex flex-col items-center justify-center'>
         <span className='text-2xl font-bold text-gov-dark tabular-nums leading-none'>{total}</span>
-        <span className='text-[10px] text-neutral-muted mt-0.5'>findings</span>
+        <span className='text-[10px] text-neutral-muted mt-0.5'>{t('home.audits.findings_label')}</span>
       </div>
     </div>
   );
@@ -85,6 +91,7 @@ function SeverityDonut({ sev }: { sev: Record<string, number> }) {
 
 /* ═══════════════ MAIN COMPONENT ═══════════════ */
 export default function AuditReportsSection() {
+  const { t } = useLang();
   const { data, isLoading, error } = useFederalAudits();
   const [expandedFinding, setExpandedFinding] = useState<number | null>(null);
 
@@ -129,7 +136,7 @@ export default function AuditReportsSection() {
     return (
       <div className='glass-card p-10 flex flex-col items-center justify-center min-h-[400px] gap-2'>
         <ShieldAlert className='w-6 h-6 text-neutral-muted/25' />
-        <p className='text-xs text-neutral-muted'>Audit data unavailable</p>
+        <p className='text-xs text-neutral-muted'>{t('home.audits.unavailable')}</p>
       </div>
     );
   }
@@ -147,10 +154,10 @@ export default function AuditReportsSection() {
       <div className='bg-gradient-to-r from-gov-sand/60 via-gov-cream/40 to-transparent px-6 sm:px-8 pt-6 pb-5 flex items-start justify-between border-b border-neutral-border/20'>
         <div>
           <h2 className='font-display text-xl sm:text-2xl text-gov-dark leading-tight'>
-            Auditor General&apos;s Report
+            {t('home.audits.report_title')}
           </h2>
           <p className='text-sm text-neutral-muted mt-0.5'>
-            National Government — {data.fiscal_year}
+            {t('home.audits.national_govt_fy').replace('{fy}', String(data.fiscal_year || ''))}
           </p>
         </div>
         <a
@@ -167,48 +174,47 @@ export default function AuditReportsSection() {
         <div className='flex items-center gap-2 mb-2'>
           <Scale className='w-4 h-4 text-gov-copper' />
           <span className='text-xs font-bold uppercase tracking-wider text-gov-copper'>
-            Audit Opinion: {data.opinion_type}
+            {t('home.audits.opinion_label')} {data.opinion_type}
           </span>
         </div>
         <p className='text-sm text-gov-dark/80 leading-relaxed'>
-          {data.basis_for_qualification?.[0] ||
-            'Material misstatements identified across multiple ministries'}
+          {data.basis_for_qualification?.[0] || t('home.audits.default_basis')}
         </p>
         <p className='text-[11px] text-neutral-muted mt-2 italic'>
-          Signed by {data.auditor_general}
+          {t('home.audits.signed_by').replace('{name}', data.auditor_general || '')}
         </p>
       </div>
 
       {/* ════════ STAT CARDS ════════ */}
       <div className='px-6 sm:px-8 mb-5 grid grid-cols-2 sm:grid-cols-4 gap-3'>
-        {[
+        {([
           {
             icon: Building2,
-            label: 'Ministries Audited',
+            labelKey: 'home.audits.stat_ministries' as TranslationKey,
             value: stats?.total_ministries_audited ?? data.total_findings,
             accent: 'text-gov-forest',
           },
           {
             icon: SearchX,
-            label: 'Amount Questioned',
+            labelKey: 'home.audits.stat_amount' as TranslationKey,
             value: `KES ${fmtKES(data.total_amount_questioned)}`,
             accent: 'text-gov-copper',
           },
           {
             icon: ShieldAlert,
-            label: 'Critical Findings',
+            labelKey: 'home.audits.stat_critical' as TranslationKey,
             value: sev.CRITICAL || stats?.critical_findings || 0,
             accent: 'text-gov-copper',
           },
           {
             icon: RotateCcw,
-            label: 'Recurring Issues',
+            labelKey: 'home.audits.stat_recurring' as TranslationKey,
             value: stats?.recurring_issues_from_prior_year ?? 0,
             accent: 'text-gov-gold',
           },
-        ].map((s) => (
+        ] as const).map((s) => (
           <div
-            key={s.label}
+            key={s.labelKey}
             className={`rounded-xl border border-neutral-border/40 px-4 py-3 ${
               s.accent === 'text-gov-copper'
                 ? 'bg-gov-copper/[0.04]'
@@ -219,7 +225,7 @@ export default function AuditReportsSection() {
             <div className='flex items-center gap-1.5 mb-2'>
               <s.icon className={`w-3.5 h-3.5 ${s.accent} opacity-70`} />
               <span className='text-[10px] text-neutral-muted font-medium uppercase tracking-wider'>
-                {s.label}
+                {t(s.labelKey)}
               </span>
             </div>
             <span className={`text-lg font-bold ${s.accent} tabular-nums leading-none`}>
@@ -233,7 +239,7 @@ export default function AuditReportsSection() {
       <div className='px-6 sm:px-8 pb-5 grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5'>
         {/* ── Left: Findings + Donut ── */}
         <div className='rounded-xl bg-gov-sand/30 border border-neutral-border/20 p-4'>
-          <h3 className='font-display text-base text-gov-dark mb-4'>Audit Findings Overview</h3>
+          <h3 className='font-display text-base text-gov-dark mb-4'>{t('home.audits.findings_overview')}</h3>
 
           <div className='flex gap-5 items-start'>
             {/* Findings list */}
@@ -273,12 +279,12 @@ export default function AuditReportsSection() {
                             animate={{ height: 'auto', opacity: 1 }}
                             className='mt-2 pt-2 border-t border-neutral-border/30'>
                             <p className='text-xs text-neutral-muted leading-relaxed'>
-                              <span className='font-semibold text-gov-dark'>Amount:</span>{' '}
+                              <span className='font-semibold text-gov-dark'>{t('home.audits.amount_prefix')}</span>{' '}
                               {f.amount_involved}
                             </p>
                             {f.recommended_action && (
                               <p className='text-xs text-neutral-muted leading-relaxed mt-1'>
-                                <span className='font-semibold text-gov-dark'>Action:</span>{' '}
+                                <span className='font-semibold text-gov-dark'>{t('home.audits.action_prefix')}</span>{' '}
                                 {f.recommended_action}
                               </p>
                             )}
@@ -309,7 +315,7 @@ export default function AuditReportsSection() {
                         style={{ backgroundColor: SEV_CFG[level].color }}
                       />
                       <span className='text-[11px] text-neutral-muted'>
-                        {SEV_CFG[level].label} ({sev[level] || 0})
+                        {t(SEV_CFG[level].labelKey)} ({sev[level] || 0})
                       </span>
                       <span className='text-[11px] font-semibold text-gov-dark tabular-nums ml-auto'>
                         {pct}%
@@ -327,7 +333,7 @@ export default function AuditReportsSection() {
               <AlertTriangle className='w-4 h-4 text-gov-gold flex-shrink-0 mt-0.5' />
               <div className='min-w-0'>
                 <p className='text-[11px] font-bold uppercase tracking-wider text-gov-gold mb-1'>
-                  Emphasis of Matter
+                  {t('home.audits.emphasis')}
                 </p>
                 <p className='text-xs text-gov-dark/70 leading-relaxed line-clamp-2'>
                   {data.emphasis_of_matter[0]}
@@ -340,7 +346,7 @@ export default function AuditReportsSection() {
 
         {/* ── Right: Top Ministries Flagged ── */}
         <div className='rounded-xl border border-neutral-border/40 bg-gov-forest/[0.03] p-4'>
-          <h4 className='font-display text-sm text-gov-dark mb-4'>Top Ministries Flagged</h4>
+          <h4 className='font-display text-sm text-gov-dark mb-4'>{t('home.audits.top_ministries')}</h4>
           <div className='space-y-3'>
             {ministryBars.map((m) => (
               <div key={m.ministry}>
@@ -386,7 +392,7 @@ export default function AuditReportsSection() {
           <Link
             href='/audits'
             className='group mt-5 flex items-center justify-center gap-1.5 w-full rounded-lg bg-gov-forest text-white hover:bg-gov-forest/90 active:scale-[0.98] px-4 py-2.5 transition-all text-xs font-medium shadow-sm'>
-            View All Findings
+            {t('home.audits.view_all_findings')}
             <ArrowRight className='w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform' />
           </Link>
         </div>

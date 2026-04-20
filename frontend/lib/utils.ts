@@ -108,6 +108,18 @@ export function getCurrentFiscalYear(): string {
 }
 
 /**
+ * Return the latest *completed* (reported) Kenyan fiscal year — i.e. the one
+ * prior to the currently active FY. Execution data (actual spending, audits)
+ * isn't published until well after year-end, so UI defaults that require
+ * actuals should use this, not `getCurrentFiscalYear()`.
+ */
+export function getLatestReportedFiscalYear(): string {
+  const now = new Date();
+  const startYear = now.getMonth() >= 6 ? now.getFullYear() - 1 : now.getFullYear() - 2;
+  return `${startYear}/${String(startYear + 1).slice(-2)}`;
+}
+
+/**
  * Generate an array of Kenyan fiscal year labels starting from the current year going back.
  */
 export function generateFiscalYears(count = 5): string[] {

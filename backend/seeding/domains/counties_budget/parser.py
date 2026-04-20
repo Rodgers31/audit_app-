@@ -19,6 +19,10 @@ class BudgetRecord:
     subcategory: Optional[str]
     allocated_amount: Optional[Decimal]
     actual_amount: Optional[Decimal]
+    # committed_amount stands in for CoB "Exchequer Releases" — the
+    # amount released to the county during the fiscal year. The
+    # Follow-the-Money waterfall treats this as the "Released" stage.
+    committed_amount: Optional[Decimal]
     currency: str
     dataset_id: Optional[str]
     source_url: Optional[str]
@@ -121,6 +125,12 @@ def parse_budget_payload(payload: Dict[str, Any]) -> List[BudgetRecord]:
                 raw.get("actual_amount")
                 or raw.get("actual")
                 or raw.get("actual_spent")
+            ),
+            committed_amount=_to_decimal(
+                raw.get("committed_amount")
+                or raw.get("committed")
+                or raw.get("released")
+                or raw.get("exchequer_releases")
             ),
             currency=str(raw.get("currency") or "KES"),
             dataset_id=raw.get("dataset_id"),

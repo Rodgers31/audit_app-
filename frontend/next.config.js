@@ -1,5 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // @huggingface/transformers + onnxruntime-node are browser-only — the
+  // Learn page dynamically imports them inside a `typeof window` guard.
+  // Next's file tracer still pulls the 350MB onnxruntime-node binary into
+  // every serverless function bundle, blowing Vercel's 250MB limit.
+  // Exclude the whole native-binary tree from the deployment trace so
+  // server bundles stay lean; browser code still gets transformers.js
+  // via its own chunk.
+  outputFileTracingExcludes: {
+    '*': [
+      'node_modules/@huggingface/**',
+      'node_modules/onnxruntime-node/**',
+      'node_modules/onnxruntime-web/**',
+      'node_modules/onnxruntime-common/**',
+    ],
+  },
   images: {
     remotePatterns: [
       {
@@ -37,9 +52,20 @@ const nextConfig = {
   },
   // Add caching headers for static and API responses
   async headers() {
+    // In dev, static chunks are rebuilt in-place with the same URL, so
+    // "immutable" traps browsers on stale bundles across HMR cycles.
+    // Only pin them in production where filenames are content-hashed.
+    if (process.env.NODE_ENV !== 'production') {
+      return [
+        {
+          source: '/_next/static/:path*',
+          headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
+        },
+      ];
+    }
     return [
       {
-        // Cache static assets aggressively
+        // Cache static assets aggressively in production (content-hashed URLs)
         source: '/_next/static/:path*',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
       },

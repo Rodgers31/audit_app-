@@ -1,5 +1,7 @@
 'use client';
 
+import { useLang } from '@/lib/i18n/LangProvider';
+import type { TranslationKey } from '@/lib/i18n/messages';
 import { County } from '@/types';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -71,18 +73,18 @@ function auditColor(status?: string) {
   }
 }
 
-function auditLabel(status?: string) {
+function auditLabelKey(status?: string): TranslationKey {
   switch (status) {
     case 'clean':
-      return 'Clean';
+      return 'home.county_panel.audit_clean';
     case 'qualified':
-      return 'Qualified';
+      return 'home.county_panel.audit_qualified';
     case 'adverse':
-      return 'Adverse';
+      return 'home.county_panel.audit_adverse';
     case 'disclaimer':
-      return 'Disclaimer';
+      return 'home.county_panel.audit_disclaimer';
     default:
-      return 'Pending';
+      return 'home.county_panel.audit_pending';
   }
 }
 
@@ -104,21 +106,42 @@ function utilizationBarColor(pct: number) {
   return 'bg-red-500';
 }
 
-function severityConfig(sev: string) {
+function severityConfig(sev: string): {
+  dot: string;
+  text: string;
+  bg: string;
+  labelKey: TranslationKey;
+} {
   switch (sev) {
     case 'critical':
+      return {
+        dot: 'bg-red-500',
+        text: 'text-red-700',
+        bg: 'bg-red-50',
+        labelKey: 'home.county_panel.sev_critical',
+      };
     case 'high':
       return {
         dot: 'bg-red-500',
         text: 'text-red-700',
         bg: 'bg-red-50',
-        label: sev === 'critical' ? 'Critical' : 'High',
+        labelKey: 'home.county_panel.sev_high',
       };
     case 'warning':
     case 'medium':
-      return { dot: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50', label: 'Warning' };
+      return {
+        dot: 'bg-amber-500',
+        text: 'text-amber-700',
+        bg: 'bg-amber-50',
+        labelKey: 'home.county_panel.sev_warning',
+      };
     default:
-      return { dot: 'bg-blue-400', text: 'text-blue-600', bg: 'bg-blue-50', label: 'Info' };
+      return {
+        dot: 'bg-blue-400',
+        text: 'text-blue-600',
+        bg: 'bg-blue-50',
+        labelKey: 'home.county_panel.sev_info',
+      };
   }
 }
 
@@ -138,6 +161,7 @@ function sectorIcon(name: string) {
 /* ══════════════════════════════════════════════════════════ */
 
 export default function CountyDetailsPanel({ county, className = '' }: CountyDetailsPanelProps) {
+  const { t } = useLang();
   return (
     <div
       className={`rounded-xl bg-white border border-gray-200/60 shadow-sm overflow-hidden flex flex-col ${className}`}>
@@ -161,13 +185,13 @@ export default function CountyDetailsPanel({ county, className = '' }: CountyDet
                     <h3 className='text-base font-bold text-gov-dark leading-tight'>
                       {county.name}
                     </h3>
-                    <p className='text-[10px] text-gray-400 font-medium'>County Government</p>
+                    <p className='text-[10px] text-gray-400 font-medium'>{t('home.county_panel.county_govt')}</p>
                   </div>
                 </div>
                 <span
                   className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${auditColor(county.auditStatus)}`}>
                   <Shield className='w-2.5 h-2.5' />
-                  {auditLabel(county.auditStatus)}
+                  {t(auditLabelKey(county.auditStatus))}
                 </span>
               </div>
             </div>
@@ -177,7 +201,7 @@ export default function CountyDetailsPanel({ county, className = '' }: CountyDet
               {/* Financial Health Score */}
               <div>
                 <div className='flex items-center justify-between mb-1'>
-                  <span className='text-[11px] text-gray-500 font-medium'>Financial Health</span>
+                  <span className='text-[11px] text-gray-500 font-medium'>{t('home.county_panel.financial_health')}</span>
                   <span
                     className={`text-base font-bold tabular-nums ${healthColor(county.financial_health_score)}`}>
                     {county.financial_health_score}
@@ -199,26 +223,26 @@ export default function CountyDetailsPanel({ county, className = '' }: CountyDet
               <div className='grid grid-cols-2 gap-2'>
                 <StatItem
                   icon={<Wallet className='w-3 h-3' />}
-                  label='Budget'
+                  label={t('home.county_panel.budget')}
                   value={fmtKES(county.budget_2025)}
                   iconBg='bg-gov-sage/10 text-gov-sage'
                 />
                 <StatItem
                   icon={<TrendingDown className='w-3 h-3' />}
-                  label='Total Debt'
+                  label={t('home.county_panel.total_debt')}
                   value={fmtKES(county.debt)}
                   iconBg='bg-gov-copper/10 text-gov-copper'
                   alert={county.debt && county.budget ? county.debt / county.budget > 0.3 : false}
                 />
                 <StatItem
                   icon={<Users className='w-3 h-3' />}
-                  label='Population'
+                  label={t('home.county_panel.population_label')}
                   value={fmtPop(county.population)}
                   iconBg='bg-blue-50 text-blue-500'
                 />
                 <StatItem
                   icon={<Landmark className='w-3 h-3' />}
-                  label='Audit Rating'
+                  label={t('home.county_panel.audit_rating')}
                   value={county.audit_rating || '—'}
                   iconBg='bg-gov-forest/10 text-gov-forest'
                 />
@@ -229,7 +253,7 @@ export default function CountyDetailsPanel({ county, className = '' }: CountyDet
                 <div className='rounded-lg bg-gray-50 border border-gray-100 p-2.5'>
                   <div className='flex items-center justify-between mb-1'>
                     <span className='text-[10px] text-gray-500 font-medium'>
-                      Budget Utilisation
+                      {t('home.county_panel.utilization')}
                     </span>
                     <span className='text-xs font-bold text-gov-dark tabular-nums'>
                       {(county.budgetUtilization ?? 0).toFixed(1)}%
@@ -251,7 +275,7 @@ export default function CountyDetailsPanel({ county, className = '' }: CountyDet
               <div className='grid grid-cols-2 gap-2'>
                 {county.debt != null && county.budget != null && county.budget > 0 && (
                   <MiniMetric
-                    label='Debt Ratio'
+                    label={t('home.county_panel.debt_ratio')}
                     value={`${((county.debt / county.budget) * 100).toFixed(1)}%`}
                     sub={fmtKES(county.debt)}
                     alert={county.debt / county.budget > 0.3}
@@ -259,7 +283,7 @@ export default function CountyDetailsPanel({ county, className = '' }: CountyDet
                 )}
                 {(county.pendingBills ?? 0) > 0 && (
                   <MiniMetric
-                    label='Pending Bills'
+                    label={t('home.county_panel.pending_bills')}
                     value={fmtKES(county.pendingBills)}
                     icon={<Receipt className='w-3 h-3 text-violet-500' />}
                   />
@@ -268,7 +292,7 @@ export default function CountyDetailsPanel({ county, className = '' }: CountyDet
 
               {/* Per-capita budget */}
               <div className='flex items-center justify-between text-[11px] px-0.5'>
-                <span className='text-gray-500'>Budget per capita</span>
+                <span className='text-gray-500'>{t('home.county_panel.per_capita')}</span>
                 <span className='font-semibold text-gov-dark tabular-nums'>
                   {county.budget_2025 && county.population
                     ? `KES ${Math.round(county.budget_2025 / county.population).toLocaleString()}`
@@ -287,7 +311,7 @@ export default function CountyDetailsPanel({ county, className = '' }: CountyDet
             <div className='px-4 py-3 border-t border-gray-100 flex-shrink-0'>
               <Link href={`/counties/${county.name.toLowerCase().replace(/\s+/g, '-')}`}>
                 <button className='w-full py-2 rounded-full bg-gov-forest text-white text-xs font-medium hover:bg-gov-forest/90 transition-colors shadow-sm flex items-center justify-center gap-1.5'>
-                  Explore {county.name}
+                  {t('home.county_panel.explore_name').replace('{name}', county.name)}
                   <TrendingUp className='w-3 h-3' />
                 </button>
               </Link>
@@ -303,10 +327,9 @@ export default function CountyDetailsPanel({ county, className = '' }: CountyDet
             <div className='w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3'>
               <MapPin className='w-5 h-5 text-gray-400' />
             </div>
-            <p className='text-sm font-medium text-gray-500'>Select a county</p>
+            <p className='text-sm font-medium text-gray-500'>{t('home.county_panel.empty_title')}</p>
             <p className='text-[11px] text-gray-400 mt-1'>
-              Hover over or click a county on the map to view its financial details and audit
-              findings.
+              {t('home.county_panel.empty_body')}
             </p>
           </motion.div>
         )}
@@ -379,18 +402,19 @@ function MiniMetric({
 
 /* Top spending sectors mini horizontal bars */
 function SectorBreakdown({ county }: { county: County }) {
+  const { t } = useLang();
   // Build sector list from the available data
   const sectors: { name: string; amount: number }[] = [];
-  if (county.health) sectors.push({ name: 'Health', amount: county.health });
-  if (county.education) sectors.push({ name: 'Education', amount: county.education });
+  if (county.health) sectors.push({ name: t('home.county_panel.sector.health'), amount: county.health });
+  if (county.education) sectors.push({ name: t('home.county_panel.sector.education'), amount: county.education });
   if (county.infrastructure)
-    sectors.push({ name: 'Roads & Transport', amount: county.infrastructure });
+    sectors.push({ name: t('home.county_panel.sector.roads'), amount: county.infrastructure });
 
   // If no explicit sector data, try dev/recurrent split
   if (sectors.length === 0) {
     if (county.developmentBudget)
-      sectors.push({ name: 'Development', amount: county.developmentBudget });
-    if (county.recurrentBudget) sectors.push({ name: 'Recurrent', amount: county.recurrentBudget });
+      sectors.push({ name: t('home.county_panel.sector.development'), amount: county.developmentBudget });
+    if (county.recurrentBudget) sectors.push({ name: t('home.county_panel.sector.recurrent'), amount: county.recurrentBudget });
   }
 
   if (sectors.length === 0) return null;
@@ -404,7 +428,7 @@ function SectorBreakdown({ county }: { county: County }) {
     <div>
       <div className='flex items-center gap-1.5 mb-2'>
         <BarChart3 className='w-3 h-3 text-gray-400' />
-        <span className='text-[11px] font-semibold text-gray-600'>Top Spending Sectors</span>
+        <span className='text-[11px] font-semibold text-gray-600'>{t('home.county_panel.top_sectors')}</span>
       </div>
       <div className='space-y-1.5'>
         {sectors.slice(0, 4).map((sector, i) => {
@@ -441,6 +465,7 @@ function SectorBreakdown({ county }: { county: County }) {
 
 /* OAG Audit Findings list */
 function AuditFindings({ county }: { county: County }) {
+  const { t } = useLang();
   const issues = county.auditIssues || [];
   if (issues.length === 0) return null;
 
@@ -449,7 +474,7 @@ function AuditFindings({ county }: { county: County }) {
       <div className='flex items-center justify-between mb-2'>
         <div className='flex items-center gap-1.5'>
           <FileWarning className='w-3 h-3 text-gray-400' />
-          <span className='text-[11px] font-semibold text-gray-600'>OAG Audit Findings</span>
+          <span className='text-[11px] font-semibold text-gray-600'>{t('home.county_panel.oag_findings')}</span>
         </div>
         <span className='text-[9px] font-bold text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5'>
           {issues.length}
@@ -470,7 +495,7 @@ function AuditFindings({ county }: { county: County }) {
                 <div className='min-w-0 flex-1'>
                   <div className='flex items-center gap-1.5 mb-0.5'>
                     <span className={`text-[9px] font-bold uppercase tracking-wider ${cfg.text}`}>
-                      {cfg.label}
+                      {t(cfg.labelKey)}
                     </span>
                     {issue.amount && (
                       <span className='text-[9px] text-gray-500 tabular-nums'>
@@ -493,7 +518,7 @@ function AuditFindings({ county }: { county: County }) {
             href={`/counties/${county.name.toLowerCase().replace(/\s+/g, '-')}`}
             className='text-[10px] font-medium text-gov-forest hover:text-gov-forest/80 flex items-center gap-1'>
             <BookOpen className='w-3 h-3' />
-            View all {issues.length} findings
+            {t('home.county_panel.view_all_findings').replace('{n}', String(issues.length))}
           </Link>
         </div>
       )}

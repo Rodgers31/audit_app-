@@ -203,6 +203,21 @@ class SeedingSettings(BaseSettings):
             "404s): https://cob.go.ke/publications/county-reports/."
         ),
     )
+    counties_budget_cob_wp_api_url: str = Field(
+        default=(
+            "https://cob.go.ke/wp-json/wp/v2/media"
+            "?per_page=100&mime_type=application/pdf&orderby=date&order=desc"
+        ),
+        description=(
+            "Controller of Budget WordPress REST API endpoint for PDF "
+            "media. Preferred over HTML scraping because the landing "
+            "pages frequently return 415/5xx behind the CDN while the "
+            "WP JSON endpoint stays 200 and returns structured "
+            "{title, date, source_url, mime_type} records we can sort "
+            "and filter deterministically. See "
+            "counties_budget.fetcher._discover_latest_county_birr_via_wp_api."
+        ),
+    )
 
     # ── World Bank API (free, unauthenticated) ───────────────────
     worldbank_api_base_url: str = Field(

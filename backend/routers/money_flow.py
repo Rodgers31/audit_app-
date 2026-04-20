@@ -6,12 +6,13 @@ Traces public funds through: Allocation → Release → Expenditure → Audit Fl
 
 import functools
 import logging
+import re
 import time
 from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -95,11 +96,42 @@ def _build_stage(
     return d
 
 
+def _normalize_fiscal_year(fiscal_year: str) -> List[str]:
+    """Return candidate DB label forms for a fiscal year input.
+
+    Accepts "2023/24", "2023/2024", "FY2023/24", "FY 2023/24",
+    "2023-24", "2023-2024", "23/24" etc. and emits the canonical
+    "FY2023/24" label plus a couple of common variants so ``_resolve_periods``
+    can match regardless of how the caller formatted it.
+    """
+    if not fiscal_year:
+        return []
+    raw = fiscal_year.strip().upper().replace("FY", "").strip()
+    m = re.match(r"^\s*(\d{2,4})\s*[/\-]\s*(\d{2,4})\s*$", raw)
+    if not m:
+        return []
+    y1, y2 = m.group(1), m.group(2)
+    y1_full = y1 if len(y1) == 4 else f"20{y1}"
+    y2_short = y2[-2:] if len(y2) >= 2 else y2.zfill(2)
+    y2_full = f"{y1_full[:2]}{y2_short}"
+    # Emit canonical + a few tolerated legacy variants
+    return [
+        f"FY{y1_full}/{y2_short}",        # canonical: FY2023/24
+        f"FY{y1_full}/{y2_full}",         # FY2023/2024
+        f"{y1_full}/{y2_short}",          # 2023/24
+        f"{y1_full}/{y2_full}",           # 2023/2024
+        f"FY{y1_full}-{y2_short}",        # FY2023-24
+    ]
+
+
 def _resolve_periods(db: Session, fiscal_year: str) -> List[int]:
-    """Return period IDs whose label contains the given fiscal year string."""
+    """Return period IDs matching the given fiscal year (tolerant of format)."""
+    candidates = _normalize_fiscal_year(fiscal_year)
+    if not candidates:
+        return []
     periods = (
         db.query(FiscalPeriod.id)
-        .filter(FiscalPeriod.label.ilike(f"%{fiscal_year}%"))
+        .filter(FiscalPeriod.label.in_(candidates))
         .all()
     )
     return [p.id for p in periods]
@@ -137,7 +169,11 @@ def _money_flow_for_entity(
 
     if budget_lines:
         allocated = sum(float(b.allocated_amount or 0) for b in budget_lines)
-        spent = sum(float(b.actual_spent or 0) for b in budget_lines)
+        # Treat "no non-null spent rows" as data-unavailable (projected-
+        # year budgets don't have execution figures yet). Returning 0
+        # would misleadingly render as "100% unspent" in the waterfall.
+        spent_vals = [b.actual_spent for b in budget_lines if b.actual_spent is not None]
+        spent = sum(float(s) for s in spent_vals) if spent_vals else None
         # COB data doesn't have a separate "released" column – use committed_amount
         # as a proxy for releases if available, otherwise mark unavailable.
         committed_amounts = [b.committed_amount for b in budget_lines if b.committed_amount is not None]
@@ -233,16 +269,20 @@ def _money_flow_for_entity(
 
 @router.get("/counties/{county_id}/money-flow")
 async def county_money_flow(
-    county_id: int,
+    county_id: str,
     year: str = Query(..., description="Fiscal year label, e.g. '2024/25'"),
     db: Session = Depends(get_db),
 ):
-    """Trace the full money flow for a county in a fiscal year."""
-    entity = (
-        db.query(Entity)
-        .filter(Entity.id == county_id, Entity.type == EntityType.COUNTY)
-        .first()
-    )
+    """Trace the full money flow for a county in a fiscal year.
+
+    ``county_id`` accepts either the numeric ``Entity.id`` or the county
+    ``slug`` (e.g. ``nairobi-city``) so the frontend can link by either.
+    """
+    q = db.query(Entity).filter(Entity.type == EntityType.COUNTY)
+    if county_id.isdigit():
+        entity = q.filter(Entity.id == int(county_id)).first()
+    else:
+        entity = q.filter(Entity.slug == county_id).first()
     if not entity:
         raise HTTPException(status_code=404, detail="County not found")
 
@@ -291,7 +331,12 @@ async def national_money_flow(
 
         if budget_lines:
             allocated = sum(float(b.allocated_amount or 0) for b in budget_lines)
-            spent = sum(float(b.actual_spent or 0) for b in budget_lines)
+            # Treat "no non-null spent rows" as data-unavailable (e.g.
+            # projected-year budgets where CoB has not yet released the
+            # execution figures). Returning 0 in that case lies by
+            # omission — the waterfall would show 100% unspent.
+            spent_vals = [b.actual_spent for b in budget_lines if b.actual_spent is not None]
+            spent = sum(float(s) for s in spent_vals) if spent_vals else None
             committed = [b.committed_amount for b in budget_lines if b.committed_amount is not None]
             released = sum(float(c) for c in committed) if committed else None
             first_doc = budget_lines[0].source_document if budget_lines else None

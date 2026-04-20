@@ -2,6 +2,7 @@ import Footer from '@/components/Footer';
 import Navigation from '@/components/Navigation';
 import { AuthProvider } from '@/lib/auth/AuthProvider';
 import { WatchlistProvider } from '@/lib/auth/WatchlistProvider';
+import { LangProvider } from '@/lib/i18n/LangProvider';
 import { QueryProvider } from '@/lib/react-query/QueryProvider';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
@@ -56,13 +57,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang='en' suppressHydrationWarning>
       <body className='bg-gov-sand antialiased' suppressHydrationWarning>
         <QueryProvider>
-          <AuthProvider>
-            <WatchlistProvider>
-              <Navigation />
-              <div className='relative z-[1]'>{children}</div>
-              <Footer />
-            </WatchlistProvider>
-          </AuthProvider>
+          <LangProvider>
+            <AuthProvider>
+              <WatchlistProvider>
+                <Navigation />
+                <div className='relative z-[1]'>{children}</div>
+                <Footer />
+              </WatchlistProvider>
+            </AuthProvider>
+          </LangProvider>
         </QueryProvider>
         <Analytics />
         <SpeedInsights />

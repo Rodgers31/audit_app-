@@ -28,6 +28,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Req
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse, Response
 
@@ -301,7 +302,15 @@ def _latest_national_period(db) -> Optional[int]:
 def _entity_period_budget_query(db, entity_id: int, period_id: Optional[int] = None):
     """Return BudgetLine query scoped to a single entity and (optionally) period.
 
-    If period_id is None, auto-resolves to the latest period that has data for the entity.
+    If period_id is None, auto-resolves to the latest period that has *actual
+    execution* data for the entity (sum of ``actual_spent`` > 0). This avoids
+    the pathological case where the current fiscal year has been seeded with
+    allocations but hasn't yet accumulated spending, which was rendering as
+    "0% execution" on county pages.
+
+    Falls back to the latest period by ``start_date`` when no period has
+    execution data (e.g. first-year county, seed data issues).
+
     Excludes 'Total Budget' aggregate rows.
     """
     q = db.query(DBBudgetLine).filter(
@@ -311,8 +320,24 @@ def _entity_period_budget_query(db, entity_id: int, period_id: Optional[int] = N
     if period_id:
         q = q.filter(DBBudgetLine.period_id == period_id)
     else:
-        # Find the latest period for this specific entity
-        latest = (
+        # Prefer the latest period that actually has spending (an executed FY)
+        from sqlalchemy import func as _sqlfunc
+
+        latest_executed = (
+            db.query(DBBudgetLine.period_id)
+            .join(DBFiscalPeriod, DBBudgetLine.period_id == DBFiscalPeriod.id)
+            .filter(
+                DBBudgetLine.entity_id == entity_id,
+                DBBudgetLine.category != "Total Budget",
+            )
+            .group_by(DBBudgetLine.period_id, DBFiscalPeriod.start_date)
+            .having(_sqlfunc.coalesce(_sqlfunc.sum(DBBudgetLine.actual_spent), 0) > 0)
+            .order_by(DBFiscalPeriod.start_date.desc())
+            .limit(1)
+            .scalar()
+        )
+        # Fallback: latest period by date (first-year county / missing actuals)
+        latest = latest_executed or (
             db.query(DBBudgetLine.period_id)
             .join(DBFiscalPeriod, DBBudgetLine.period_id == DBFiscalPeriod.id)
             .filter(
@@ -2066,7 +2091,7 @@ async def get_county_details(county_id: str, fiscal_year: Optional[str] = None):
     if DATABASE_AVAILABLE:
         try:
             with next(get_db()) as db:
-                name = COUNTY_MAPPING.get(county_id)
+                name = _resolve_county_name(county_id, db=db)
                 q = db.query(DBEntity).filter(DBEntity.type == EntityType.COUNTY)
                 if name:
                     q = q.filter(DBEntity.canonical_name == f"{name} County")
@@ -2283,7 +2308,7 @@ async def get_county_details(county_id: str, fiscal_year: Optional[str] = None):
 
     # Fallback: Enhanced API
     try:
-        county_name = COUNTY_MAPPING.get(county_id)
+        county_name = _resolve_county_name(county_id)
         if not county_name:
             raise HTTPException(status_code=404, detail="County not found")
         backend_data = await InternalAPIClient.get_county_data(county_name)
@@ -2299,35 +2324,33 @@ async def get_county_details(county_id: str, fiscal_year: Optional[str] = None):
 
 @app.get("/api/v1/counties/{county_id}/comprehensive")
 @cached(key_prefix="county:comprehensive", ttl=1800)
-async def get_county_comprehensive(county_id: str):
+async def get_county_comprehensive(county_id: str, fiscal_year: Optional[str] = None):
     """Comprehensive county detail — one-stop aggregation of every data dimension.
 
     Returns budget breakdown (by sector), audit findings, debt/loans,
     pending bills, stalled projects, economic profile, demographics,
     missing funds cases, and financial health grades — all from DB.
+
+    ``fiscal_year``: optional filter (e.g. "2024/25"). When omitted, falls
+    back to the latest period that has actual spending. The frontend
+    listing passes the selected FY through so the detail hero's HEALTH
+    badge matches the Health column the user just clicked from.
     """
     if not DATABASE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Database unavailable")
 
-    county_name = COUNTY_MAPPING.get(county_id)
-    if not county_name:
-        raise HTTPException(status_code=404, detail="County not found")
-
+    # Accept any reasonable id form: raw numeric ("4"), zero-padded code
+    # ("004"), slug ("tana-river-county"), or name ("Tana River"). The
+    # money-flow and counties-list endpoints return different shapes, so
+    # this page gets linked with all of them.
     try:
         with next(get_db()) as db:
-            entity = (
-                db.query(DBEntity)
-                .filter(DBEntity.type == EntityType.COUNTY)
-                .filter(DBEntity.canonical_name == f"{county_name} County")
-                .first()
-            )
+            entity = _resolve_county_entity(db, county_id)
             if not entity:
-                slug = county_name.lower().replace(" ", "-") + "-county"
-                entity = db.query(DBEntity).filter(DBEntity.slug == slug).first()
-            if not entity:
-                raise HTTPException(
-                    status_code=404, detail="County entity not found in database"
-                )
+                raise HTTPException(status_code=404, detail="County not found")
+            county_name = (entity.canonical_name or "").replace(" County", "").strip()
+            if not county_name:
+                county_name = COUNTY_MAPPING.get(county_id, "")
 
             meta = entity.meta or {}
             metrics = _resolve_fy_metrics(meta)
@@ -2343,10 +2366,39 @@ async def get_county_comprehensive(county_id: str):
                 .first()
             )
 
-            # --- Budget lines (scoped to latest FY for this entity) ---
-            budget_lines = _entity_period_budget_query(db, entity.id).all()
+            # --- Budget lines (scoped to requested FY, or latest executed) ---
+            requested_period_id: Optional[int] = None
+            if fiscal_year:
+                try:
+                    from seeding.utils import normalize_fiscal_label as _nlbl
+                    canonical = _nlbl(fiscal_year)
+                    fp_match = (
+                        db.query(DBFiscalPeriod)
+                        .filter(DBFiscalPeriod.label == canonical)
+                        .first()
+                    )
+                    if fp_match:
+                        requested_period_id = fp_match.id
+                except (ValueError, IndexError, ImportError):
+                    pass  # Bad format — fall through to auto-resolve
+            budget_lines = _entity_period_budget_query(
+                db, entity.id, period_id=requested_period_id
+            ).all()
             total_allocated = sum(float(b.allocated_amount or 0) for b in budget_lines)
             total_spent = sum(float(b.actual_spent or 0) for b in budget_lines)
+
+            # Resolve the fiscal year label so the frontend can display
+            # "Budget FY2024/25" (e.g. if we selected the latest executed FY
+            # because the current one has no spending yet).
+            budget_fy_label: Optional[str] = None
+            if budget_lines:
+                _fp = (
+                    db.query(DBFiscalPeriod)
+                    .filter(DBFiscalPeriod.id == budget_lines[0].period_id)
+                    .first()
+                )
+                if _fp:
+                    budget_fy_label = _fp.label
 
             # Sector breakdown from real budget line categories
             sector_breakdown = {}
@@ -2503,19 +2555,23 @@ async def get_county_comprehensive(county_id: str):
                 elif sev == "critical":
                     audit_status = "adverse"
 
-            # Financial health score
-            health_score = float(
-                financial_metrics_meta.get("financial_health_score", 0)
-            )
-            if health_score == 0 and total_allocated > 0:
+            # Financial health score — computed live from the same budget_lines
+            # the /counties list endpoint uses, so the listing's Health column
+            # and the detail-page HEALTH badge always show the same letter for
+            # the same county/FY. Do NOT fall back to the cached
+            # `financial_metrics_meta.financial_health_score`; it's stale and
+            # desynced from the current fiscal-year filter.
+            health_score = 0.0
+            if total_allocated > 0:
                 utilization = (
                     (total_spent / total_allocated * 100) if total_spent > 0 else 0
                 )
-                health_score = (
-                    min(utilization, 95)
-                    if utilization <= 95
-                    else max(0, 80 - (utilization - 100))
-                )
+                if utilization <= 95:
+                    health_score = min(utilization, 95)
+                elif utilization <= 100:
+                    health_score = 90
+                else:
+                    health_score = max(0, 80 - (utilization - 100))
 
             # Letter grade from health score
             grade = "C"
@@ -2552,6 +2608,63 @@ async def get_county_comprehensive(county_id: str):
                 round(total_allocated / population, 2) if population > 0 else 0
             )
             per_capita_debt = round(total_debt / population, 2) if population > 0 else 0
+
+            # --- Health history (last ~6 completed FYs, oldest → newest) ---
+            # Aggregates allocated + spent per fiscal period and applies the same
+            # scoring formula used for the current-FY health_score, so sparklines
+            # stay consistent with the hero badge. Excludes in-progress periods —
+            # plotting a mid-year partial execution would paint a misleading crash.
+            from sqlalchemy import func as _sqlfunc2
+            from datetime import datetime as _dt
+            _now = _dt.utcnow()
+            fy_rows = (
+                db.query(
+                    DBFiscalPeriod.label,
+                    DBFiscalPeriod.start_date,
+                    _sqlfunc2.coalesce(_sqlfunc2.sum(DBBudgetLine.allocated_amount), 0),
+                    _sqlfunc2.coalesce(_sqlfunc2.sum(DBBudgetLine.actual_spent), 0),
+                )
+                .join(DBBudgetLine, DBBudgetLine.period_id == DBFiscalPeriod.id)
+                .filter(
+                    DBBudgetLine.entity_id == entity.id,
+                    DBBudgetLine.category != "Total Budget",
+                    DBFiscalPeriod.end_date < _now,
+                )
+                .group_by(DBFiscalPeriod.id, DBFiscalPeriod.label, DBFiscalPeriod.start_date)
+                .order_by(DBFiscalPeriod.start_date.desc())
+                .limit(6)
+                .all()
+            )
+
+            def _grade_for(score: float) -> str:
+                if score >= 85: return "A"
+                if score >= 70: return "B+"
+                if score >= 55: return "B"
+                if score >= 40: return "B-"
+                return "C"
+
+            health_history = []
+            for label, _sd, alloc, spent in reversed(fy_rows):
+                alloc_f = float(alloc or 0)
+                spent_f = float(spent or 0)
+                if alloc_f <= 0 or spent_f <= 0:
+                    # Skip periods with no execution — they'd plot as 0 and
+                    # distort the trend. Allocated-only years aren't "graded".
+                    continue
+                util = spent_f / alloc_f * 100
+                if util <= 95:
+                    hs = min(util, 95)
+                elif util <= 100:
+                    hs = 90
+                else:
+                    hs = max(0.0, 80 - (util - 100))
+                health_history.append(
+                    {
+                        "fy": label,
+                        "score": round(hs, 1),
+                        "grade": _grade_for(hs),
+                    }
+                )
 
             response = {
                 "id": county_id,
@@ -2604,6 +2717,7 @@ async def get_county_comprehensive(county_id: str):
                     "recurrent_budget": recurrent_total,
                     "per_capita_budget": per_capita_budget,
                     "sector_breakdown": sector_breakdown,
+                    "fiscal_year": budget_fy_label,
                 },
                 # Revenue
                 "revenue": {
@@ -2640,6 +2754,8 @@ async def get_county_comprehensive(county_id: str):
                     "by_severity": by_severity,
                     "findings": audit_findings,
                 },
+                # Health score over time (oldest → newest)
+                "health_history": health_history,
                 # Missing funds
                 "missing_funds": {
                     "total_amount": missing_funds_total,
@@ -2730,7 +2846,7 @@ async def get_county_financial_data(county_id: str):
     """Get financial data for a specific county"""
     try:
         # Convert frontend ID to backend name
-        county_name = COUNTY_MAPPING.get(county_id)
+        county_name = _resolve_county_name(county_id)
         if not county_name:
             raise HTTPException(status_code=404, detail="County not found")
 
@@ -2765,7 +2881,7 @@ async def get_county_budget(county_id: str):
     if DATABASE_AVAILABLE:
         try:
             with next(get_db()) as db:
-                name = COUNTY_MAPPING.get(county_id)
+                name = _resolve_county_name(county_id, db=db)
                 e = (
                     db.query(DBEntity)
                     .filter(DBEntity.type == EntityType.COUNTY)
@@ -2800,7 +2916,7 @@ async def get_county_budget(county_id: str):
 
     # Fallback: Enhanced County Analytics API
     try:
-        county_name = COUNTY_MAPPING.get(county_id)
+        county_name = _resolve_county_name(county_id)
         if not county_name:
             raise HTTPException(status_code=404, detail="County not found")
 
@@ -2859,7 +2975,7 @@ async def get_county_debt(county_id: str):
             from sqlalchemy import func
 
             with next(get_db()) as db:
-                name = COUNTY_MAPPING.get(county_id)
+                name = _resolve_county_name(county_id, db=db)
                 if not name:
                     raise HTTPException(status_code=404, detail="County not found")
 
@@ -3440,7 +3556,7 @@ async def get_federal_audits():
 @cached(key_prefix="county:audits", ttl=3600)  # Cache for 1 hour
 async def get_county_audits(county_id: str):
     """Get audit information for a specific county from database."""
-    county_name = COUNTY_MAPPING.get(county_id)
+    county_name = _resolve_county_name(county_id)
     if not county_name:
         raise HTTPException(status_code=404, detail="County not found")
 
@@ -3686,7 +3802,7 @@ async def get_county_audits(county_id: str):
 async def get_county_audits_history(county_id: str):
     """Historical audit queries grouped by fiscal year with quick aggregates."""
     try:
-        county_name = COUNTY_MAPPING.get(county_id)
+        county_name = _resolve_county_name(county_id)
         if not county_name:
             raise HTTPException(status_code=404, detail="County not found")
 
@@ -3749,7 +3865,7 @@ async def list_county_audits(
 ):
     """Paginated audit queries with filters. DB-backed when available; falls back to Enhanced API."""
     try:
-        county_name = COUNTY_MAPPING.get(county_id)
+        county_name = _resolve_county_name(county_id)
         if not county_name:
             raise HTTPException(status_code=404, detail="County not found")
 
@@ -3926,6 +4042,47 @@ def _compute_accountability(db, entity, county_id: str) -> Dict[str, Any]:
         key=lambda x: x["year"],
     )
 
+    # --- audit_severity_history (for sparklines) ---
+    # Separate from opinion_history: tracks findings severity per year as a
+    # 0-100 "audit health" proxy. Used only for visual trend — does NOT feed
+    # the accountability scoring rubric (opinions there must stay OAG-sourced).
+    # Year resolves from audit_year, else the linked fiscal period's start year.
+    period_year_cache: Dict[int, Optional[int]] = {}
+    findings_by_year: Dict[int, Dict[str, int]] = {}
+    for a in audits:
+        year = a.audit_year
+        if not year and a.period_id:
+            if a.period_id not in period_year_cache:
+                fp = (
+                    db.query(DBFiscalPeriod)
+                    .filter(DBFiscalPeriod.id == a.period_id)
+                    .first()
+                )
+                period_year_cache[a.period_id] = fp.start_date.year if fp else None
+            year = period_year_cache[a.period_id]
+        if not year:
+            continue
+        bucket = findings_by_year.setdefault(
+            year, {"info": 0, "warning": 0, "critical": 0}
+        )
+        sev = a.severity.value if a.severity else "info"
+        bucket[sev] = bucket.get(sev, 0) + 1
+
+    audit_severity_history = []
+    for year in sorted(findings_by_year.keys()):
+        b = findings_by_year[year]
+        # Score: start at 100, -5 per warning, -20 per critical. Floor at 0.
+        score = max(0.0, 100.0 - (b.get("warning", 0) * 5 + b.get("critical", 0) * 20))
+        audit_severity_history.append(
+            {
+                "year": year,
+                "score": round(score, 1),
+                "info": b.get("info", 0),
+                "warning": b.get("warning", 0),
+                "critical": b.get("critical", 0),
+            }
+        )
+
     # --- total_flagged_amount ---
     total_flagged_amount = float(sum(float(a.amount or 0) for a in audits))
 
@@ -3937,9 +4094,24 @@ def _compute_accountability(db, entity, county_id: str) -> Dict[str, Any]:
     recurring_findings_count = sum(1 for years in qt_years.values() if len(years) >= 2)
 
     # --- unresolved_findings_count ---
-    unresolved_statuses = {"pending", "unresolved", "recurring"}
+    # Any status that is NOT a terminal resolution counts as unresolved.
+    # This includes intermediate states ("Under Review", "Escalated")
+    # that the previous implementation missed — making counties with
+    # many pending investigations appear "accountable" when they aren't.
+    resolved_statuses = {"resolved", "closed", "dismissed", "settled"}
     unresolved_findings_count = sum(
-        1 for a in audits if a.status and a.status.lower() in unresolved_statuses
+        1
+        for a in audits
+        if not a.status or a.status.strip().lower() not in resolved_statuses
+    )
+
+    # --- severity + amount context (used for grade) ---
+    total_findings = len(audits)
+    critical_findings = sum(
+        1 for a in audits if a.severity and a.severity.value == "critical"
+    )
+    warning_findings = sum(
+        1 for a in audits if a.severity and a.severity.value == "warning"
     )
 
     # --- absorption_rate from budget data (latest FY) ---
@@ -3950,43 +4122,158 @@ def _compute_accountability(db, entity, county_id: str) -> Dict[str, Any]:
         round(total_spent / total_allocated, 4) if total_allocated > 0 else None
     )
 
-    # --- accountability_grade ---
-    grade_order = ["A", "B", "C", "D", "F"]
+    # Flagged amount as % of current-FY budget (signal of audit severity)
+    flagged_pct_of_budget = (
+        (total_flagged_amount / total_allocated * 100.0) if total_allocated > 0 else 0.0
+    )
 
-    def _drop_grade(current: str, steps: int = 1) -> str:
-        idx = grade_order.index(current)
-        return grade_order[min(idx + steps, len(grade_order) - 1)]
+    # --- accountability_score (0-100 point system) ---
+    #
+    # Starts at 100 and subtracts points for each concern. The grade is
+    # then derived from the final score. A point system is clearer than
+    # cascading letter drops because (a) penalties of different severity
+    # map to different point costs, (b) the UI can show the exact math.
+    score = 100.0
+    grade_factors: List[Dict[str, Any]] = []
 
-    grade = "A"
+    def _penalise(points: float, impact: str, label: str, detail: str) -> None:
+        nonlocal score
+        score -= points
+        grade_factors.append(
+            {
+                "impact": impact,
+                "label": label,
+                "detail": detail,
+                "points": -round(points, 1),
+            }
+        )
 
-    # Adverse/Disclaimer opinion any year -> drop to D
-    for entry in audit_opinion_history:
-        op = entry["opinion"].lower()
-        if op in ("adverse", "disclaimer"):
-            grade = _drop_grade(
-                grade, max(0, grade_order.index("D") - grade_order.index(grade))
-            )
-            break
-
-    # Qualified opinion in latest year -> drop to C (if not already worse)
+    # --- Opinion-based penalties (only fire if we have opinions) ---
     if audit_opinion_history:
+        adverse_years = sorted(
+            e["year"]
+            for e in audit_opinion_history
+            if e["opinion"].lower() in ("adverse", "disclaimer")
+        )
+        if adverse_years:
+            _penalise(
+                40,
+                "major",
+                f"Adverse / disclaimer opinion ({adverse_years[0]})",
+                "OAG rejected the financial statements",
+            )
+
         latest_opinion = audit_opinion_history[-1]["opinion"].lower()
-        if latest_opinion == "qualified" and grade_order.index(
-            grade
-        ) < grade_order.index("C"):
-            grade = "C"
+        if latest_opinion == "qualified":
+            _penalise(
+                15,
+                "major",
+                "Qualified opinion (latest FY)",
+                "OAG flagged material concerns",
+            )
 
-    # recurring_findings_count > 5 -> drop one grade
-    if recurring_findings_count > 5:
-        grade = _drop_grade(grade)
+    # --- Finding-volume penalties ---
+    if total_findings > 20:
+        _penalise(15, "major", f"{total_findings} audit findings (>20)", "High volume")
+    elif total_findings > 10:
+        _penalise(8, "moderate", f"{total_findings} audit findings (>10)", "Elevated volume")
+    elif total_findings > 5:
+        _penalise(4, "minor", f"{total_findings} audit findings", "Some findings present")
 
-    # unresolved_findings_count > 10 -> drop one grade
-    if unresolved_findings_count > 10:
-        grade = _drop_grade(grade)
+    # Critical findings = any is serious (cap at -15)
+    if critical_findings > 0:
+        pts = min(critical_findings * 5, 15)
+        _penalise(
+            pts,
+            "major" if critical_findings >= 3 else "moderate",
+            f"{critical_findings} critical finding{'s' if critical_findings != 1 else ''}",
+            "Serious irregularity flagged",
+        )
 
-    # absorption_rate < 0.5 -> drop one grade
+    # Recurring query types (same issue across multiple years)
+    if recurring_findings_count >= 5:
+        _penalise(
+            15,
+            "major",
+            f"{recurring_findings_count} recurring query types",
+            "Systemic, year-over-year issues",
+        )
+    elif recurring_findings_count >= 3:
+        _penalise(
+            8,
+            "moderate",
+            f"{recurring_findings_count} recurring query types",
+            "Repeated across fiscal years",
+        )
+
+    # Unresolved backlog (includes "Under Review", "Escalated", etc.)
+    if unresolved_findings_count > 15:
+        _penalise(
+            20,
+            "major",
+            f"{unresolved_findings_count} unresolved findings",
+            "Large backlog of open issues",
+        )
+    elif unresolved_findings_count > 5:
+        _penalise(
+            10,
+            "moderate",
+            f"{unresolved_findings_count} unresolved findings",
+            "Pending / under-review items",
+        )
+
+    # Flagged amount material to budget
+    if flagged_pct_of_budget > 10:
+        _penalise(
+            10,
+            "moderate",
+            f"{flagged_pct_of_budget:.1f}% of budget flagged",
+            ">10% of current-FY allocation",
+        )
+    elif flagged_pct_of_budget > 5:
+        _penalise(
+            5,
+            "minor",
+            f"{flagged_pct_of_budget:.1f}% of budget flagged",
+            ">5% of current-FY allocation",
+        )
+
+    # Low absorption = wasted fiscal capacity
     if absorption_rate is not None and absorption_rate < 0.5:
-        grade = _drop_grade(grade)
+        _penalise(
+            10,
+            "moderate",
+            f"{absorption_rate * 100:.0f}% budget absorption",
+            "Under half of budget was spent",
+        )
+
+    # Positive factor — acknowledge when we penalised nothing
+    if not grade_factors:
+        grade_factors.append(
+            {
+                "impact": "positive",
+                "label": "No penalty triggers",
+                "detail": (
+                    f"{total_findings} finding"
+                    f"{'s' if total_findings != 1 else ''}, "
+                    f"{unresolved_findings_count} unresolved"
+                ),
+                "points": 0,
+            }
+        )
+
+    score = max(0.0, min(100.0, score))
+    # Grade thresholds matched to familiar academic scale
+    if score >= 85:
+        grade = "A"
+    elif score >= 70:
+        grade = "B"
+    elif score >= 55:
+        grade = "C"
+    elif score >= 40:
+        grade = "D"
+    else:
+        grade = "F"
 
     # --- peer_comparison ---
     region = COUNTY_REGIONS.get(county_id, "Unknown")
@@ -4124,11 +4411,18 @@ def _compute_accountability(db, entity, county_id: str) -> Dict[str, Any]:
         "county_id": county_id,
         "county_name": (entity.canonical_name or "").replace(" County", ""),
         "audit_opinion_history": audit_opinion_history,
+        "audit_severity_history": audit_severity_history,
         "total_flagged_amount": total_flagged_amount,
+        "total_findings": total_findings,
+        "critical_findings": critical_findings,
+        "warning_findings": warning_findings,
         "recurring_findings_count": recurring_findings_count,
         "unresolved_findings_count": unresolved_findings_count,
         "absorption_rate": absorption_rate,
+        "flagged_pct_of_budget": round(flagged_pct_of_budget, 2),
         "accountability_grade": grade,
+        "accountability_score": round(score, 1),
+        "grade_factors": grade_factors,
         "peer_comparison": peer_comparison,
     }
 
@@ -4140,7 +4434,7 @@ async def get_county_accountability(county_id: str):
     if not DATABASE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Database unavailable")
 
-    county_name = COUNTY_MAPPING.get(county_id)
+    county_name = _resolve_county_name(county_id)
     if not county_name:
         raise HTTPException(status_code=404, detail="County not found")
 
@@ -4173,7 +4467,7 @@ async def get_county_summary(county_id: str):
     if not DATABASE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Database unavailable")
 
-    county_name = COUNTY_MAPPING.get(county_id)
+    county_name = _resolve_county_name(county_id)
     if not county_name:
         raise HTTPException(status_code=404, detail="County not found")
 
@@ -4218,6 +4512,369 @@ async def get_county_summary(county_id: str):
     except Exception as e:
         logging.error(f"County summary failed for {county_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.get("/api/v1/accountability/missing-funds")
+@cached(key_prefix="accountability:missing-funds", ttl=600)
+async def get_national_missing_funds():
+    """National roll-up of missing-funds cases across all counties.
+
+    Aggregates ``missing_funds_cases`` entries from every county entity's
+    meta JSON. Each case carries an amount, a description of what's
+    unaccounted for, a status (active_investigation / resolved / etc.),
+    and the fiscal period the irregularity belongs to. Powers the
+    /accountability/missing-funds public page.
+    """
+    if not DATABASE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    with next(get_db()) as db:
+        counties = (
+            db.query(DBEntity).filter(DBEntity.type == EntityType.COUNTY).all()
+        )
+
+        def _parse_amount(raw: Any) -> float:
+            if isinstance(raw, (int, float)):
+                return float(raw)
+            if not isinstance(raw, str):
+                return 0.0
+            s = raw.upper().replace("KES", "").replace(",", "").strip()
+            mult = 1.0
+            if s.endswith("B"):
+                mult = 1e9
+                s = s[:-1]
+            elif s.endswith("M"):
+                mult = 1e6
+                s = s[:-1]
+            elif s.endswith("K"):
+                mult = 1e3
+                s = s[:-1]
+            try:
+                return float(s) * mult
+            except ValueError:
+                return 0.0
+
+        all_cases: List[Dict[str, Any]] = []
+        county_totals: Dict[str, Dict[str, Any]] = {}
+        status_totals: Dict[str, float] = {}
+
+        for county in counties:
+            meta = county.meta or {}
+            cases = meta.get("missing_funds_cases") or []
+            if not isinstance(cases, list):
+                continue
+            county_name = (county.canonical_name or "").replace(" County", "").strip()
+            county_amount = 0.0
+            for case in cases:
+                if not isinstance(case, dict):
+                    continue
+                amount = _parse_amount(case.get("amount"))
+                status = (case.get("status") or "unknown").lower()
+                entry = {
+                    "case_id": case.get("case_id"),
+                    "county": case.get("county") or county_name,
+                    "county_id": county.meta.get("county_code") if county.meta else None,
+                    "amount": amount,
+                    "amount_label": case.get("amount"),
+                    "period": case.get("period"),
+                    "status": status,
+                    "description": case.get("description", ""),
+                }
+                all_cases.append(entry)
+                county_amount += amount
+                status_totals[status] = status_totals.get(status, 0.0) + amount
+
+            if county_amount > 0:
+                county_totals[county_name] = {
+                    "county": county_name,
+                    "cases": len(cases),
+                    "amount": county_amount,
+                }
+
+    all_cases.sort(key=lambda c: c["amount"], reverse=True)
+    top_counties = sorted(
+        county_totals.values(), key=lambda c: c["amount"], reverse=True
+    )[:10]
+
+    total_amount = sum(c["amount"] for c in all_cases)
+    return {
+        "total_amount": total_amount,
+        "total_cases": len(all_cases),
+        "affected_counties": len(county_totals),
+        "by_status": status_totals,
+        "top_counties": top_counties,
+        "cases": all_cases,
+    }
+
+
+# Canonical sector buckets — keys are lowercase substrings tested against
+# raw budget-line categories, so naming variations across counties collapse
+# into a consistent set of 7 sectors for the national view.
+_SECTOR_BUCKETS: List[Tuple[str, str]] = [
+    ("health", "Health"),
+    ("education", "Education"),
+    ("road", "Roads & Infrastructure"),
+    ("infrastructure", "Roads & Infrastructure"),
+    ("water", "Water & Sanitation"),
+    ("sanitation", "Water & Sanitation"),
+    ("agricultur", "Agriculture"),
+    ("environment", "Environment"),
+    ("trade", "Trade & Industry"),
+    ("industry", "Trade & Industry"),
+    ("social", "Social Services"),
+    ("admin", "Administration"),
+    ("governance", "Administration"),
+]
+
+
+def _sector_bucket(raw: str) -> str:
+    s = (raw or "").lower()
+    for needle, label in _SECTOR_BUCKETS:
+        if needle in s:
+            return label
+    return "Other"
+
+
+@app.get("/api/v1/sectors/spending")
+@cached(key_prefix="sectors:spending", ttl=600)
+async def get_sector_spending():
+    """National sector spending roll-up across all 47 counties.
+
+    For each county, we take the latest fiscal period that has actual
+    execution data and aggregate budget lines into a canonical set of
+    sectors (Health, Education, Roads, Water, etc.). Returns per-sector
+    totals, execution rates, and the counties spending most in each
+    sector. Powers the public /sectors page so citizens can see where
+    public money is flowing across the whole devolved government.
+    """
+    if not DATABASE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    with next(get_db()) as db:
+        counties = (
+            db.query(DBEntity).filter(DBEntity.type == EntityType.COUNTY).all()
+        )
+
+        sectors: Dict[str, Dict[str, Any]] = {}
+        counties_seen = 0
+        total_allocated = 0.0
+        total_spent = 0.0
+
+        for county in counties:
+            lines = _entity_period_budget_query(db, county.id).all()
+            if not lines:
+                continue
+            counties_seen += 1
+            county_name = (county.canonical_name or "").replace(" County", "").strip()
+            for bl in lines:
+                bucket = _sector_bucket(bl.category or "")
+                alloc = float(bl.allocated_amount or 0)
+                spent = float(bl.actual_spent or 0)
+                total_allocated += alloc
+                total_spent += spent
+                s = sectors.setdefault(
+                    bucket,
+                    {
+                        "sector": bucket,
+                        "allocated": 0.0,
+                        "spent": 0.0,
+                        "counties": {},
+                    },
+                )
+                s["allocated"] += alloc
+                s["spent"] += spent
+                cs = s["counties"].setdefault(
+                    county_name, {"county": county_name, "allocated": 0.0, "spent": 0.0}
+                )
+                cs["allocated"] += alloc
+                cs["spent"] += spent
+
+    out = []
+    for label, s in sectors.items():
+        top = sorted(
+            s["counties"].values(), key=lambda c: c["spent"], reverse=True
+        )[:5]
+        util = (s["spent"] / s["allocated"] * 100) if s["allocated"] else 0.0
+        out.append(
+            {
+                "sector": label,
+                "allocated": round(s["allocated"], 2),
+                "spent": round(s["spent"], 2),
+                "utilization_pct": round(util, 1),
+                "county_count": len(s["counties"]),
+                "top_counties": [
+                    {
+                        "county": t["county"],
+                        "allocated": round(t["allocated"], 2),
+                        "spent": round(t["spent"], 2),
+                    }
+                    for t in top
+                ],
+            }
+        )
+    out.sort(key=lambda x: x["spent"], reverse=True)
+
+    return {
+        "total_allocated": round(total_allocated, 2),
+        "total_spent": round(total_spent, 2),
+        "counties_reporting": counties_seen,
+        "sectors": out,
+    }
+
+
+@app.get("/api/v1/sources/summary")
+@cached(key_prefix="sources:summary", ttl=600)
+async def get_sources_summary():
+    """Summary of every agency/publisher feeding the platform.
+
+    Aggregates directly from source_documents (authoritative — everything the
+    app renders traces back through this table). Returns one entry per
+    publisher with document counts, last-fetched timestamp, and doc-type
+    breakdown. Used by the public /sources page so citizens can see where
+    the numbers come from and when each feed was last refreshed.
+    """
+    if not DATABASE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    from sqlalchemy import func as _fn
+    with next(get_db()) as db:
+        rows = (
+            db.query(
+                DBSourceDocument.publisher,
+                _fn.count(DBSourceDocument.id).label("doc_count"),
+                _fn.max(DBSourceDocument.fetch_date).label("last_fetched"),
+                _fn.max(DBSourceDocument.last_seen_at).label("last_seen_at"),
+            )
+            .group_by(DBSourceDocument.publisher)
+            .order_by(_fn.count(DBSourceDocument.id).desc())
+            .all()
+        )
+
+        # Doc-type breakdown per publisher
+        breakdown_rows = (
+            db.query(
+                DBSourceDocument.publisher,
+                DBSourceDocument.doc_type,
+                _fn.count(DBSourceDocument.id),
+            )
+            .group_by(DBSourceDocument.publisher, DBSourceDocument.doc_type)
+            .all()
+        )
+        by_pub: Dict[str, Dict[str, int]] = {}
+        for pub, dt, n in breakdown_rows:
+            dt_val = dt.value if hasattr(dt, "value") else str(dt)
+            by_pub.setdefault(pub, {})[dt_val] = int(n)
+
+    # Human-readable mapping for publishers we recognize. Keys are lowercase
+    # substrings tested against the publisher string — handles the many
+    # variations ("National Treasury", "National Treasury Kenya",
+    # "National Treasury of Kenya", "Office of the Auditor-General", etc.).
+    AGENCY_META: List[Tuple[str, Dict[str, str]]] = [
+        (
+            "controller of budget",
+            {
+                "short": "COB",
+                "role": "Tracks how counties and national MDAs spend their budgets each quarter.",
+                "website": "https://cob.go.ke",
+            },
+        ),
+        (
+            "auditor",
+            {
+                "short": "OAG",
+                "role": "Independently audits government accounts and reports findings to Parliament.",
+                "website": "https://www.oagkenya.go.ke",
+            },
+        ),
+        (
+            "bureau of statistics",
+            {
+                "short": "KNBS",
+                "role": "Publishes population census, economic surveys and county statistical abstracts.",
+                "website": "https://www.knbs.or.ke",
+            },
+        ),
+        (
+            "revenue allocation",
+            {
+                "short": "CRA",
+                "role": "Recommends how revenue is divided between national and county governments.",
+                "website": "https://www.crakenya.org",
+            },
+        ),
+        (
+            "revenue authority",
+            {
+                "short": "KRA",
+                "role": "Collects national taxes — income tax, VAT, customs duty.",
+                "website": "https://www.kra.go.ke",
+            },
+        ),
+        (
+            "central bank",
+            {
+                "short": "CBK",
+                "role": "Monetary authority — publishes debt, reserves, and inflation statistics.",
+                "website": "https://www.centralbank.go.ke",
+            },
+        ),
+        (
+            "parliament",
+            {
+                "short": "Parliament",
+                "role": "National Assembly and Senate — publishes budget papers, hansards, and committee reports.",
+                "website": "https://www.parliament.go.ke",
+            },
+        ),
+        (
+            "county treasury",
+            {
+                "short": "County Treasury",
+                "role": "Each county's own finance office — publishes county budgets and programme-based estimates.",
+                "website": None,
+            },
+        ),
+        (
+            "national treasury",
+            {
+                "short": "NT",
+                "role": "Manages national finances — revenue, expenditure, debt issuance, and county transfers.",
+                "website": "https://www.treasury.go.ke",
+            },
+        ),
+        (
+            "judiciary",
+            {
+                "short": "Judiciary",
+                "role": "Publishes case filings and rulings on public-finance disputes.",
+                "website": "https://judiciary.go.ke",
+            },
+        ),
+    ]
+
+    def _meta_for(pub: str) -> Dict[str, Any]:
+        p = (pub or "").lower()
+        for needle, m in AGENCY_META:
+            if needle in p:
+                return m
+        return {}
+
+    out = []
+    for pub, count, fetched, seen in rows:
+        meta = _meta_for(pub)
+        out.append(
+            {
+                "publisher": pub,
+                "short": meta.get("short", ""),
+                "role": meta.get("role", ""),
+                "website": meta.get("website"),
+                "document_count": int(count or 0),
+                "last_fetched": fetched.isoformat() if fetched else None,
+                "last_seen_at": seen.isoformat() if seen else None,
+                "doc_types": by_pub.get(pub, {}),
+            }
+        )
+    return {"sources": out, "total_documents": sum(o["document_count"] for o in out)}
 
 
 @app.get("/api/v1/sources/status")
@@ -7370,46 +8027,137 @@ async def get_pending_bills_by_county(county_id: str, db: Session = Depends(get_
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
+def _resolve_county_name(county_id: str, db: "Optional[Session]" = None) -> Optional[str]:
+    """Resolve any ID shape to a short county name (e.g. "Mombasa").
+
+    Endpoints that only need a name (to call downstream InternalAPIClient
+    or build a canonical_name filter) use this helper. It tries the fast
+    COUNTY_MAPPING dict first, then falls back to a quick DB lookup for
+    raw row ids / slugs. Returns None if the id cannot be resolved.
+
+    When called from within an endpoint that already holds an open
+    ``with next(get_db())`` session, pass ``db=<that session>`` so we
+    reuse it instead of opening (and leaking) a second connection.
+    """
+    if not county_id:
+        return None
+
+    # Fast path: direct COUNTY_MAPPING lookup (zero-padded codes)
+    direct = COUNTY_MAPPING.get(county_id)
+    if direct:
+        return direct
+
+    # Numeric shapes: try zero-padding to match COUNTY_MAPPING keys
+    cid = str(county_id).strip()
+    if cid.isdigit():
+        padded = cid.zfill(3)
+        if padded in COUNTY_MAPPING:
+            return COUNTY_MAPPING[padded]
+
+    # Fallback to DB for raw DB ids / slugs / names
+    if not DATABASE_AVAILABLE:
+        return None
+    try:
+        if db is not None:
+            entity = _resolve_county_entity(db, county_id)
+            if entity:
+                name = (entity.canonical_name or "").replace(" County", "").strip()
+                return name or None
+            return None
+        with next(get_db()) as _db:
+            entity = _resolve_county_entity(_db, county_id)
+            if entity:
+                name = (entity.canonical_name or "").replace(" County", "").strip()
+                return name or None
+    except Exception as e:
+        logging.warning(f"_resolve_county_name fallback failed for {county_id}: {e}")
+    return None
+
+
 def _resolve_county_entity(db: Session, county_id: str):
-    """Resolve county by numeric ID, slug, or name."""
-    # Try by entity table id
-    if county_id.isdigit():
-        entity = (
-            db.query(DBEntity)
-            .filter(DBEntity.id == int(county_id), DBEntity.type == EntityType.COUNTY)
-            .first()
-        )
-        if entity:
-            return entity
+    """Resolve a county by numeric ID, zero-padded code, slug, or name.
 
-    # Try by slug
-    entity = (
-        db.query(DBEntity)
-        .filter(DBEntity.slug == county_id.lower(), DBEntity.type == EntityType.COUNTY)
-        .first()
-    )
-    if entity:
-        return entity
+    The codebase exposes three ID shapes for counties:
+      * raw DB row id (``4``)
+      * 3-digit county code (``001``..``047``) used in COUNTY_MAPPING
+      * slug (``nairobi-county``) or short name (``Nairobi``)
 
-    # Try by COUNTY_MAPPING
-    county_name = COUNTY_MAPPING.get(county_id)
-    if county_name:
+    Different endpoints return different shapes, so we normalise here.
+    """
+    if not county_id:
+        return None
+    cid = str(county_id).strip()
+
+    # 1. 3-digit county code via COUNTY_MAPPING (e.g. "047" → "Mombasa").
+    #    Must precede the raw-DB-id branch: the /counties list endpoint
+    #    returns these zero-padded codes as `id`, and if we treated "047"
+    #    as DB row id=47 we'd resolve to a completely different county.
+    code_candidate = cid.zfill(3) if cid.isdigit() else cid
+    mapped = COUNTY_MAPPING.get(code_candidate) or COUNTY_MAPPING.get(cid)
+    if mapped:
         entity = (
             db.query(DBEntity)
             .filter(
-                DBEntity.canonical_name == county_name,
                 DBEntity.type == EntityType.COUNTY,
+                or_(
+                    DBEntity.canonical_name == mapped,
+                    DBEntity.canonical_name == f"{mapped} County",
+                    DBEntity.slug == f"{mapped.lower().replace(' ', '-')}-county",
+                ),
             )
             .first()
         )
         if entity:
             return entity
 
-    # Try by name (case-insensitive)
+    # 2. Raw numeric DB id (falls through only when the code didn't match,
+    #    so long-form ids like "123" for a non-county row still resolve).
+    if cid.isdigit():
+        entity = (
+            db.query(DBEntity)
+            .filter(DBEntity.id == int(cid), DBEntity.type == EntityType.COUNTY)
+            .first()
+        )
+        if entity:
+            return entity
+
+    # 3. Slug
+    entity = (
+        db.query(DBEntity)
+        .filter(DBEntity.slug == cid.lower(), DBEntity.type == EntityType.COUNTY)
+        .first()
+    )
+    if entity:
+        return entity
+
+    # 4. 3-digit code via COUNTY_MAPPING → resolve to either
+    #    "Nairobi" or "Nairobi County" in the DB
+    code = cid.zfill(3) if cid.isdigit() else cid
+    mapped = COUNTY_MAPPING.get(code) or COUNTY_MAPPING.get(cid)
+    if mapped:
+        entity = (
+            db.query(DBEntity)
+            .filter(
+                DBEntity.type == EntityType.COUNTY,
+                or_(
+                    DBEntity.canonical_name == mapped,
+                    DBEntity.canonical_name == f"{mapped} County",
+                    DBEntity.slug == f"{mapped.lower().replace(' ', '-')}-county",
+                ),
+            )
+            .first()
+        )
+        if entity:
+            return entity
+
+    # 4. Case-insensitive name match
     entity = (
         db.query(DBEntity)
         .filter(
-            DBEntity.canonical_name.ilike(county_id),
+            or_(
+                DBEntity.canonical_name.ilike(cid),
+                DBEntity.canonical_name.ilike(f"{cid} County"),
+            ),
             DBEntity.type == EntityType.COUNTY,
         )
         .first()
