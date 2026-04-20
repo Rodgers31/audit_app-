@@ -358,11 +358,18 @@ export function YearSelector({
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'right 8px center',
         }}>
-        {years.map((y) => (
-          <option key={y} value={y}>
-            FY {y}
-          </option>
-        ))}
+        {years.map((y) => {
+          // Backend and util helpers return the FY in two different
+          // formats — some start with "FY" ("FY2024/25"), some don't
+          // ("2024/25"). Strip the prefix before rendering so the
+          // visible label is always exactly one "FY …".
+          const bare = y.startsWith('FY') ? y.slice(2) : y;
+          return (
+            <option key={y} value={y}>
+              FY {bare}
+            </option>
+          );
+        })}
       </select>
     </div>
   );

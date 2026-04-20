@@ -17,46 +17,29 @@
  * Otherwise React Query treats them as cache misses and refetches.
  */
 import { Metadata } from 'next';
-import { getCountyAccountability, getCountyComprehensive } from '@/lib/api/counties';
+import { getCountyComprehensive } from '@/lib/api/counties';
 import { getQueryClient } from '@/lib/react-query/getQueryClient';
 import { getLatestReportedFiscalYear } from '@/lib/utils';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
 import CountyDetailClient from './CountyDetailClient';
 
-const SSR_TIMEOUT_MS = 5000;
+// Shorter SSR budget — on a cold backend each heavy endpoint is ~3-4 s,
+// so a 5 s timeout made the whole page wait half a round-trip. 1.5 s
+// lets us bail early, render the shell, and let React Query fill in
+// the rest client-side (which is <5 ms once the cache is warm).
+const SSR_TIMEOUT_MS = 1500;
 
 /**
- * Resolve a friendly title at request time. Fetches against the same
- * endpoint the client will, short-circuits on failure back to a generic
- * title so we never crash the page if the backend is asleep.
+ * Generic metadata — we avoid a blocking backend fetch here because
+ * `generateMetadata` runs before the page body, and any stall doubles
+ * the perceived nav time. The dynamic `${name} County` title was nice
+ * but the client-side `<title>` is updated once the page hydrates.
  */
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}): Promise<Metadata> {
-  const { id } = await params;
-  try {
-    const data = await Promise.race([
-      getCountyComprehensive(id),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('ssr-metadata-timeout')), 3000)
-      ),
-    ]);
-    if (data?.name) {
-      return {
-        title: `${data.name} County — AuditGava`,
-        description: `Budget execution, debt, audit findings, and stalled projects for ${data.name} County.`,
-      };
-    }
-  } catch {
-    // Cold backend or 404 — fall through to generic metadata
-  }
-  return {
-    title: 'County Detail — AuditGava',
-    description: 'Budget execution, debt, audit findings, and stalled projects for this county.',
-  };
-}
+export const metadata: Metadata = {
+  title: 'County Detail — AuditGava',
+  description:
+    'Budget execution, debt, audit findings, and stalled projects for this county.',
+};
 
 export default async function CountyDetailPage({
   params,
@@ -70,20 +53,17 @@ export default async function CountyDetailPage({
   const fiscalYear = resolvedSearchParams.fy || getLatestReportedFiscalYear();
   const queryClient = getQueryClient();
 
+  // Only prefetch the comprehensive payload on SSR — that's what the
+  // page-visible hero needs. Accountability is also heavy but drives
+  // only the small AUDIT badge, which appears cleanly after hydrate.
+  // If we had it here too, a cold backend would double the SSR wait.
   try {
     await Promise.race([
-      Promise.allSettled([
-        queryClient.prefetchQuery({
-          // Matches useCountyComprehensive's queryKey shape.
-          queryKey: ['counties', id, 'comprehensive', fiscalYear ?? null] as const,
-          queryFn: () => getCountyComprehensive(id, fiscalYear),
-        }),
-        queryClient.prefetchQuery({
-          // Matches useCountyAccountability's queryKey shape.
-          queryKey: ['counties', id, 'accountability'] as const,
-          queryFn: () => getCountyAccountability(id),
-        }),
-      ]),
+      queryClient.prefetchQuery({
+        // Matches useCountyComprehensive's queryKey shape.
+        queryKey: ['counties', id, 'comprehensive', fiscalYear ?? null] as const,
+        queryFn: () => getCountyComprehensive(id, fiscalYear),
+      }),
       new Promise((resolve) => setTimeout(resolve, SSR_TIMEOUT_MS)),
     ]);
   } catch {

@@ -2434,7 +2434,6 @@ async def get_county_details(county_id: str, fiscal_year: Optional[str] = None):
 async def get_county_comprehensive(
     county_id: str,
     fiscal_year: Optional[str] = None,
-    include_findings: bool = False,
 ):
     """Comprehensive county detail — one-stop aggregation of every data dimension.
 
@@ -2855,32 +2854,21 @@ async def get_county_comprehensive(
                     "per_capita_debt": per_capita_debt,
                     "breakdown": debt_breakdown,
                 },
-                # Audit — findings list is ONLY included when the caller
-                # passes `?include_findings=true`. By default the endpoint
-                # ships headline counts; the full list (which can be
-                # 5+ KB per county) is fetched lazily by the Audit tab
-                # via `/api/v1/counties/{id}/audits`. Keeps the comprehensive
-                # payload small for pages that only render badges.
-                "audit": (
-                    {
-                        "status": audit_status,
-                        "grade": grade,
-                        "health_score": round(health_score, 1),
-                        "findings_count": len(audits),
-                        "total_amount_involved": total_audit_amount,
-                        "by_severity": by_severity,
-                        "findings": audit_findings,
-                    }
-                    if include_findings
-                    else {
-                        "status": audit_status,
-                        "grade": grade,
-                        "health_score": round(health_score, 1),
-                        "findings_count": len(audits),
-                        "total_amount_involved": total_audit_amount,
-                        "by_severity": by_severity,
-                    }
-                ),
+                # Audit — findings array is always included so downstream
+                # tab components can iterate safely. An earlier experiment
+                # gated this behind `?include_findings=true` for a ~5KB
+                # payload saving; that broke the Audit tab (iterated
+                # `audit.findings` directly) so the saving wasn't worth
+                # the correctness cost. Kept shipping the full list.
+                "audit": {
+                    "status": audit_status,
+                    "grade": grade,
+                    "health_score": round(health_score, 1),
+                    "findings_count": len(audits),
+                    "total_amount_involved": total_audit_amount,
+                    "by_severity": by_severity,
+                    "findings": audit_findings,
+                },
                 # Health score over time (oldest → newest)
                 "health_history": health_history,
                 # Missing funds
