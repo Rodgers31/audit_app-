@@ -970,11 +970,11 @@ def _seed_federal_audits(
         amount = Decimal(str(amount_value)) if amount_value > 0 else None
         status = entry.get("status")
         audit_opinion = entry.get("audit_opinion", "Qualified")
-        audit_year = (
-            int(report_meta.get("fiscal_year", "2024").split("/")[0])
-            if report_meta.get("fiscal_year")
-            else 2024
+        fiscal_year_raw = report_meta.get("fiscal_year") or ""
+        fiscal_year_digits = "".join(
+            c for c in fiscal_year_raw.split("/")[0] if c.isdigit()
         )
+        audit_year = int(fiscal_year_digits) if fiscal_year_digits else 2024
 
         if existing:
             existing.severity = severity
@@ -1014,11 +1014,17 @@ def initialize_reference_data(
 ) -> None:
     """Seed canonical county + audit data into the database if missing.
 
-    Performs a fast check first: if 47 county entities already exist we
-    skip the expensive per-county loop entirely.  This cuts restart time
-    from ~3 min to <1 s on subsequent boots.
+    The per-county loop is the expensive part (~3 min on a cold DB); once
+    47 county entities exist it's skipped on subsequent boots. The
+    national-level seeders (GDP, population, federal audits) are cheap
+    and idempotent, so they always run — that way a new data file
+    (e.g. federal audit findings) is picked up on restart without
+    needing `--force`.
     """
-    # ── fast path: skip if data already present ──────────────────────
+    # Fast-path check — skip the expensive county loop only. National
+    # seeders further down still run so newly added data files get picked
+    # up even when the county entities are already in place.
+    skip_county_loop = False
     if not force:
         quick_session = SessionLocal()
         try:
@@ -1029,32 +1035,32 @@ def initialize_reference_data(
             )
             if county_count >= 47:
                 logger.info(
-                    "Reference data already present (%d county entities) — skipping bootstrap",
+                    "County data present (%d counties) — skipping county loop; "
+                    "still refreshing national-level data",
                     county_count,
                 )
-                quick_session.close()
-                return
+                skip_county_loop = True
         except Exception:
             pass  # table might not exist yet; fall through to full seed
         finally:
             quick_session.close()
 
-    # ── full seed path ───────────────────────────────────────────────
-    county_payload = _load_json(COUNTY_DATA_PATH)
-    county_records = county_payload.get("county_data", {})
-    if not county_records:
-        logger.warning("No county data available for seeding")
-        return
-
-    audit_payload = _load_json(AUDIT_DATA_PATH)
+    county_records: Dict[str, Any] = {}
     audit_by_county: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     missing_by_county: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
 
-    for entry in audit_payload.get("audit_queries", []) or []:
-        audit_by_county[entry.get("county", "")].append(entry)
+    if not skip_county_loop:
+        county_payload = _load_json(COUNTY_DATA_PATH)
+        county_records = county_payload.get("county_data", {})
+        if not county_records:
+            logger.warning("No county data available for seeding")
 
-    for entry in audit_payload.get("missing_funds_cases", []) or []:
-        missing_by_county[entry.get("county", "")].append(entry)
+        audit_payload = _load_json(AUDIT_DATA_PATH)
+        for entry in audit_payload.get("audit_queries", []) or []:
+            audit_by_county[entry.get("county", "")].append(entry)
+
+        for entry in audit_payload.get("missing_funds_cases", []) or []:
+            missing_by_county[entry.get("county", "")].append(entry)
 
     session = SessionLocal()
     try:
@@ -1221,9 +1227,15 @@ def initialize_reference_data(
         _seed_federal_audits(session, country=country, period=period)
 
         session.commit()
-        logger.info(
-            "Reference county data initialized (%d counties)", len(county_records)
-        )
+        if skip_county_loop:
+            logger.info(
+                "National-level data refreshed (GDP, population, federal audits)"
+            )
+        else:
+            logger.info(
+                "Reference county data initialized (%d counties)",
+                len(county_records),
+            )
     except Exception as exc:
         session.rollback()
         logger.error("Failed to initialize reference data: %s", exc)
