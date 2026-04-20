@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
 
@@ -44,13 +45,13 @@ export default function PageShell({
         className='absolute bottom-0 left-0 right-0'
         aria-hidden='true'
         style={{ height: '45vh', zIndex: 0 }}>
-        <img
+        <Image
           src='/kenya_bg_bottom.jpg'
           alt=''
-          className='absolute inset-0 w-full h-full object-cover'
+          fill
+          sizes='100vw'
+          className='object-cover'
           style={{ objectPosition: 'center 75%' }}
-          loading='lazy'
-          decoding='async'
         />
         {/* Cinematic tint */}
         <div

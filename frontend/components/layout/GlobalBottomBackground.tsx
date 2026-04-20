@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 /**
  * GlobalBottomBackground
  *
@@ -15,13 +17,13 @@ export default function GlobalBottomBackground() {
       style={{ height: '45vh', zIndex: 0 }}
       aria-hidden='true'>
       {/* Kenyan flag image */}
-      <img
+      <Image
         src='/kenya_bg_bottom.jpg'
         alt=''
-        className='absolute inset-0 w-full h-full object-cover'
+        fill
+        sizes='100vw'
+        className='object-cover'
         style={{ objectPosition: 'center 75%' }}
-        loading='lazy'
-        decoding='async'
       />
 
       {/* Cinematic tint overlay */}
