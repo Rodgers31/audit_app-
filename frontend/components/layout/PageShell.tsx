@@ -1,6 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 import React from 'react';
 
 /**
@@ -9,7 +11,9 @@ import React from 'react';
  * Consistent page layout for all inner pages (debt, budget, counties, learn).
  * NO top scenic image — only the home page has that.
  * Provides:
- *   - Dark-green header band (matches scrolled nav) with white title text
+ *   - Dark-green header band (matches scrolled nav) with white title text,
+ *     optional back-link breadcrumb, a subtle radial highlight, and a
+ *     gold hairline separating the band from the body
  *   - Cream gov-sand body
  *   - Translucent glass container for data content
  *   - Bottom scenic (Kenyan flag) image visible when scrolled down
@@ -20,11 +24,19 @@ interface PageShellProps {
   subtitle?: string;
   children: React.ReactNode;
   className?: string;
+  /** Optional breadcrumb link rendered above the title in the dark band. */
+  back?: { href: string; label: string };
 }
 
 const NEUTRAL_RGB = '245,240,232'; // gov-sand #F5F0E8
 
-export default function PageShell({ title, subtitle, children, className = '' }: PageShellProps) {
+export default function PageShell({
+  title,
+  subtitle,
+  children,
+  className = '',
+  back,
+}: PageShellProps) {
   return (
     <div className='relative min-h-screen' style={{ backgroundColor: `rgb(${NEUTRAL_RGB})` }}>
       {/* ═══ Bottom scenic image (Kenyan flag) — pinned to bottom ═══ */}
@@ -74,15 +86,37 @@ export default function PageShell({ title, subtitle, children, className = '' }:
       {/* ═══ Content layer (above the bottom image) ═══ */}
       <div className='relative z-[1]'>
         {/* ── Dark-green header band ── */}
-        <div className='bg-gov-dark'>
+        <div className='relative overflow-hidden bg-gov-dark'>
+          {/* Subtle decorative layers — kept faint so existing pages still feel the same */}
+          <div
+            aria-hidden
+            className='pointer-events-none absolute inset-0'
+            style={{
+              background:
+                'radial-gradient(65% 140% at 92% 12%, rgba(74,122,89,0.32) 0%, transparent 60%), radial-gradient(40% 90% at 10% 100%, rgba(212,165,76,0.09) 0%, transparent 60%)',
+            }}
+          />
+          {/* Gold hairline at the bottom edge */}
+          <div
+            aria-hidden
+            className='pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gov-gold/40 to-transparent'
+          />
           {/* Spacer for the fixed navigation bar */}
           <div className='h-[72px]' />
-          <div className='max-w-[1340px] mx-auto px-5 lg:px-8 pt-8 pb-10'>
+          <div className='relative max-w-[1340px] mx-auto px-5 lg:px-8 pt-6 pb-10'>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: 'easeOut' }}
               className='max-w-3xl'>
+              {back && (
+                <Link
+                  href={back.href}
+                  className='mb-3 inline-flex items-center gap-1.5 rounded-full bg-white/8 px-3 py-1 text-[12.5px] font-semibold text-white/80 ring-1 ring-inset ring-white/10 backdrop-blur-sm transition-colors hover:bg-white/12 hover:text-white'>
+                  <ArrowLeft size={13} />
+                  {back.label}
+                </Link>
+              )}
               <h1 className='font-display text-3xl sm:text-4xl lg:text-[2.75rem] text-white leading-[1.12] mb-2 drop-shadow-lg'>
                 {title}
               </h1>
