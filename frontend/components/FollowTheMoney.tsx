@@ -128,6 +128,23 @@ function StageCard({
 
 /* ═══════════ Gap Indicator ═══════════ */
 
+/**
+ * One-line explainer for each gap label. The gaps in our waterfall have
+ * subtly different meanings and an earlier version of the UI let readers
+ * (understandably) mistake "Unspent Funds" for "missing money". It isn't:
+ * unspent just means the budget line hadn't been paid out YET at the
+ * time the CoB report was generated (these are often mid-year H1 reports,
+ * so some gap is always expected).
+ */
+const GAP_SUBLABEL: Record<string, string> = {
+  'Unspent Funds':
+    'Budget still available — not yet paid out at report time. Not missing.',
+  'Withheld/Delayed':
+    'Allocated but not released by Treasury at report time.',
+  'Irregular/Unsupported Expenditure':
+    'Spent but flagged by the Auditor-General as unaccounted-for.',
+};
+
 function GapIndicator({
   gap,
   label,
@@ -138,28 +155,34 @@ function GapIndicator({
   index: number;
 }) {
   const colors = GAP_COLORS[label] || GAP_COLORS['Unspent Funds'];
+  const sublabel = GAP_SUBLABEL[label];
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.2, delay: index * 0.1 + 0.15 }}
-      className='flex items-center gap-3 px-4 py-2'>
+      className='flex items-start gap-3 px-4 py-2'>
       {/* Vertical connector line */}
-      <div className='flex flex-col items-center'>
+      <div className='flex flex-col items-center pt-1.5'>
         <ArrowDown size={16} className='text-gray-300' />
       </div>
 
       {/* Gap pill */}
       <div
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dashed ${colors.bg} ${colors.border}`}>
-        <TrendingDown size={14} className={colors.text} />
-        <div>
+        className={`flex flex-col gap-0.5 px-3 py-1.5 rounded-lg border border-dashed ${colors.bg} ${colors.border}`}>
+        <div className='flex items-center gap-2'>
+          <TrendingDown size={14} className={colors.text} />
           <span className={`text-xs font-semibold ${colors.text}`}>{label}</span>
-          <span className={`text-sm font-bold ml-2 ${colors.text} tabular-nums`}>
+          <span className={`text-sm font-bold ${colors.text} tabular-nums`}>
             {fmtKES(gap)}
           </span>
         </div>
+        {sublabel && (
+          <p className='text-[10.5px] text-gray-500 leading-snug max-w-xs pl-5'>
+            {sublabel}
+          </p>
+        )}
       </div>
     </motion.div>
   );
