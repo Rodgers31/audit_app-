@@ -34,7 +34,7 @@ import {
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ACCT_GRADE_BG,
   fmtKES,
@@ -457,6 +457,22 @@ export default function CountyDetailClient() {
   const [tab, setTab] = useState<Tab>(validTabs.includes(initialTab) ? initialTab : 'overview');
   const [showHealthModal, setShowHealthModal] = useState(false);
 
+  // Scroll the tab bar into view whenever the user switches tabs. Without
+  // this, the browser preserves pixel-offset scroll position — so if the
+  // user was scrolled deep into Overview and clicks Budget & Debt (which
+  // is shorter), they land on the footer. The ref is attached to the tab
+  // bar below; `scroll-margin-top` compensates for the fixed header.
+  const tabBarRef = useRef<HTMLDivElement | null>(null);
+  const handleTabChange = useCallback((next: Tab) => {
+    setTab(next);
+    requestAnimationFrame(() => {
+      tabBarRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
+  }, []);
+
   /* Loading */
   if (isLoading) {
     return (
@@ -648,13 +664,16 @@ export default function CountyDetailClient() {
         </motion.div>
 
         {/* ── Tabs ── underline style, no nested box */}
-        <div className='flex items-center gap-1 border-b border-gray-200 overflow-x-auto -mb-px'>
+        <div
+          ref={tabBarRef}
+          style={{ scrollMarginTop: '88px' }}
+          className='flex items-center gap-1 border-b border-gray-200 overflow-x-auto -mb-px'>
           {TABS.map((tabItem) => {
             const active = tab === tabItem.id;
             return (
               <button
                 key={tabItem.id}
-                onClick={() => setTab(tabItem.id)}
+                onClick={() => handleTabChange(tabItem.id)}
                 className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap ${
                   active ? 'text-gov-forest' : 'text-gray-500 hover:text-gray-800'
                 }`}>

@@ -128,6 +128,23 @@ function StageCard({
 
 /* ═══════════ Gap Indicator ═══════════ */
 
+/**
+ * One-line explainer for each gap label. The gaps in our waterfall have
+ * subtly different meanings and an earlier version of the UI let readers
+ * (understandably) mistake "Unspent Funds" for "missing money". It isn't:
+ * unspent just means the budget line hadn't been paid out YET at the
+ * time the CoB report was generated (these are often mid-year H1 reports,
+ * so some gap is always expected).
+ */
+const GAP_SUBLABEL: Record<string, string> = {
+  'Unspent Funds':
+    'Budget still available — not yet paid out at report time. Not missing.',
+  'Withheld/Delayed':
+    'Allocated but not released by Treasury at report time.',
+  'Irregular/Unsupported Expenditure':
+    'Spent but flagged by the Auditor-General as unaccounted-for.',
+};
+
 function GapIndicator({
   gap,
   label,
@@ -138,28 +155,34 @@ function GapIndicator({
   index: number;
 }) {
   const colors = GAP_COLORS[label] || GAP_COLORS['Unspent Funds'];
+  const sublabel = GAP_SUBLABEL[label];
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.2, delay: index * 0.1 + 0.15 }}
-      className='flex items-center gap-3 px-4 py-2'>
+      className='flex items-start gap-3 px-4 py-2'>
       {/* Vertical connector line */}
-      <div className='flex flex-col items-center'>
+      <div className='flex flex-col items-center pt-1.5'>
         <ArrowDown size={16} className='text-gray-300' />
       </div>
 
       {/* Gap pill */}
       <div
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dashed ${colors.bg} ${colors.border}`}>
-        <TrendingDown size={14} className={colors.text} />
-        <div>
+        className={`flex flex-col gap-0.5 px-3 py-1.5 rounded-lg border border-dashed ${colors.bg} ${colors.border}`}>
+        <div className='flex items-center gap-2'>
+          <TrendingDown size={14} className={colors.text} />
           <span className={`text-xs font-semibold ${colors.text}`}>{label}</span>
-          <span className={`text-sm font-bold ml-2 ${colors.text} tabular-nums`}>
+          <span className={`text-sm font-bold ${colors.text} tabular-nums`}>
             {fmtKES(gap)}
           </span>
         </div>
+        {sublabel && (
+          <p className='text-[10.5px] text-gray-500 leading-snug max-w-xs pl-5'>
+            {sublabel}
+          </p>
+        )}
       </div>
     </motion.div>
   );
@@ -256,7 +279,9 @@ export default function FollowTheMoney({ data, isLoading, compact }: FollowTheMo
         <div className='flex items-center justify-between mb-4'>
           <div>
             <h3 className='text-sm font-semibold text-gray-800'>{data.county_name}</h3>
-            <p className='text-xs text-gray-500'>FY {data.fiscal_year}</p>
+            <p className='text-xs text-gray-500'>
+              FY {data.fiscal_year?.startsWith('FY') ? data.fiscal_year.slice(2) : data.fiscal_year}
+            </p>
           </div>
           {data.efficiency_score != null && <EfficiencyRing score={data.efficiency_score} />}
         </div>
@@ -332,6 +357,40 @@ export default function FollowTheMoney({ data, isLoading, compact }: FollowTheMo
           </div>
         </motion.div>
       )}
+
+      {/* Committed-to-procurement note (optional) — distinct from "Released"
+          because Treasury disbursements aren't in our data. Showing this as
+          a supplementary figure rather than a waterfall stage is deliberate:
+          it keeps readers from inferring a cause-and-effect "allocated →
+          released → spent" chain that the data doesn't support. */}
+      {hasAnyData && data.committed_amount != null && data.committed_amount > 0 && (
+        <div className='text-xs text-gray-500 mt-2 px-1'>
+          Of the spent total, <span className='font-semibold text-gray-700'>{fmtKES(data.committed_amount)}</span>{' '}
+          was procurement-encumbered (earmarked for contracts in progress).
+        </div>
+      )}
+
+      {/* Source provenance — every figure traces back to a specific CoB
+          publication. Surfacing the exact title matters because CoB reports
+          are often half-year or quarterly snapshots, not full-year finals. */}
+      {(data.source_document_title || data.source_document_url) && (
+        <div className='text-[11px] text-gray-500 mt-3 pt-3 border-t border-gray-100'>
+          <span className='uppercase tracking-wider font-semibold text-gray-400 mr-2'>
+            Source
+          </span>
+          {data.source_document_url ? (
+            <a
+              href={data.source_document_url}
+              target='_blank'
+              rel='noopener noreferrer'
+              className='text-gov-forest hover:underline'>
+              {data.source_document_title || 'Controller of Budget'}
+            </a>
+          ) : (
+            <span className='text-gray-600'>{data.source_document_title}</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -358,11 +417,18 @@ export function YearSelector({
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'right 8px center',
         }}>
-        {years.map((y) => (
-          <option key={y} value={y}>
-            FY {y}
-          </option>
-        ))}
+        {years.map((y) => {
+          // Backend and util helpers return the FY in two different
+          // formats — some start with "FY" ("FY2024/25"), some don't
+          // ("2024/25"). Strip the prefix before rendering so the
+          // visible label is always exactly one "FY …".
+          const bare = y.startsWith('FY') ? y.slice(2) : y;
+          return (
+            <option key={y} value={y}>
+              FY {bare}
+            </option>
+          );
+        })}
       </select>
     </div>
   );

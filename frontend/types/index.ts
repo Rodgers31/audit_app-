@@ -258,6 +258,14 @@ export interface MoneyFlowData {
   total_waste_estimate: number | null;
   efficiency_score: number | null;
   county_count?: number;
+  /** Official CoB publication that produced these figures. Surfaced
+   * in the UI so every number is traceable to a government source. */
+  source_document_title?: string | null;
+  source_document_url?: string | null;
+  /** Procurement encumbrances — not a waterfall stage but shown as a
+   * supplementary line under "Spent" when present, so readers can see
+   * how much of the budget is committed to contracts vs fully free. */
+  committed_amount?: number | null;
 }
 
 export interface ChartData {

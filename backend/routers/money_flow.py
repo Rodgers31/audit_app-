@@ -150,8 +150,6 @@ def _money_flow_for_entity(
             "stages": [
                 _build_stage("Allocated", "Budget Allocation", None,
                              source="CRA Allocation + Conditional Grants", data_unavailable=True),
-                _build_stage("Released", "Funds Released", None,
-                             gap_label="Withheld/Delayed", data_unavailable=True),
                 _build_stage("Spent", "Actual Expenditure", None,
                              gap_label="Unspent Funds", data_unavailable=True),
                 _build_stage("Flagged", "Auditor Flagged", None,
@@ -174,22 +172,32 @@ def _money_flow_for_entity(
         # would misleadingly render as "100% unspent" in the waterfall.
         spent_vals = [b.actual_spent for b in budget_lines if b.actual_spent is not None]
         spent = sum(float(s) for s in spent_vals) if spent_vals else None
-        # COB data doesn't have a separate "released" column – use committed_amount
-        # as a proxy for releases if available, otherwise mark unavailable.
+        # "Committed" = procurement encumbrances (contracts awarded but
+        # not yet paid out). This is NOT the same as "exchequer release"
+        # — Treasury disbursements aren't currently captured in the COB
+        # reports we ingest. Kept for future-use but deliberately NOT
+        # surfaced as a waterfall stage: an earlier version rendered this
+        # as "Funds Released" which was actively misleading (committed
+        # << spent for most counties, which is impossible to read as
+        # "received < paid").
         committed_amounts = [b.committed_amount for b in budget_lines if b.committed_amount is not None]
-        if committed_amounts:
-            released = sum(float(c) for c in committed_amounts)
-        else:
-            released = None
+        committed = sum(float(c) for c in committed_amounts) if committed_amounts else None
 
-        # Source doc URL from first budget line
+        # Source doc URL + label from first budget line. The CoB budget
+        # implementation review reports are often H1 (half-year) or Q-
+        # specific, so we surface the exact title rather than implying
+        # a full-year snapshot.
         first_doc = budget_lines[0].source_document if budget_lines else None
         source_doc_url = first_doc.url if first_doc and hasattr(first_doc, "url") else None
+        source_doc_title = (
+            first_doc.title if first_doc and hasattr(first_doc, "title") else None
+        )
     else:
         allocated = None
-        released = None
+        committed = None
         spent = None
         source_doc_url = None
+        source_doc_title = None
 
     # --- Audit flagged amounts ---
     audit_q = db.query(func.sum(Audit.amount)).filter(
@@ -200,6 +208,16 @@ def _money_flow_for_entity(
     flagged = float(flagged) if flagged else None
 
     # --- Build stages ---
+    # We surface three stages from data we ACTUALLY have:
+    #   • Allocated — from COB `allocated_amount` per budget line
+    #   • Spent     — from COB `actual_spent`
+    #   • Flagged   — from OAG audit findings with a KES amount
+    # An older version also rendered a "Funds Released" stage between
+    # allocated and spent, using `committed_amount` as a proxy. That's a
+    # different quantity (procurement encumbrances, not Treasury
+    # disbursements) and produced impossible-looking figures like
+    # "spent > released". Removed until we parse the real exchequer-
+    # release column from CoB.
     stages: List[Dict[str, Any]] = []
 
     # 1. Allocated
@@ -212,24 +230,9 @@ def _money_flow_for_entity(
         data_unavailable=allocated is None,
     ))
 
-    # 2. Released
-    if released is not None and allocated is not None:
-        gap = round(allocated - released, 2)
-    else:
-        gap = None
-    stages.append(_build_stage(
-        stage="Released",
-        label="Funds Released",
-        amount=released,
-        gap_from_prev=gap,
-        gap_label="Withheld/Delayed",
-        data_unavailable=released is None,
-    ))
-
-    # 3. Spent
-    prev_for_spent = released if released is not None else allocated
-    if spent is not None and prev_for_spent is not None:
-        gap_spent = round(prev_for_spent - spent, 2)
+    # 2. Spent
+    if spent is not None and allocated is not None:
+        gap_spent = round(allocated - spent, 2)
     else:
         gap_spent = None
     stages.append(_build_stage(
@@ -260,6 +263,14 @@ def _money_flow_for_entity(
         "stages": stages,
         "total_waste_estimate": flagged,
         "efficiency_score": efficiency,
+        # Provenance — surfaced in the UI so every figure is traceable
+        # back to an official Controller of Budget (CoB) publication.
+        "source_document_title": source_doc_title,
+        "source_document_url": source_doc_url,
+        # Surface committed separately (not as a waterfall stage) for
+        # callers that want to show "procurement encumbered" as a
+        # supplementary figure.
+        "committed_amount": committed,
     }
 
 
@@ -275,14 +286,38 @@ async def county_money_flow(
 ):
     """Trace the full money flow for a county in a fiscal year.
 
-    ``county_id`` accepts either the numeric ``Entity.id`` or the county
-    ``slug`` (e.g. ``nairobi-city``) so the frontend can link by either.
+    ``county_id`` accepts any of:
+      * the 3-digit Kenyan county code ("001" → Nairobi, "047" → Mombasa),
+      * the raw numeric ``Entity.id`` (database primary key),
+      * the county ``slug`` (e.g. ``nairobi-city``).
+    The 3-digit-code path is what the frontend actually links from, so
+    resolve it first via the canonical COUNTY_MAPPING.
     """
     q = db.query(Entity).filter(Entity.type == EntityType.COUNTY)
-    if county_id.isdigit():
-        entity = q.filter(Entity.id == int(county_id)).first()
-    else:
-        entity = q.filter(Entity.slug == county_id).first()
+    entity = None
+
+    # 3-digit county-code lookup (most common path from the UI).
+    if county_id.isdigit() and len(county_id) == 3:
+        try:
+            from main import COUNTY_MAPPING  # avoid circular import at module load
+        except ImportError:
+            COUNTY_MAPPING = {}
+        county_name = COUNTY_MAPPING.get(county_id)
+        if county_name:
+            entity = q.filter(
+                Entity.canonical_name == f"{county_name} County"
+            ).first()
+            if not entity:
+                slug = county_name.lower().replace(" ", "-") + "-county"
+                entity = q.filter(Entity.slug == slug).first()
+
+    # Fallbacks: raw Entity.id then slug.
+    if not entity:
+        if county_id.isdigit():
+            entity = q.filter(Entity.id == int(county_id)).first()
+        else:
+            entity = q.filter(Entity.slug == county_id).first()
+
     if not entity:
         raise HTTPException(status_code=404, detail="County not found")
 
@@ -318,7 +353,6 @@ async def national_money_flow(
     # --- Aggregated budget data ---
     if not period_ids:
         allocated = None
-        released = None
         spent = None
         source_doc_url = None
         flagged = None
@@ -337,13 +371,10 @@ async def national_money_flow(
             # omission — the waterfall would show 100% unspent.
             spent_vals = [b.actual_spent for b in budget_lines if b.actual_spent is not None]
             spent = sum(float(s) for s in spent_vals) if spent_vals else None
-            committed = [b.committed_amount for b in budget_lines if b.committed_amount is not None]
-            released = sum(float(c) for c in committed) if committed else None
             first_doc = budget_lines[0].source_document if budget_lines else None
             source_doc_url = first_doc.url if first_doc and hasattr(first_doc, "url") else None
         else:
             allocated = None
-            released = None
             spent = None
             source_doc_url = None
 
@@ -367,22 +398,12 @@ async def national_money_flow(
         data_unavailable=allocated is None,
     ))
 
-    if released is not None and allocated is not None:
-        gap = round(allocated - released, 2)
-    else:
-        gap = None
-    stages.append(_build_stage(
-        stage="Released",
-        label="Funds Released",
-        amount=released,
-        gap_from_prev=gap,
-        gap_label="Withheld/Delayed",
-        data_unavailable=released is None,
-    ))
-
-    prev_for_spent = released if released is not None else allocated
-    if spent is not None and prev_for_spent is not None:
-        gap_spent = round(prev_for_spent - spent, 2)
+    # See _money_flow_for_entity — the "Released" stage is intentionally
+    # omitted. Treasury exchequer disbursements aren't captured by the
+    # CoB budget-implementation seeder, and using `committed_amount` as
+    # a proxy (previous behaviour) produced misleading numbers.
+    if spent is not None and allocated is not None:
+        gap_spent = round(allocated - spent, 2)
     else:
         gap_spent = None
     stages.append(_build_stage(
@@ -415,6 +436,7 @@ async def national_money_flow(
         "stages": stages,
         "total_waste_estimate": flagged,
         "efficiency_score": efficiency,
+        "source_document_url": source_doc_url,
     }
 
 
@@ -447,8 +469,6 @@ async def all_counties_money_flow(
         no_data_stages = [
             _build_stage("Allocated", "Budget Allocation", None,
                          source="CRA Allocation + Conditional Grants", data_unavailable=True),
-            _build_stage("Released", "Funds Released", None,
-                         gap_label="Withheld/Delayed", data_unavailable=True),
             _build_stage("Spent", "Actual Expenditure", None,
                          gap_label="Unspent Funds", data_unavailable=True),
             _build_stage("Flagged", "Auditor Flagged", None,
@@ -486,7 +506,7 @@ async def all_counties_money_flow(
         budget_map[eid] = {
             "allocated": float(alloc) if alloc else None,
             "spent": float(spent) if spent else None,
-            "released": float(committed) if committed else None,
+            "committed": float(committed) if committed else None,
         }
 
     # 3. Aggregate audit flagged amounts per entity in ONE query
@@ -511,7 +531,7 @@ async def all_counties_money_flow(
     for eid, name in county_entities:
         b = budget_map.get(eid, {})
         allocated = b.get("allocated")
-        released = b.get("released")
+        committed = b.get("committed")
         spent = b.get("spent")
         flagged = flagged_map.get(eid)
 
@@ -523,15 +543,10 @@ async def all_counties_money_flow(
             data_unavailable=allocated is None,
         ))
 
-        gap_rel = round(allocated - released, 2) if (released is not None and allocated is not None) else None
-        stages.append(_build_stage(
-            stage="Released", label="Funds Released", amount=released,
-            gap_from_prev=gap_rel, gap_label="Withheld/Delayed",
-            data_unavailable=released is None,
-        ))
-
-        prev = released if released is not None else allocated
-        gap_spent = round(prev - spent, 2) if (spent is not None and prev is not None) else None
+        # "Released" stage intentionally omitted — see comment in
+        # _money_flow_for_entity. Treasury disbursements aren't in our
+        # data, and `committed_amount` is not an equivalent quantity.
+        gap_spent = round(allocated - spent, 2) if (spent is not None and allocated is not None) else None
         stages.append(_build_stage(
             stage="Spent", label="Actual Expenditure", amount=spent,
             gap_from_prev=gap_spent, gap_label="Unspent Funds",
