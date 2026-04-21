@@ -334,6 +334,40 @@ export default function FollowTheMoney({ data, isLoading, compact }: FollowTheMo
           </div>
         </motion.div>
       )}
+
+      {/* Committed-to-procurement note (optional) — distinct from "Released"
+          because Treasury disbursements aren't in our data. Showing this as
+          a supplementary figure rather than a waterfall stage is deliberate:
+          it keeps readers from inferring a cause-and-effect "allocated →
+          released → spent" chain that the data doesn't support. */}
+      {hasAnyData && data.committed_amount != null && data.committed_amount > 0 && (
+        <div className='text-xs text-gray-500 mt-2 px-1'>
+          Of the spent total, <span className='font-semibold text-gray-700'>{fmtKES(data.committed_amount)}</span>{' '}
+          was procurement-encumbered (earmarked for contracts in progress).
+        </div>
+      )}
+
+      {/* Source provenance — every figure traces back to a specific CoB
+          publication. Surfacing the exact title matters because CoB reports
+          are often half-year or quarterly snapshots, not full-year finals. */}
+      {(data.source_document_title || data.source_document_url) && (
+        <div className='text-[11px] text-gray-500 mt-3 pt-3 border-t border-gray-100'>
+          <span className='uppercase tracking-wider font-semibold text-gray-400 mr-2'>
+            Source
+          </span>
+          {data.source_document_url ? (
+            <a
+              href={data.source_document_url}
+              target='_blank'
+              rel='noopener noreferrer'
+              className='text-gov-forest hover:underline'>
+              {data.source_document_title || 'Controller of Budget'}
+            </a>
+          ) : (
+            <span className='text-gray-600'>{data.source_document_title}</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
