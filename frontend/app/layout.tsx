@@ -3,7 +3,9 @@ import Navigation from '@/components/Navigation';
 import { AuthProvider } from '@/lib/auth/AuthProvider';
 import { WatchlistProvider } from '@/lib/auth/WatchlistProvider';
 import { LangProvider } from '@/lib/i18n/LangProvider';
+import NavTrailTracker from '@/lib/navigation/NavTrailTracker';
 import { QueryProvider } from '@/lib/react-query/QueryProvider';
+import { Suspense } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import type { Metadata } from 'next';
@@ -89,6 +91,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <LangProvider>
             <AuthProvider>
               <WatchlistProvider>
+                {/* Records every client-side navigation into sessionStorage
+                    so "back" links on detail pages can decide whether
+                    to pop history (restoring state) or push a fresh URL. */}
+                <Suspense fallback={null}>
+                  <NavTrailTracker />
+                </Suspense>
                 <Navigation />
                 <div id='main-content' className='relative z-[1]'>
                   {children}

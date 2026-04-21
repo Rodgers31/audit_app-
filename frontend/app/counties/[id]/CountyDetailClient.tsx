@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import SmartBackLink from '@/lib/navigation/SmartBackLink';
 import { usePathname, useParams, useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -545,13 +546,15 @@ export default function CountyDetailClient() {
       <PageShell
         title={`${data.name} ${t('county.page.name_suffix')}`}
         subtitle={t('county.page.subtitle')}>
-        {/* Back */}
-        <Link
+        {/* Back — uses SmartBackLink so coming from /counties?p=2 pops
+            history (restoring pagination, filters, scroll) instead of
+            pushing a fresh /counties. */}
+        <SmartBackLink
           href={topBackHref}
           className='inline-flex items-center gap-1.5 text-sm text-gov-forest hover:text-gov-dark transition-colors'>
           <ArrowLeft size={14} />
           {topBackLabel}
-        </Link>
+        </SmartBackLink>
 
         {/* ── Hero ── */}
         <motion.div
