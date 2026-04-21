@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 
@@ -1127,13 +1127,67 @@ function CountyRankingsTable({
   fiscalYear: string;
 }) {
   const { t } = useLang();
-  const [page, setPage] = useState(1);
+  // Pagination state is URL-driven (?p=N) so that browser back from a
+  // county detail page restores the user's place in the list. Local
+  // `useState(1)` would reset on every re-mount after client navigation.
+  //
+  // We read the URL via `window.location.search` rather than the
+  // `useSearchParams()` hook because the hook can return an empty
+  // params map on first client render in App Router — the URL shows
+  // `?p=3` but the hook says `{}`, so the table renders page 1. Direct
+  // window access bypasses that hydration-timing bug.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const readPageFromUrl = useCallback((): number => {
+    if (typeof window === 'undefined') return 1;
+    const raw = new URLSearchParams(window.location.search).get('p');
+    const n = parseInt(raw || '1', 10);
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  }, []);
+
+  const [pageFromUrl, setPageFromUrl] = useState<number>(() => readPageFromUrl());
+
+  // Keep local mirror in sync with browser history (back/forward, manual edits).
+  useEffect(() => {
+    const onPop = () => setPageFromUrl(readPageFromUrl());
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [readPageFromUrl]);
+
+  // Also resync when Next.js internal navigation updates `searchParams`.
+  useEffect(() => {
+    setPageFromUrl(readPageFromUrl());
+  }, [searchParams, readPageFromUrl]);
+
   const totalPages = Math.ceil(counties.length / PAGE_SIZE);
+  // Clamp to valid range — an out-of-range `p` just clamps to last page.
+  const page = Math.min(Math.max(1, pageFromUrl), Math.max(1, totalPages));
   const paged = showAll ? counties : counties.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  React.useEffect(() => {
-    setPage(1);
-  }, [counties.length]);
+  const setPage = useCallback(
+    (next: number | ((prev: number) => number)) => {
+      const resolved = typeof next === 'function' ? next(page) : next;
+      const clamped = Math.min(Math.max(1, resolved), Math.max(1, totalPages));
+      const qs = new URLSearchParams(window.location.search);
+      if (clamped === 1) qs.delete('p');
+      else qs.set('p', String(clamped));
+      const newSearch = qs.toString();
+      router.replace(newSearch ? `${pathname}?${newSearch}` : pathname, { scroll: false });
+      setPageFromUrl(clamped);
+    },
+    [page, totalPages, pathname, router]
+  );
+
+  // If the filter changes and the current page no longer has rows,
+  // drop back to page 1. Do NOT write the URL on mount — that would
+  // strip `?p=N` during back-navigation from the detail page.
+  useEffect(() => {
+    if (pageFromUrl > totalPages && totalPages >= 1) {
+      setPage(1);
+    }
+  }, [totalPages, pageFromUrl, setPage]);
 
   const pageNums = useMemo(() => {
     const nums: number[] = [];
