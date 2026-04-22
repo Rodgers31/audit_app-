@@ -62,7 +62,7 @@ export default function PopularQuestions({ onOpenArticle }: Props) {
         </span>
       </div>
 
-      <ul className='overflow-hidden rounded-3xl border border-white/70 bg-gradient-to-br from-white/85 via-white/70 to-gov-cream/50 shadow-surface backdrop-blur'>
+      <ul className='overflow-hidden rounded-2xl border border-white/70 bg-gradient-to-br from-white/85 via-white/70 to-gov-cream/50 shadow-surface backdrop-blur'>
         {POPULAR_QUESTIONS.map((q, i) => {
           const Icon = CATEGORY_ICON[q.category];
           const isOpen = openId === q.id;
@@ -75,19 +75,19 @@ export default function PopularQuestions({ onOpenArticle }: Props) {
                 type='button'
                 onClick={() => setOpenId(isOpen ? null : q.id)}
                 aria-expanded={isOpen}
-                className={`group flex w-full items-start gap-3.5 px-4 py-4 text-left transition-colors sm:gap-4 sm:px-6 ${
+                className={`group flex w-full items-start gap-3 px-4 py-3 text-left transition-colors sm:gap-3.5 sm:px-5 sm:py-3.5 ${
                   isOpen ? 'bg-gov-forest/[0.05]' : 'hover:bg-gov-forest/[0.03]'
                 }`}>
                 <span
-                  className={`mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                  className={`mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
                     isOpen
                       ? 'bg-gov-forest text-white shadow-surface'
                       : 'bg-gov-forest/10 text-gov-forest group-hover:bg-gov-forest/15'
                   }`}>
-                  <Icon size={16} />
+                  <Icon size={14} />
                 </span>
                 <span className='min-w-0 flex-1'>
-                  <span className='flex flex-wrap items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-widest text-gov-forest/70'>
+                  <span className='flex flex-wrap items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-gov-forest/70'>
                     <span>{q.category}</span>
                     {q.articleNumber && (
                       <>
@@ -96,15 +96,15 @@ export default function PopularQuestions({ onOpenArticle }: Props) {
                       </>
                     )}
                   </span>
-                  <span className='mt-1 block text-[14.5px] font-semibold leading-snug text-gov-dark sm:text-[15.5px]'>
+                  <span className='mt-0.5 block text-[13px] font-semibold leading-snug text-gov-dark sm:text-[13.5px]'>
                     {q.question}
                   </span>
                 </span>
                 <motion.span
                   animate={{ rotate: isOpen ? 180 : 0 }}
                   transition={{ duration: 0.2 }}
-                  className='mt-1.5 shrink-0 text-neutral-muted group-hover:text-gov-forest'>
-                  <ChevronDown size={18} />
+                  className='mt-1 shrink-0 text-neutral-muted group-hover:text-gov-forest'>
+                  <ChevronDown size={16} />
                 </motion.span>
               </button>
 
@@ -116,9 +116,9 @@ export default function PopularQuestions({ onOpenArticle }: Props) {
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.25 }}
                     className='overflow-hidden'>
-                    <div className='bg-gov-forest/[0.04] px-4 pb-5 pt-1 sm:px-6'>
-                      <div className='ml-[50px] border-l-2 border-gov-gold/50 pl-4 sm:ml-[52px]'>
-                        <p className='text-[14px] leading-relaxed text-gov-dark/90'>
+                    <div className='bg-gov-forest/[0.04] px-4 pb-4 pt-1 sm:px-5'>
+                      <div className='ml-[44px] border-l-2 border-gov-gold/50 pl-3.5 sm:ml-[46px]'>
+                        <p className='text-[13px] leading-relaxed text-gov-dark/90 sm:text-[13.5px]'>
                           {q.answer}
                         </p>
                         {(q.articleNumber || q.learnMoreHref) && (
@@ -127,15 +127,15 @@ export default function PopularQuestions({ onOpenArticle }: Props) {
                               <button
                                 type='button'
                                 onClick={() => onOpenArticle(q.articleNumber!)}
-                                className='inline-flex items-center gap-1.5 rounded-full bg-gov-forest px-3.5 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-gov-dark'>
-                                <ScrollText size={12} />
+                                className='inline-flex items-center gap-1.5 rounded-full bg-gov-forest px-3 py-1 text-[11.5px] font-semibold text-white transition-colors hover:bg-gov-dark'>
+                                <ScrollText size={11} />
                                 Read Article {q.articleNumber}
                               </button>
                             )}
                             {q.learnMoreHref && (
                               <Link
                                 href={q.learnMoreHref}
-                                className='inline-flex items-center gap-1.5 rounded-full bg-gov-forest/10 px-3.5 py-1.5 text-[12px] font-semibold text-gov-forest hover:bg-gov-forest/15'>
+                                className='inline-flex items-center gap-1.5 rounded-full bg-gov-forest/10 px-3 py-1 text-[11.5px] font-semibold text-gov-forest hover:bg-gov-forest/15'>
                                 Learn more
                                 <ExternalLink size={11} />
                               </Link>
