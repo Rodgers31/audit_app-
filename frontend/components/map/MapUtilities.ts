@@ -65,31 +65,6 @@ const FALLBACK_PAL = { base: '#b0b6ba', hover: '#979ea3', active: '#6b7280', mut
 /** Softer fill for counties with no matching data */
 const UNMATCHED_FILL = '#dce1dd';
 
-/** Pick a palette for a county.
- *
- * Kenya's OAG audit classification lags real-time by 1–2 FYs, so ~every
- * county's `auditStatus` currently resolves to "pending" — which isn't
- * in the palette and was falling through to a flat grey. That made the
- * whole map look uniform and the legend misleading.
- *
- * Fallback chain:
- *   1. `auditStatus` when it's one of the 4 legend categories
- *   2. `audit_rating` (A–D letter grade derived from financial health)
- *      bucketed into the same 4 categories — so pending counties still
- *      show a meaningful colour tied to financial health
- *   3. grey fallback
- */
-function paletteFor(county: County) {
-  const status = county.auditStatus;
-  if (status && AUDIT_PALETTE[status]) return AUDIT_PALETTE[status];
-  const grade = (county.audit_rating || '').toUpperCase();
-  if (grade.startsWith('A')) return AUDIT_PALETTE.clean;
-  if (grade.startsWith('B')) return AUDIT_PALETTE.qualified;
-  if (grade.startsWith('C')) return AUDIT_PALETTE.adverse;
-  if (grade.startsWith('D')) return AUDIT_PALETTE.disclaimer;
-  return FALLBACK_PAL;
-}
-
 /* ────────────────── county fill colour ────────────────── */
 
 export const getCountyColor = (
@@ -105,18 +80,15 @@ export const getCountyColor = (
   const county = getCountyByName(geoCountyName, counties);
   if (!county) return UNMATCHED_FILL;
 
-  const pal = paletteFor(county);
+  const key = county.auditStatus ?? county.audit_rating ?? 'B';
+  const pal = AUDIT_PALETTE[key] || FALLBACK_PAL;
 
   // Selected county — deepest shade
   if (selectedCounty?.id === county.id) return pal.active;
 
-  // Auto-rotating county — ONLY when nothing else is active. If the user
-  // is hovering anywhere, drop the auto-rotate visual back to the base
-  // shade so only ONE county reads as "active" on the map at a time.
+  // Auto-rotating county — same as selected
   const currentCounty = counties[currentCountyIndex] ?? null;
-  if (!selectedCounty && !hoveredCounty && currentCounty?.id === county.id) {
-    return pal.active;
-  }
+  if (!selectedCounty && currentCounty?.id === county.id) return pal.active;
 
   // Hovered county — mid shade
   if (hoveredCounty === geoCountyName) return pal.hover;
@@ -132,7 +104,8 @@ export const getCountyColor = (
 export const getCountyHoverColor = (geoCountyName: string, counties: County[]): string => {
   const county = getCountyByName(geoCountyName, counties);
   if (!county) return '#c8cec9';
-  return paletteFor(county).hover;
+  const key = county.auditStatus ?? county.audit_rating ?? 'B';
+  return (AUDIT_PALETTE[key] || FALLBACK_PAL).hover;
 };
 
 /* ────────────────── helpers ────────────────── */

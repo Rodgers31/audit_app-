@@ -317,21 +317,6 @@ export const MESSAGES = {
   },
   'home.map.view_all': { en: 'All', sw: 'Zote', plain: 'All' },
   'home.map.view_focus': { en: 'Focus', sw: 'Lenga', plain: 'Focus' },
-  'home.map.hint_pointer': {
-    en: 'Hover to explore · Click to select · Esc to clear',
-    sw: 'Weka kipanya kuona · Bonyeza kuchagua · Esc kufuta',
-    plain: 'Move mouse over a county, click to pick it, press Esc to clear.',
-  },
-  'home.map.hint_touch': {
-    en: 'Tap a county to see details',
-    sw: 'Gusa kaunti kuona maelezo',
-    plain: 'Tap a county to see details',
-  },
-  'home.map.aria_label_county': {
-    en: 'press Enter to open county',
-    sw: 'bonyeza Enter kufungua kaunti',
-    plain: 'press Enter to open this county',
-  },
   'home.map.aria_label': {
     en: "Interactive map of Kenya's 47 counties. Hover to see county details, click to select a county. Counties are color-coded by audit status.",
     sw: 'Ramani ya kaunti 47 za Kenya. Weka kipanya kuona maelezo, bonyeza kuchagua kaunti. Kaunti zina rangi kulingana na hali ya ukaguzi.',

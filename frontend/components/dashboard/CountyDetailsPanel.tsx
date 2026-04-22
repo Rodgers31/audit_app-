@@ -165,19 +165,14 @@ export default function CountyDetailsPanel({ county, className = '' }: CountyDet
   return (
     <div
       className={`rounded-xl bg-white border border-gray-200/60 shadow-sm overflow-hidden flex flex-col ${className}`}>
-      {/* Previously used `mode='wait'` with a 0.55s transition — that left
-          the panel BLANK for the full animation duration on every hover
-          change. A fast fade (0.12s) without `mode='wait'` lets the old
-          and new content cross-fade in place so the user never sees a
-          bare panel. */}
-      <AnimatePresence initial={false}>
+      <AnimatePresence mode='wait'>
         {county ? (
           <motion.div
             key={county.id}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.12, ease: 'easeOut' }}
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={{ duration: 0.55, ease: [0.25, 0.1, 0.25, 1] }}
             className='flex flex-col flex-1 min-h-0'>
             {/* ── Header ── */}
             <div className='px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-gov-forest/5 to-transparent'>
@@ -312,17 +307,13 @@ export default function CountyDetailsPanel({ county, className = '' }: CountyDet
               <AuditFindings county={county} />
             </div>
 
-            {/* ── CTA ──
-                NOTE: This is a Link styled as a button — NOT a button
-                nested inside a Link. The browser turns `<a><button></button></a>`
-                into siblings at parse time, so the inner button intercepts
-                the click and navigation silently breaks. */}
+            {/* ── CTA ── */}
             <div className='px-4 py-3 border-t border-gray-100 flex-shrink-0'>
-              <Link
-                href={`/counties/${county.code || county.id}`}
-                className='w-full py-2 rounded-full bg-gov-forest text-white text-xs font-medium hover:bg-gov-forest/90 transition-colors shadow-sm flex items-center justify-center gap-1.5'>
-                {t('home.county_panel.explore_name').replace('{name}', county.name)}
-                <TrendingUp className='w-3 h-3' />
+              <Link href={`/counties/${county.name.toLowerCase().replace(/\s+/g, '-')}`}>
+                <button className='w-full py-2 rounded-full bg-gov-forest text-white text-xs font-medium hover:bg-gov-forest/90 transition-colors shadow-sm flex items-center justify-center gap-1.5'>
+                  {t('home.county_panel.explore_name').replace('{name}', county.name)}
+                  <TrendingUp className='w-3 h-3' />
+                </button>
               </Link>
             </div>
           </motion.div>
@@ -524,7 +515,7 @@ function AuditFindings({ county }: { county: County }) {
       {issues.length > 3 && (
         <div className='flex items-center justify-center mt-1.5'>
           <Link
-            href={`/counties/${county.code || county.id}`}
+            href={`/counties/${county.name.toLowerCase().replace(/\s+/g, '-')}`}
             className='text-[10px] font-medium text-gov-forest hover:text-gov-forest/80 flex items-center gap-1'>
             <BookOpen className='w-3 h-3' />
             {t('home.county_panel.view_all_findings').replace('{n}', String(issues.length))}
