@@ -10,6 +10,12 @@ import { AlertTriangle, ArrowRight, Receipt, Scale } from 'lucide-react';
 
 interface MapTooltipProps {
   county: County;
+  /** Anchor point in the map container's local coordinate space (px from
+   * top-left of the map container). The tooltip places itself near this
+   * point with edge-collision so it never covers the hovered county or
+   * spills outside the map. If omitted, falls back to a center-top
+   * position (legacy behaviour). */
+  anchor?: { x: number; y: number; containerWidth: number; containerHeight: number };
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   onCountyClick: (county: County) => void;
@@ -53,8 +59,35 @@ const utilizationClass = (u: number) =>
 
 /* ── component ── */
 
+/** Tooltip is 288px wide × ~230px tall (see `.w-72` + content). Used for
+ * edge-collision placement math. */
+const TIP_W = 288;
+const TIP_H = 230;
+/** Gap between the hovered county and the tooltip. */
+const GAP = 14;
+
+/** Compute the tooltip's final top-left inside the map container, given
+ * the hovered point and container bounds. Prefers placing the tooltip
+ * above-and-right of the anchor; flips when near any edge so the tip is
+ * always fully visible AND never sits directly on top of the county the
+ * user is hovering. */
+function placeTooltip(a: NonNullable<MapTooltipProps['anchor']>): { left: number; top: number } {
+  const { x, y, containerWidth: W, containerHeight: H } = a;
+  // Horizontal: prefer to the right of the cursor; flip if it would
+  // overflow the right edge.
+  let left = x + GAP;
+  if (left + TIP_W > W - 4) left = Math.max(4, x - TIP_W - GAP);
+  left = Math.max(4, Math.min(left, W - TIP_W - 4));
+  // Vertical: prefer above; flip below if above would clip.
+  let top = y - TIP_H - GAP;
+  if (top < 4) top = Math.min(H - TIP_H - 4, y + GAP);
+  top = Math.max(4, Math.min(top, H - TIP_H - 4));
+  return { left, top };
+}
+
 export default function MapTooltip({
   county,
+  anchor,
   onMouseEnter,
   onMouseLeave,
   onCountyClick,
@@ -68,13 +101,27 @@ export default function MapTooltip({
   const fundingGap = (county.budget || 0) - (county.moneyReceived || 0);
   const auditIssuesCount = county.auditIssues?.length || 0;
 
+  // When we know the anchor, position relative to it; otherwise fall
+  // back to the old center-top placement.
+  const positionStyle = anchor
+    ? (() => {
+        const p = placeTooltip(anchor);
+        return { left: p.left, top: p.top };
+      })()
+    : undefined;
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.92, y: 14 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.92, y: 14 }}
       transition={{ type: 'spring', damping: 22, stiffness: 340 }}
-      className='absolute z-50 top-[18%] left-1/2 -translate-x-1/2'>
+      style={positionStyle}
+      className={
+        anchor
+          ? 'absolute z-50'
+          : 'absolute z-50 top-[18%] left-1/2 -translate-x-1/2'
+      }>
       {/* Invisible hit-area so mouse doesn't lose hover in the gap */}
       <div
         className='absolute -inset-5 z-0'
