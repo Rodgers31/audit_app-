@@ -5,6 +5,10 @@ const nextConfig = {
   // into a direct deep-path import so only the symbols you use are bundled.
   experimental: {
     optimizePackageImports: ['lucide-react', 'recharts', 'framer-motion', 'date-fns', 'lodash'],
+    // Restore scroll position on browser back/forward. Without this,
+    // navigating from /counties?p=2 → /counties/001 → back drops the
+    // user at top of /counties instead of where they clicked.
+    scrollRestoration: true,
   },
   // @huggingface/transformers + onnxruntime-node are browser-only — the
   // Learn page dynamically imports them inside a `typeof window` guard.

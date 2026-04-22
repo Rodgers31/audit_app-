@@ -6,13 +6,17 @@
 
 import { County } from '@/types';
 import { motion } from 'framer-motion';
-import { AlertTriangle, ArrowRight, Receipt, Scale } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Receipt, Scale, X } from 'lucide-react';
 
 interface MapTooltipProps {
   county: County;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   onCountyClick: (county: County) => void;
+  /** When provided, renders an explicit close (X) button in the tooltip
+   * corner. Used on touch devices where auto-dismiss-on-mouseleave would
+   * close the tooltip before the user has time to read it. */
+  onClose?: () => void;
 }
 
 /* ── helpers ── */
@@ -58,6 +62,7 @@ export default function MapTooltip({
   onMouseEnter,
   onMouseLeave,
   onCountyClick,
+  onClose,
 }: MapTooltipProps) {
   const status = county.auditStatus || 'pending';
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
@@ -69,12 +74,18 @@ export default function MapTooltip({
   const auditIssuesCount = county.auditIssues?.length || 0;
 
   return (
+    // Framer-motion writes inline `transform`, which clobbers Tailwind's
+    // `-translate-x-1/2` centering class. That left the tooltip stuck at
+    // left: 50% with no horizontal shift, so it rendered to the right of
+    // the map's center and clipped off the viewport on mobile. We include
+    // the -50% X shift in motion's own transform instead so it composes
+    // with the scale/y animation.
     <motion.div
-      initial={{ opacity: 0, scale: 0.92, y: 14 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.92, y: 14 }}
+      initial={{ opacity: 0, scale: 0.92, y: 14, x: '-50%' }}
+      animate={{ opacity: 1, scale: 1, y: 0, x: '-50%' }}
+      exit={{ opacity: 0, scale: 0.92, y: 14, x: '-50%' }}
       transition={{ type: 'spring', damping: 22, stiffness: 340 }}
-      className='absolute z-50 top-[18%] left-1/2 -translate-x-1/2'>
+      className='absolute z-50 top-[18%] left-1/2'>
       {/* Invisible hit-area so mouse doesn't lose hover in the gap */}
       <div
         className='absolute -inset-5 z-0'
@@ -86,7 +97,11 @@ export default function MapTooltip({
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
         onClick={() => onCountyClick(county)}
-        className='relative w-72 rounded-xl bg-white/80 backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.12)] p-4 cursor-pointer transition-shadow hover:shadow-[0_12px_40px_rgba(0,0,0,0.18)]'>
+        // Width caps at 18rem on wide screens but shrinks to leave 1rem
+        // of viewport margin on either side so the tooltip never clips
+        // off the right edge on mobile. Content inside uses truncate /
+        // min-w-0 so labels reflow instead of overflowing the card.
+        className='relative w-[min(18rem,calc(100vw-2rem))] rounded-xl bg-white/80 backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.12)] p-4 cursor-pointer transition-shadow hover:shadow-[0_12px_40px_rgba(0,0,0,0.18)]'>
         {/* ── Header ── */}
         <div className='flex items-start justify-between gap-2 mb-3'>
           <div className='min-w-0'>
@@ -97,11 +112,29 @@ export default function MapTooltip({
                 : 'County overview'}
             </p>
           </div>
-          <span
-            className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ring-1 ${cfg.bg} ${cfg.text} ${cfg.ring}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-            {status}
-          </span>
+          <div className='flex items-center gap-1.5 shrink-0'>
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ring-1 ${cfg.bg} ${cfg.text} ${cfg.ring}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+              {status}
+            </span>
+            {onClose && (
+              // Explicit close button — needed on touch devices where the
+              // tooltip no longer auto-dismisses after a hover-leave timer.
+              // Rendered as a real <button> (not a div) for screen readers
+              // and to avoid the card's onClick swallowing the tap.
+              <button
+                type='button'
+                aria-label={`Close ${county.name} tooltip`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+                className='inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-800 active:bg-gray-300 transition-colors'>
+                <X className='w-3.5 h-3.5' />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ── Metrics row ── */}

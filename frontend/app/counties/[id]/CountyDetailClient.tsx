@@ -33,7 +33,8 @@ import {
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import SmartBackLink from '@/lib/navigation/SmartBackLink';
+import { usePathname, useParams, useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ACCT_GRADE_BG,
@@ -443,6 +444,8 @@ function SourcesFooter() {
 export default function CountyDetailClient() {
   const { t } = useLang();
   const params = useParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const countyId = params.id as string;
   // Respect ?fy=... from the listing so the Health badge matches the column
@@ -457,21 +460,37 @@ export default function CountyDetailClient() {
   const [tab, setTab] = useState<Tab>(validTabs.includes(initialTab) ? initialTab : 'overview');
   const [showHealthModal, setShowHealthModal] = useState(false);
 
-  // Scroll the tab bar into view whenever the user switches tabs. Without
-  // this, the browser preserves pixel-offset scroll position — so if the
-  // user was scrolled deep into Overview and clicks Budget & Debt (which
-  // is shorter), they land on the footer. The ref is attached to the tab
-  // bar below; `scroll-margin-top` compensates for the fixed header.
+  // Sync the active tab to the URL so reload / share-link / browser-back
+  // all restore the user's place. `?tab=overview` is the default and is
+  // omitted to keep the URL clean; any other tab is written as a query
+  // param via `router.replace` (no history entry — tab switching
+  // shouldn't clutter the back-button stack).
   const tabBarRef = useRef<HTMLDivElement | null>(null);
-  const handleTabChange = useCallback((next: Tab) => {
-    setTab(next);
-    requestAnimationFrame(() => {
-      tabBarRef.current?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
+  const handleTabChange = useCallback(
+    (next: Tab) => {
+      setTab(next);
+      // Mirror the tab into the URL.
+      const current = new URLSearchParams(Array.from(searchParams.entries()));
+      if (next === 'overview') {
+        current.delete('tab');
+      } else {
+        current.set('tab', next);
+      }
+      const qs = current.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+
+      // Scroll the tab bar into view. Without this, the browser preserves
+      // pixel-offset scroll position — if the user was deep into Overview
+      // and clicks Budget & Debt (shorter), they'd land on the footer.
+      requestAnimationFrame(() => {
+        tabBarRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
       });
-    });
-  }, []);
+    },
+    [pathname, router, searchParams]
+  );
 
   /* Loading */
   if (isLoading) {
@@ -527,13 +546,15 @@ export default function CountyDetailClient() {
       <PageShell
         title={`${data.name} ${t('county.page.name_suffix')}`}
         subtitle={t('county.page.subtitle')}>
-        {/* Back */}
-        <Link
+        {/* Back — uses SmartBackLink so coming from /counties?p=2 pops
+            history (restoring pagination, filters, scroll) instead of
+            pushing a fresh /counties. */}
+        <SmartBackLink
           href={topBackHref}
           className='inline-flex items-center gap-1.5 text-sm text-gov-forest hover:text-gov-dark transition-colors'>
           <ArrowLeft size={14} />
           {topBackLabel}
-        </Link>
+        </SmartBackLink>
 
         {/* ── Hero ── */}
         <motion.div

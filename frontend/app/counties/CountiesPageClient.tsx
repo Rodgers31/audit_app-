@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 
@@ -1114,26 +1114,107 @@ function CountyRankingsTable({
   sortField,
   sortDir,
   onSort,
-  showAll,
-  setShowAll,
   fiscalYear,
 }: {
   counties: County[];
   sortField: SortField;
   sortDir: SortDir;
   onSort: (f: SortField) => void;
-  showAll: boolean;
-  setShowAll: React.Dispatch<React.SetStateAction<boolean>>;
   fiscalYear: string;
 }) {
   const { t } = useLang();
-  const [page, setPage] = useState(1);
+  // BOTH pagination (?p=N) and the "View All" toggle (?view=all) are
+  // URL-driven so that browser back from a county detail page restores
+  // whichever list mode the user was in. Local `useState` would reset
+  // on every re-mount after client navigation — that's exactly the bug
+  // the user reported ("View All → click county → back → lost full list").
+  //
+  // We read the URL via `window.location.search` rather than the
+  // `useSearchParams()` hook because the hook can return an empty
+  // params map on first client render in App Router — the URL shows
+  // `?p=3` but the hook says `{}`, so the table renders page 1. Direct
+  // window access bypasses that hydration-timing bug.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const readPageFromUrl = useCallback((): number => {
+    if (typeof window === 'undefined') return 1;
+    const raw = new URLSearchParams(window.location.search).get('p');
+    const n = parseInt(raw || '1', 10);
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  }, []);
+
+  const readShowAllFromUrl = useCallback((): boolean => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('view') === 'all';
+  }, []);
+
+  const [pageFromUrl, setPageFromUrl] = useState<number>(() => readPageFromUrl());
+  const [showAll, setShowAllLocal] = useState<boolean>(() => readShowAllFromUrl());
+
+  // Keep local mirrors in sync with browser history (back/forward, manual edits).
+  useEffect(() => {
+    const onPop = () => {
+      setPageFromUrl(readPageFromUrl());
+      setShowAllLocal(readShowAllFromUrl());
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [readPageFromUrl, readShowAllFromUrl]);
+
+  // Also resync when Next.js internal navigation updates `searchParams`.
+  useEffect(() => {
+    setPageFromUrl(readPageFromUrl());
+    setShowAllLocal(readShowAllFromUrl());
+  }, [searchParams, readPageFromUrl, readShowAllFromUrl]);
+
   const totalPages = Math.ceil(counties.length / PAGE_SIZE);
+  // Clamp to valid range — an out-of-range `p` just clamps to last page.
+  const page = Math.min(Math.max(1, pageFromUrl), Math.max(1, totalPages));
   const paged = showAll ? counties : counties.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  React.useEffect(() => {
-    setPage(1);
-  }, [counties.length]);
+  const setPage = useCallback(
+    (next: number | ((prev: number) => number)) => {
+      const resolved = typeof next === 'function' ? next(page) : next;
+      const clamped = Math.min(Math.max(1, resolved), Math.max(1, totalPages));
+      const qs = new URLSearchParams(window.location.search);
+      if (clamped === 1) qs.delete('p');
+      else qs.set('p', String(clamped));
+      const newSearch = qs.toString();
+      router.replace(newSearch ? `${pathname}?${newSearch}` : pathname, { scroll: false });
+      setPageFromUrl(clamped);
+    },
+    [page, totalPages, pathname, router]
+  );
+
+  const setShowAll = useCallback(
+    (next: boolean | ((prev: boolean) => boolean)) => {
+      const resolved = typeof next === 'function' ? next(showAll) : next;
+      const qs = new URLSearchParams(window.location.search);
+      if (resolved) {
+        qs.set('view', 'all');
+        // ?p=N is meaningless in "view all" mode — strip it so a subsequent
+        // toggle-off doesn't resurrect a stale page index.
+        qs.delete('p');
+      } else {
+        qs.delete('view');
+      }
+      const newSearch = qs.toString();
+      router.replace(newSearch ? `${pathname}?${newSearch}` : pathname, { scroll: false });
+      setShowAllLocal(resolved);
+    },
+    [showAll, pathname, router]
+  );
+
+  // If the filter changes and the current page no longer has rows,
+  // drop back to page 1. Do NOT write the URL on mount — that would
+  // strip `?p=N` during back-navigation from the detail page.
+  useEffect(() => {
+    if (pageFromUrl > totalPages && totalPages >= 1) {
+      setPage(1);
+    }
+  }, [totalPages, pageFromUrl, setPage]);
 
   const pageNums = useMemo(() => {
     const nums: number[] = [];
@@ -1346,8 +1427,9 @@ export default function CountyExplorerPage() {
   const [sortField, setSortField] = useState<SortField>('budget');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
-  // "View All" toggle
-  const [showAll, setShowAll] = useState(false);
+  // NOTE: "View All" toggle state now lives inside CountyRankingsTable
+  // and is URL-driven via ?view=all so that back-navigation from a
+  // county detail page restores the full-list view.
 
   // Grade filter driven by the map legend
   const [mapGrades, setMapGrades] = useState<string[]>([]);
@@ -1709,8 +1791,6 @@ export default function CountyExplorerPage() {
                   sortField={sortField}
                   sortDir={sortDir}
                   onSort={handleSort}
-                  showAll={showAll}
-                  setShowAll={setShowAll}
                   fiscalYear={selectedYear}
                 />
               </motion.div>

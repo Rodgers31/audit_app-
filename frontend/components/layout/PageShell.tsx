@@ -3,8 +3,8 @@
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
-import Link from 'next/link';
 import React from 'react';
+import SmartBackLink from '@/lib/navigation/SmartBackLink';
 
 /**
  * PageShell
@@ -111,12 +111,12 @@ export default function PageShell({
               transition={{ duration: 0.5, ease: 'easeOut' }}
               className='max-w-3xl'>
               {back && (
-                <Link
+                <SmartBackLink
                   href={back.href}
                   className='mb-3 inline-flex items-center gap-1.5 rounded-full bg-white/8 px-3 py-1 text-[12.5px] font-semibold text-white/80 ring-1 ring-inset ring-white/10 backdrop-blur-sm transition-colors hover:bg-white/12 hover:text-white'>
                   <ArrowLeft size={13} />
                   {back.label}
-                </Link>
+                </SmartBackLink>
               )}
               <h1 className='font-display text-3xl sm:text-4xl lg:text-[2.75rem] text-white leading-[1.12] mb-2 drop-shadow-lg'>
                 {title}
