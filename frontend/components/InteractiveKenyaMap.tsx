@@ -61,6 +61,18 @@ export default function InteractiveKenyaMap({
   // showing the auto-rotate county as "active" while the user's mouse
   // is hovering something else.
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Mirror selectedCounty + counties in refs so the 800ms hide-timer's
+  // closure always sees the latest values (the closure was captured at
+  // mouseleave time; selectedCounty may have been set by a trailing
+  // click in the interim).
+  const selectedCountyRef = useRef(selectedCounty);
+  useEffect(() => {
+    selectedCountyRef.current = selectedCounty;
+  }, [selectedCounty]);
+  const countiesRef = useRef(counties);
+  useEffect(() => {
+    countiesRef.current = counties;
+  }, [counties]);
 
   /* ── geo data loading – single local file, inline fallback ── */
   const geoUrl = '/kenya-counties.json';
@@ -85,6 +97,28 @@ export default function InteractiveKenyaMap({
     };
   }, []);
 
+  /**
+   * Promote the current `hoveredCounty` to a selection on touch
+   * devices. Called from BOTH hover-linger timers (county leave + tooltip
+   * overlay leave) since on iOS a tap can fire mouseenter but not click,
+   * and whichever leave-timer fires last would otherwise clear the hover
+   * state and snap the map back to the auto-rotate county.
+   *
+   * Reads the latest selectedCounty and counties via refs so a trailing
+   * click that DID land doesn't get clobbered by a stale-closure promote.
+   */
+  const promoteHoverIfTouch = (hoveredName: string | null) => {
+    const isTouch =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(pointer: coarse)').matches;
+    if (!isTouch || !hoveredName || selectedCountyRef.current) return;
+    const c = getCountyByName(hoveredName, countiesRef.current ?? []);
+    if (!c) return;
+    onCountySelect(c);
+    const idx = (countiesRef.current ?? []).findIndex((cc) => cc.id === c.id);
+    if (idx >= 0) onCountyIndexChange(idx);
+  };
+
   /* ── hover handlers ── */
   const handleCountyMouseEnter = (countyName: string, county: any) => {
     if (hideTimeoutRef.current) {
@@ -101,8 +135,14 @@ export default function InteractiveKenyaMap({
     if (isProcessingLeaveRef.current) return;
     isProcessingLeaveRef.current = true;
     if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+    // Capture which county was hovered when mouseleave fired — the timer
+    // callback will reconcile this below if we're on a touch device.
+    const hoveredAtLeave = hoveredCounty;
     hideTimeoutRef.current = setTimeout(() => {
       if (!isOverlayHoveredRef.current) {
+        // Promote hover → selection on touch (see promoteHoverIfTouch
+        // comment). Falls through to normal clearing on desktop.
+        promoteHoverIfTouch(hoveredAtLeave);
         setHoveredCounty(null);
         setShowTooltip(false);
         if (onCountyHover) onCountyHover(null);
@@ -122,7 +162,15 @@ export default function InteractiveKenyaMap({
   const handleOverlayMouseLeave = () => {
     isOverlayHoveredRef.current = false;
     if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+    // Capture at mouseleave time; timer-callback reads it below.
+    const hoveredAtLeave = hoveredCounty;
     hideTimeoutRef.current = setTimeout(() => {
+      // Same promote-on-touch logic as the county leave-timer. Without
+      // it, tapping-without-clicking on mobile flows: mouseenter on
+      // county → hoveredCounty set → tooltip renders → mouse passes
+      // through the tooltip overlay on its way out → overlay timer
+      // fires 1200ms later → cleared hover state → map snaps back.
+      promoteHoverIfTouch(hoveredAtLeave);
       setHoveredCounty(null);
       setShowTooltip(false);
       if (onCountyHover) onCountyHover(null);
