@@ -56,13 +56,16 @@ const AUTO_ROTATE_MS = 15000;
  * what the user just picked. */
 const INTERACTION_PAUSE_MS = 30000;
 
-/** Detect coarse-pointer (touch) devices so we can swap the hint copy
- * and disable hover-triggered UI that doesn't make sense there. */
+/** Detect coarse-pointer (touch) devices OR narrow viewports so we can
+ * swap the hint copy and skip hover-triggered UI. At <=640px the map is
+ * thumb-sized and almost always interacted with via tap, even on a
+ * fine-pointer device (e.g. a resized desktop window). Either signal
+ * flips the UI to tap-first copy. */
 function useIsTouch(): boolean {
   const [touch, setTouch] = useState(false);
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mq = window.matchMedia('(pointer: coarse)');
+    const mq = window.matchMedia('(pointer: coarse), (max-width: 640px)');
     setTouch(mq.matches);
     const listener = (e: MediaQueryListEvent) => setTouch(e.matches);
     mq.addEventListener?.('change', listener);
