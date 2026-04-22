@@ -121,7 +121,11 @@ export default function Navigation() {
           </Link>
 
           {/* Center: Desktop Navigation */}
-          <nav className='hidden md:flex items-center gap-0.5 bg-white/[0.07] backdrop-blur-md px-1.5 py-1.5 rounded-full ring-1 ring-inset ring-white/15 shadow-[0_4px_20px_rgba(0,0,0,0.25)]'>
+          {/* The desktop nav has 6 items + padding that don't fit under ~1024px
+              (at md=768px the Sign In button on the right was rendering at
+              x=972 — clipped off the viewport). Switched the breakpoint from
+              md to lg so tablets get the hamburger menu instead. */}
+          <nav className='hidden lg:flex items-center gap-0.5 bg-white/[0.07] backdrop-blur-md px-1.5 py-1.5 rounded-full ring-1 ring-inset ring-white/15 shadow-[0_4px_20px_rgba(0,0,0,0.25)]'>
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               return (
@@ -240,7 +244,7 @@ export default function Navigation() {
 
             <button
               ref={mobileToggleRef}
-              className='md:hidden p-2 text-white/90 hover:text-white bg-white/10 rounded-full backdrop-blur-md'
+              className='lg:hidden p-2 text-white/90 hover:text-white bg-white/10 rounded-full backdrop-blur-md'
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-expanded={mobileMenuOpen}
               aria-controls='mobile-menu'
@@ -262,7 +266,7 @@ export default function Navigation() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className='fixed inset-0 z-40 pt-24 px-6 md:hidden flex flex-col items-center space-y-8'
+            className='fixed inset-0 z-40 pt-24 px-6 lg:hidden flex flex-col items-center space-y-8'
             style={{ backgroundColor: '#0F1A12' }}
             onClick={(e) => {
               // Click outside any nav item → close. Inner buttons/links
