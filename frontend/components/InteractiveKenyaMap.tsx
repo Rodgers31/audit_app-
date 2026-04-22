@@ -50,6 +50,17 @@ export default function InteractiveKenyaMap({
   const [animationMode, setAnimationMode] = useState<'slideshow' | 'pulse' | 'wave'>('slideshow');
   const [visualMode, setVisualMode] = useState<'focus' | 'overview'>('overview');
   const [isMapHovered, setIsMapHovered] = useState(false);
+  // Track coarse-pointer / touch state as React state so tooltip re-renders
+  // pick up the close button when the user resizes across the breakpoint.
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(pointer: coarse)');
+    setIsTouch(mq.matches);
+    const listener = (e: MediaQueryListEvent) => setIsTouch(e.matches);
+    mq.addEventListener?.('change', listener);
+    return () => mq.removeEventListener?.('change', listener);
+  }, []);
   const isOverlayHoveredRef = useRef(false);
   const isProcessingLeaveRef = useRef(false);
   // Must be a ref, not useState. State reads close over the render that
@@ -131,18 +142,30 @@ export default function InteractiveKenyaMap({
     if (county && onCountyHover) onCountyHover(county);
   };
 
+  /** True when the component is running on a coarse-pointer device
+   * (phone / tablet). Read lazily because SSR doesn't have `window`. */
+  const isTouchNow = () =>
+    typeof window !== 'undefined' &&
+    !!window.matchMedia?.('(pointer: coarse)').matches;
+
   const handleCountyMouseLeave = () => {
+    // On touch the tooltip is user-dismissed (via the close button or
+    // by tapping another county). Skipping the auto-hide linger gives
+    // the user time to read the content — previously the tooltip would
+    // vanish ~1s after tap, which isn't enough.
+    if (isTouchNow()) {
+      // Still promote the hovered county to a selection in case the
+      // tap didn't cleanly fire `click` on iOS (same reason as before),
+      // so the panel and pill reflect what they just tapped.
+      promoteHoverIfTouch(hoveredCounty);
+      return;
+    }
     if (isProcessingLeaveRef.current) return;
     isProcessingLeaveRef.current = true;
     if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-    // Capture which county was hovered when mouseleave fired — the timer
-    // callback will reconcile this below if we're on a touch device.
     const hoveredAtLeave = hoveredCounty;
     hideTimeoutRef.current = setTimeout(() => {
       if (!isOverlayHoveredRef.current) {
-        // Promote hover → selection on touch (see promoteHoverIfTouch
-        // comment). Falls through to normal clearing on desktop.
-        promoteHoverIfTouch(hoveredAtLeave);
         setHoveredCounty(null);
         setShowTooltip(false);
         if (onCountyHover) onCountyHover(null);
@@ -160,22 +183,32 @@ export default function InteractiveKenyaMap({
     }
   };
   const handleOverlayMouseLeave = () => {
+    // See handleCountyMouseLeave — on touch the tooltip stays open until
+    // the user taps the close button or another county.
+    if (isTouchNow()) return;
     isOverlayHoveredRef.current = false;
     if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-    // Capture at mouseleave time; timer-callback reads it below.
-    const hoveredAtLeave = hoveredCounty;
     hideTimeoutRef.current = setTimeout(() => {
-      // Same promote-on-touch logic as the county leave-timer. Without
-      // it, tapping-without-clicking on mobile flows: mouseenter on
-      // county → hoveredCounty set → tooltip renders → mouse passes
-      // through the tooltip overlay on its way out → overlay timer
-      // fires 1200ms later → cleared hover state → map snaps back.
-      promoteHoverIfTouch(hoveredAtLeave);
       setHoveredCounty(null);
       setShowTooltip(false);
       if (onCountyHover) onCountyHover(null);
       hideTimeoutRef.current = null;
     }, 1200);
+  };
+
+  /** Explicit tooltip dismiss, triggered by the close button on touch
+   * devices. Clears hover-state + tooltip visibility but leaves
+   * selectedCounty alone so the panel and pill still reflect what was
+   * tapped. */
+  const handleTooltipClose = () => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+    isOverlayHoveredRef.current = false;
+    setHoveredCounty(null);
+    setShowTooltip(false);
+    if (onCountyHover) onCountyHover(null);
   };
 
   /* ── auto-rotate + animation mode cycle ── */
@@ -450,6 +483,12 @@ export default function InteractiveKenyaMap({
                   onMouseEnter={handleOverlayMouseEnter}
                   onMouseLeave={handleOverlayMouseLeave}
                   onCountyClick={handleCountyClick}
+                  // Only show the close button on coarse-pointer devices.
+                  // Desktop users already have hover-dismiss, and a close
+                  // button there would just be noise. `isTouch` is tracked
+                  // as state so window-resize across breakpoints updates
+                  // the UI.
+                  onClose={isTouch ? handleTooltipClose : undefined}
                 />
               ) : null;
             })()}

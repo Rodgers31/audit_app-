@@ -6,13 +6,17 @@
 
 import { County } from '@/types';
 import { motion } from 'framer-motion';
-import { AlertTriangle, ArrowRight, Receipt, Scale } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Receipt, Scale, X } from 'lucide-react';
 
 interface MapTooltipProps {
   county: County;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   onCountyClick: (county: County) => void;
+  /** When provided, renders an explicit close (X) button in the tooltip
+   * corner. Used on touch devices where auto-dismiss-on-mouseleave would
+   * close the tooltip before the user has time to read it. */
+  onClose?: () => void;
 }
 
 /* ── helpers ── */
@@ -58,6 +62,7 @@ export default function MapTooltip({
   onMouseEnter,
   onMouseLeave,
   onCountyClick,
+  onClose,
 }: MapTooltipProps) {
   const status = county.auditStatus || 'pending';
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
@@ -107,11 +112,29 @@ export default function MapTooltip({
                 : 'County overview'}
             </p>
           </div>
-          <span
-            className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ring-1 ${cfg.bg} ${cfg.text} ${cfg.ring}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-            {status}
-          </span>
+          <div className='flex items-center gap-1.5 shrink-0'>
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ring-1 ${cfg.bg} ${cfg.text} ${cfg.ring}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+              {status}
+            </span>
+            {onClose && (
+              // Explicit close button — needed on touch devices where the
+              // tooltip no longer auto-dismisses after a hover-leave timer.
+              // Rendered as a real <button> (not a div) for screen readers
+              // and to avoid the card's onClick swallowing the tap.
+              <button
+                type='button'
+                aria-label={`Close ${county.name} tooltip`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+                className='inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-800 active:bg-gray-300 transition-colors'>
+                <X className='w-3.5 h-3.5' />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ── Metrics row ── */}
