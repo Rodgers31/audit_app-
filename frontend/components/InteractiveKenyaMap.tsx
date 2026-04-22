@@ -49,11 +49,18 @@ export default function InteractiveKenyaMap({
   const [showTooltip, setShowTooltip] = useState(false);
   const [animationMode, setAnimationMode] = useState<'slideshow' | 'pulse' | 'wave'>('slideshow');
   const [visualMode, setVisualMode] = useState<'focus' | 'overview'>('overview');
-  const [hideTimeoutId, setHideTimeoutId] = useState<NodeJS.Timeout | null>(null);
-
   const [isMapHovered, setIsMapHovered] = useState(false);
   const isOverlayHoveredRef = useRef(false);
   const isProcessingLeaveRef = useRef(false);
+  // Must be a ref, not useState. State reads close over the render that
+  // created the handler — if a mouseenter runs BEFORE React commits the
+  // render after a mouseleave's `setHideTimeoutId(tid)`, the closure
+  // sees the stale null ID, can't cancel the pending timer, and the
+  // timer fires 800ms later clearing `hoveredCounty` even though the
+  // cursor is still on a county. Visually that flips the map back to
+  // showing the auto-rotate county as "active" while the user's mouse
+  // is hovering something else.
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ── geo data loading – single local file, inline fallback ── */
   const geoUrl = '/kenya-counties.json';
@@ -80,9 +87,9 @@ export default function InteractiveKenyaMap({
 
   /* ── hover handlers ── */
   const handleCountyMouseEnter = (countyName: string, county: any) => {
-    if (hideTimeoutId) {
-      clearTimeout(hideTimeoutId);
-      setHideTimeoutId(null);
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
     }
     isProcessingLeaveRef.current = false;
     setHoveredCounty(countyName);
@@ -93,36 +100,34 @@ export default function InteractiveKenyaMap({
   const handleCountyMouseLeave = () => {
     if (isProcessingLeaveRef.current) return;
     isProcessingLeaveRef.current = true;
-    if (hideTimeoutId) {
-      clearTimeout(hideTimeoutId);
-      setHideTimeoutId(null);
-    }
-    const tid = setTimeout(() => {
+    if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+    hideTimeoutRef.current = setTimeout(() => {
       if (!isOverlayHoveredRef.current) {
         setHoveredCounty(null);
         setShowTooltip(false);
         if (onCountyHover) onCountyHover(null);
       }
       isProcessingLeaveRef.current = false;
+      hideTimeoutRef.current = null;
     }, 800);
-    setHideTimeoutId(tid);
   };
 
   const handleOverlayMouseEnter = () => {
     isOverlayHoveredRef.current = true;
-    if (hideTimeoutId) {
-      clearTimeout(hideTimeoutId);
-      setHideTimeoutId(null);
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
     }
   };
   const handleOverlayMouseLeave = () => {
     isOverlayHoveredRef.current = false;
-    const tid = setTimeout(() => {
+    if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+    hideTimeoutRef.current = setTimeout(() => {
       setHoveredCounty(null);
       setShowTooltip(false);
       if (onCountyHover) onCountyHover(null);
+      hideTimeoutRef.current = null;
     }, 1200);
-    setHideTimeoutId(tid);
   };
 
   /* ── auto-rotate + animation mode cycle ── */
@@ -148,9 +153,9 @@ export default function InteractiveKenyaMap({
 
   useEffect(
     () => () => {
-      if (hideTimeoutId) clearTimeout(hideTimeoutId);
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
     },
-    [hideTimeoutId]
+    []
   );
 
   /* ── derived ── */
