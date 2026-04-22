@@ -162,7 +162,13 @@ export default function InteractiveKenyaMap({
   const currentAutoCounty =
     !selectedCounty && counties?.length ? counties[currentCountyIndex] : null;
 
-  const activeLabel = selectedCounty?.name ?? currentAutoCounty?.name ?? null;
+  // Label pill priority: hover > click > auto-rotate. Without this the
+  // pill kept showing the auto-rotate target even while the user was
+  // hovering a different county, so the map felt like it was "fighting"
+  // the cursor.
+  const activeLabel = hoveredCounty
+    ? getCountyByName(hoveredCounty, counties ?? [])?.name ?? null
+    : selectedCounty?.name ?? currentAutoCounty?.name ?? null;
 
   /* ── matched county count for header ── */
   const matchedCount = useMemo(() => counties?.length ?? 0, [counties]);
@@ -305,9 +311,13 @@ export default function InteractiveKenyaMap({
                   geo.properties?.name ||
                   '';
                 const county = getCountyByName(geoCountyName, counties || []);
+                // The auto-rotate county only counts as "active" (scale-up +
+                // glow + thick stroke) when nothing else is taking focus.
+                // Hovering any county suppresses it so we never have two
+                // counties reading as active at once.
                 const isActive =
                   selectedCounty?.id === county?.id ||
-                  (!selectedCounty && currentAutoCounty?.id === county?.id);
+                  (!selectedCounty && !hoveredCounty && currentAutoCounty?.id === county?.id);
                 const isHovered = hoveredCounty === geoCountyName;
 
                 const fillColor = getCountyColor(
@@ -370,8 +380,9 @@ export default function InteractiveKenyaMap({
             }
           </Geographies>
 
-          {/* Active County Marker */}
-          {currentAutoCounty && <CountyMarker county={currentAutoCounty} />}
+          {/* Active County Marker — hidden while hovering so it doesn't
+              compete with the cursor's target for attention. */}
+          {currentAutoCounty && !hoveredCounty && <CountyMarker county={currentAutoCounty} />}
         </ComposableMap>
 
         {/* Hover Tooltip */}

@@ -86,9 +86,12 @@ export const getCountyColor = (
   // Selected county — deepest shade
   if (selectedCounty?.id === county.id) return pal.active;
 
-  // Auto-rotating county — same as selected
+  // Auto-rotating county — deepest shade, but ONLY when nothing else is
+  // active. If the user is hovering anywhere, drop the auto-rotate
+  // visual back to base shade so the hovered county is the one that
+  // reads as "active" on the map.
   const currentCounty = counties[currentCountyIndex] ?? null;
-  if (!selectedCounty && currentCounty?.id === county.id) return pal.active;
+  if (!selectedCounty && !hoveredCounty && currentCounty?.id === county.id) return pal.active;
 
   // Hovered county — mid shade
   if (hoveredCounty === geoCountyName) return pal.hover;
