@@ -28,6 +28,58 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
    HELPERS
    ══════════════════════════════════════════════════════════════════════════════ */
 
+const COUNTIES_NEUTRAL_RGB = '245,240,232';
+
+/** Scenic flag image pinned to the bottom of the page. Extracted into a
+ * component so all three page states (loading, error, loaded) can render
+ * it identically — otherwise the image is only in the loaded-state
+ * markup, which makes it "appear" after data arrives and scores a
+ * 0.5+ CLS hit the first time the user lands here. */
+function CountiesScenicBottom() {
+  return (
+    <div
+      className='absolute bottom-0 left-0 right-0'
+      aria-hidden='true'
+      style={{ height: '45vh', zIndex: 0 }}>
+      <Image
+        src='/kenya_bg_bottom.jpg'
+        alt=''
+        fill
+        sizes='100vw'
+        className='object-cover'
+        style={{ objectPosition: 'center 75%' }}
+      />
+      <div
+        className='absolute inset-0'
+        style={{
+          background: `linear-gradient(180deg,
+            rgba(15,26,18,0.60) 0%,
+            rgba(15,26,18,0.18) 40%,
+            rgba(15,26,18,0.32) 100%
+          )`,
+        }}
+      />
+      <div className='absolute top-0 left-0 right-0' style={{ height: '50%' }}>
+        <div
+          className='absolute inset-0'
+          style={{
+            background: `linear-gradient(to top,
+              transparent 0%,
+              rgba(${COUNTIES_NEUTRAL_RGB},0.07) 15%,
+              rgba(${COUNTIES_NEUTRAL_RGB},0.21) 30%,
+              rgba(${COUNTIES_NEUTRAL_RGB},0.39) 45%,
+              rgba(${COUNTIES_NEUTRAL_RGB},0.61) 60%,
+              rgba(${COUNTIES_NEUTRAL_RGB},0.77) 75%,
+              rgba(${COUNTIES_NEUTRAL_RGB},0.88) 88%,
+              rgba(${COUNTIES_NEUTRAL_RGB},0.94) 100%
+            )`,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function fmtKES(n: number): string {
   if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
   if (n >= 1e6) return `${(n / 1e6).toFixed(0)}M`;
@@ -1568,6 +1620,7 @@ export default function CountyExplorerPage() {
   if (isLoading) {
     return (
       <div className='relative min-h-screen' style={{ backgroundColor: 'rgb(245,240,232)' }}>
+        <CountiesScenicBottom />
         <div className='relative z-[1]'>
           <div className='bg-gov-dark'>
             <div className='h-[72px]' />
@@ -1576,7 +1629,14 @@ export default function CountyExplorerPage() {
               <div className='h-4 w-96 bg-white/5 rounded mt-3 animate-pulse' />
             </div>
           </div>
-          <div className='max-w-[1340px] mx-auto px-5 lg:px-8 py-8'>
+          {/* Reserve roughly the height of the loaded rankings + sidebar
+              so the scenic image below doesn't leap into a different
+              position once `useCounties` resolves. The table at a
+              typical viewport runs ~1100px; pad to 1200 to account for
+              KPI row + pagination. */}
+          <div
+            className='max-w-[1340px] mx-auto px-5 lg:px-8 py-8'
+            style={{ minHeight: 1200 }}>
             <div className='flex items-center justify-center py-24'>
               <div className='animate-spin rounded-full h-14 w-14 border-b-2 border-gov-forest' />
             </div>
@@ -1589,6 +1649,7 @@ export default function CountyExplorerPage() {
   if (error || !counties) {
     return (
       <div className='relative min-h-screen' style={{ backgroundColor: 'rgb(245,240,232)' }}>
+        <CountiesScenicBottom />
         <div className='relative z-[1]'>
           <div className='bg-gov-dark'>
             <div className='h-[72px]' />
@@ -1612,51 +1673,11 @@ export default function CountyExplorerPage() {
     );
   }
 
-  const NEUTRAL_RGB = '245,240,232';
-
   return (
-    <div className='relative min-h-screen' style={{ backgroundColor: `rgb(${NEUTRAL_RGB})` }}>
-      {/* ═══ Bottom scenic image (Kenyan flag) ═══ */}
-      <div
-        className='absolute bottom-0 left-0 right-0'
-        aria-hidden='true'
-        style={{ height: '45vh', zIndex: 0 }}>
-        <Image
-          src='/kenya_bg_bottom.jpg'
-          alt=''
-          fill
-          sizes='100vw'
-          className='object-cover'
-          style={{ objectPosition: 'center 75%' }}
-        />
-        <div
-          className='absolute inset-0'
-          style={{
-            background: `linear-gradient(180deg,
-              rgba(15,26,18,0.60) 0%,
-              rgba(15,26,18,0.18) 40%,
-              rgba(15,26,18,0.32) 100%
-            )`,
-          }}
-        />
-        <div className='absolute top-0 left-0 right-0' style={{ height: '50%' }}>
-          <div
-            className='absolute inset-0'
-            style={{
-              background: `linear-gradient(to top,
-                transparent 0%,
-                rgba(${NEUTRAL_RGB},0.07) 15%,
-                rgba(${NEUTRAL_RGB},0.21) 30%,
-                rgba(${NEUTRAL_RGB},0.39) 45%,
-                rgba(${NEUTRAL_RGB},0.61) 60%,
-                rgba(${NEUTRAL_RGB},0.77) 75%,
-                rgba(${NEUTRAL_RGB},0.88) 88%,
-                rgba(${NEUTRAL_RGB},0.94) 100%
-              )`,
-            }}
-          />
-        </div>
-      </div>
+    <div
+      className='relative min-h-screen'
+      style={{ backgroundColor: `rgb(${COUNTIES_NEUTRAL_RGB})` }}>
+      <CountiesScenicBottom />
 
       {/* ═══ Content layer ═══ */}
       <div className='relative z-[1]'>
