@@ -137,6 +137,46 @@ test.describe('Smart back link — counties list ↔ detail', () => {
     await expect(page.getByText(/Showing\s+21[–\-]30\s+of/)).toBeVisible({ timeout: 10_000 });
   });
 
+  test('View All → click county → back → restores full list (not paginated page 1)', async ({
+    page,
+  }) => {
+    // User-reported: "I clicked 'View All Counties', it showed the full
+    // 47-row list, I clicked a county, then clicked 'All counties' to go
+    // back — but it took me to the paginated view, not the full list."
+    // Fix: showAll is URL-driven (?view=all) so router.back() restores it.
+    await page.goto('/counties');
+    await waitForAppReady(page);
+    await expect(page.locator('table tbody tr').first()).toBeVisible({ timeout: 20_000 });
+
+    // Click "View All Counties"
+    await page.getByRole('button', { name: /View All Counties|Kaunti Zote/i }).click();
+    await expect(page).toHaveURL(/[?&]view=all/, { timeout: 5_000 });
+    // Pagination controls should be hidden now
+    await expect(page.getByRole('button', { name: /^<\s*Prev$/ })).toHaveCount(0);
+    // The full list (47 rows) should be rendered
+    await expect(page.locator('table tbody tr')).toHaveCount(47, { timeout: 10_000 });
+
+    // Scroll partway down so the back round-trip has something to restore
+    await page.evaluate(() => window.scrollTo(0, 1500));
+    await page.waitForTimeout(200);
+
+    // Click into a county (pick one mid-list so scroll matters)
+    const midLink = page.locator('table tbody tr').nth(15).getByRole('link').first();
+    await midLink.scrollIntoViewIfNeeded();
+    await midLink.click();
+    await page.waitForURL(/\/counties\/[\w-]+/, { timeout: 15_000 });
+
+    // Click "← All counties" back link
+    const back = page.getByRole('link', { name: /All counties|Kaunti zote/i }).first();
+    await back.click();
+
+    // Must land back on /counties?view=all (full list), NOT /counties (paginated p=1)
+    await expect(page).toHaveURL(/\/counties\?.*view=all/, { timeout: 10_000 });
+    await expect(page.locator('table tbody tr')).toHaveCount(47, { timeout: 10_000 });
+    // Pagination should still be hidden
+    await expect(page.getByRole('button', { name: /^<\s*Prev$/ })).toHaveCount(0);
+  });
+
   test('returning from a county to a FILTERED list restores filters via history', async ({ page }) => {
     await gotoPage2OfCountiesList(page);
 

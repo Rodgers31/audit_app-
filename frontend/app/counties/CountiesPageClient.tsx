@@ -1114,22 +1114,20 @@ function CountyRankingsTable({
   sortField,
   sortDir,
   onSort,
-  showAll,
-  setShowAll,
   fiscalYear,
 }: {
   counties: County[];
   sortField: SortField;
   sortDir: SortDir;
   onSort: (f: SortField) => void;
-  showAll: boolean;
-  setShowAll: React.Dispatch<React.SetStateAction<boolean>>;
   fiscalYear: string;
 }) {
   const { t } = useLang();
-  // Pagination state is URL-driven (?p=N) so that browser back from a
-  // county detail page restores the user's place in the list. Local
-  // `useState(1)` would reset on every re-mount after client navigation.
+  // BOTH pagination (?p=N) and the "View All" toggle (?view=all) are
+  // URL-driven so that browser back from a county detail page restores
+  // whichever list mode the user was in. Local `useState` would reset
+  // on every re-mount after client navigation — that's exactly the bug
+  // the user reported ("View All → click county → back → lost full list").
   //
   // We read the URL via `window.location.search` rather than the
   // `useSearchParams()` hook because the hook can return an empty
@@ -1147,19 +1145,29 @@ function CountyRankingsTable({
     return Number.isFinite(n) && n > 0 ? n : 1;
   }, []);
 
-  const [pageFromUrl, setPageFromUrl] = useState<number>(() => readPageFromUrl());
+  const readShowAllFromUrl = useCallback((): boolean => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('view') === 'all';
+  }, []);
 
-  // Keep local mirror in sync with browser history (back/forward, manual edits).
+  const [pageFromUrl, setPageFromUrl] = useState<number>(() => readPageFromUrl());
+  const [showAll, setShowAllLocal] = useState<boolean>(() => readShowAllFromUrl());
+
+  // Keep local mirrors in sync with browser history (back/forward, manual edits).
   useEffect(() => {
-    const onPop = () => setPageFromUrl(readPageFromUrl());
+    const onPop = () => {
+      setPageFromUrl(readPageFromUrl());
+      setShowAllLocal(readShowAllFromUrl());
+    };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
-  }, [readPageFromUrl]);
+  }, [readPageFromUrl, readShowAllFromUrl]);
 
   // Also resync when Next.js internal navigation updates `searchParams`.
   useEffect(() => {
     setPageFromUrl(readPageFromUrl());
-  }, [searchParams, readPageFromUrl]);
+    setShowAllLocal(readShowAllFromUrl());
+  }, [searchParams, readPageFromUrl, readShowAllFromUrl]);
 
   const totalPages = Math.ceil(counties.length / PAGE_SIZE);
   // Clamp to valid range — an out-of-range `p` just clamps to last page.
@@ -1178,6 +1186,25 @@ function CountyRankingsTable({
       setPageFromUrl(clamped);
     },
     [page, totalPages, pathname, router]
+  );
+
+  const setShowAll = useCallback(
+    (next: boolean | ((prev: boolean) => boolean)) => {
+      const resolved = typeof next === 'function' ? next(showAll) : next;
+      const qs = new URLSearchParams(window.location.search);
+      if (resolved) {
+        qs.set('view', 'all');
+        // ?p=N is meaningless in "view all" mode — strip it so a subsequent
+        // toggle-off doesn't resurrect a stale page index.
+        qs.delete('p');
+      } else {
+        qs.delete('view');
+      }
+      const newSearch = qs.toString();
+      router.replace(newSearch ? `${pathname}?${newSearch}` : pathname, { scroll: false });
+      setShowAllLocal(resolved);
+    },
+    [showAll, pathname, router]
   );
 
   // If the filter changes and the current page no longer has rows,
@@ -1400,8 +1427,9 @@ export default function CountyExplorerPage() {
   const [sortField, setSortField] = useState<SortField>('budget');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
-  // "View All" toggle
-  const [showAll, setShowAll] = useState(false);
+  // NOTE: "View All" toggle state now lives inside CountyRankingsTable
+  // and is URL-driven via ?view=all so that back-navigation from a
+  // county detail page restores the full-list view.
 
   // Grade filter driven by the map legend
   const [mapGrades, setMapGrades] = useState<string[]>([]);
@@ -1763,8 +1791,6 @@ export default function CountyExplorerPage() {
                   sortField={sortField}
                   sortDir={sortDir}
                   onSort={handleSort}
-                  showAll={showAll}
-                  setShowAll={setShowAll}
                   fiscalYear={selectedYear}
                 />
               </motion.div>
