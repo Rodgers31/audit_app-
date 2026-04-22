@@ -17,7 +17,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { waitForAppReady } from './utils/selectors';
 
-async function gotoPage2OfCountiesList(page: Page) {
+async function gotoPageNOfCountiesList(page: Page, n: number) {
   await page.goto('/counties');
   await waitForAppReady(page);
 
@@ -28,13 +28,21 @@ async function gotoPage2OfCountiesList(page: Page) {
     timeout: 15_000,
   });
 
-  // Pagination uses buttons labelled exactly "2" — no other "2" button
+  // Pagination uses buttons labelled exactly "N" — no other "N" button
   // exists on this page.
-  await page.getByRole('button', { name: '2', exact: true }).click();
+  await page.getByRole('button', { name: String(n), exact: true }).click();
 
-  // URL updated to ?p=2 and content is ranks 11-20
-  await expect(page).toHaveURL(/[?&]p=2/, { timeout: 5_000 });
-  await expect(page.getByText(/Showing\s+11[–\-]20\s+of/)).toBeVisible({ timeout: 5_000 });
+  const lo = (n - 1) * 10 + 1;
+  const hi = n * 10;
+  // URL updated to ?p=N and content is ranks (lo)-(hi)
+  await expect(page).toHaveURL(new RegExp(`[?&]p=${n}`), { timeout: 5_000 });
+  await expect(
+    page.getByText(new RegExp(`Showing\\s+${lo}[–\\-]${hi}\\s+of`)),
+  ).toBeVisible({ timeout: 5_000 });
+}
+
+async function gotoPage2OfCountiesList(page: Page) {
+  await gotoPageNOfCountiesList(page, 2);
 }
 
 test.describe('Smart back link — counties list ↔ detail', () => {
@@ -109,6 +117,24 @@ test.describe('Smart back link — counties list ↔ detail', () => {
     // restore). Must not land somewhere unrelated.
     await expect(page).toHaveURL(/\/counties(\/|\?|$)/, { timeout: 10_000 });
     await expect(page.locator('table tbody tr').first()).toBeVisible({ timeout: 15_000 });
+  });
+
+  test('page 3 (user-reported scenario) → detail → All counties → restores page 3', async ({ page }) => {
+    // The user explicitly reported this scenario on page 3.
+    // Page 2 is already covered above; this locks in that the fix is
+    // *general*, not scoped to a single page number.
+    await gotoPageNOfCountiesList(page, 3);
+
+    const firstLink = page.locator('table tbody tr').first().getByRole('link').first();
+    await firstLink.click();
+    await page.waitForURL(/\/counties\/[\w-]+/, { timeout: 15_000 });
+
+    const back = page.getByRole('link', { name: /All counties|Kaunti zote/i }).first();
+    await back.click();
+
+    // Must land on /counties?p=3 (NOT /counties bare, NOT /counties?p=1)
+    await expect(page).toHaveURL(/\/counties\?.*p=3/, { timeout: 10_000 });
+    await expect(page.getByText(/Showing\s+21[–\-]30\s+of/)).toBeVisible({ timeout: 10_000 });
   });
 
   test('returning from a county to a FILTERED list restores filters via history', async ({ page }) => {
