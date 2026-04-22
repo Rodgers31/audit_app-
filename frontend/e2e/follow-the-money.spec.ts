@@ -111,6 +111,54 @@ test.describe('Follow the Money — year selector', () => {
   });
 });
 
+test.describe('Follow the Money — national page (/transparency)', () => {
+  /** User-reported: "When I load the Follow the Money page, it doesn't
+   * highlight the 2025/26 year that it loads by default."
+   *
+   * Root cause: the audits API returns "FY2025/26" while the local
+   * `generateFiscalYears()` fallback returns "2025/26". `selectedYear`
+   * was initialized from the fallback and then never matched any
+   * API-sourced button, so `aria-pressed` was false on every pill.
+   *
+   * Fix: year strings are normalized to bare "YYYY/YY" at the boundary,
+   * so the initial `selectedYear` and the post-API `pickerYears` always
+   * agree.
+   */
+  test('default fiscal-year pill is highlighted on initial load', async ({ page }) => {
+    await page.goto('/transparency');
+    await waitForAppReady(page);
+
+    // Wait for the picker to render
+    const picker = page.locator('[class*="Fiscal year"]').or(page.getByText(/Fiscal year/i));
+    await expect(picker.first()).toBeVisible({ timeout: 15_000 });
+
+    // Exactly one button should be aria-pressed=true (the default)
+    const activePills = page.locator('button[aria-pressed="true"]').filter({
+      hasText: /FY\d{4}\/\d{2}/,
+    });
+    await expect(activePills).toHaveCount(1, { timeout: 10_000 });
+
+    // And it must be the current FY (April 2026 → FY2025/26)
+    await expect(activePills).toHaveText(/FY2025\/26/);
+  });
+
+  test('clicking a different FY moves the highlight to that pill', async ({ page }) => {
+    await page.goto('/transparency');
+    await waitForAppReady(page);
+
+    const target = page.getByRole('button', { name: /FY2023\/24/ });
+    await expect(target).toBeVisible({ timeout: 15_000 });
+    await target.click();
+
+    // aria-pressed flips to the clicked pill
+    await expect(target).toHaveAttribute('aria-pressed', 'true', { timeout: 5_000 });
+
+    // Previously-active pill is no longer pressed
+    const previous = page.getByRole('button', { name: /FY2025\/26/ });
+    await expect(previous).toHaveAttribute('aria-pressed', 'false');
+  });
+});
+
 test.describe('Follow the Money — efficiency + provenance', () => {
   test('efficiency score is rendered as a percentage ring', async ({ page }) => {
     await page.goto(`/counties/${COUNTY_ID}`);

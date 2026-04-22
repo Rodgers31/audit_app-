@@ -79,7 +79,7 @@ export default function FiscalYearPicker({ years, selected, onSelect }: Props) {
                   />
                 </span>
               )}
-              {y.fiscal_year.replace('FY ', '')}
+              FY{y.fiscal_year.replace(/^FY\s*/i, '')}
               {isCurrent && (
                 <span
                   className={`hidden sm:inline text-[9.5px] uppercase tracking-wider font-medium ${

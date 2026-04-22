@@ -60,6 +60,16 @@ function fundingImpact(amount: number): string {
   return '';
 }
 
+/** Strip an optional "FY" or "FY " prefix so year strings from all
+ * sources normalise to the same "YYYY/YY" canonical form. The audits
+ * API returns "FY2025/26" but `generateFiscalYears()` (and the rest of
+ * the app) uses bare "2025/26" — mixing them left `selectedYear` and
+ * the picker buttons never comparing equal, so no button highlighted
+ * on page load. */
+function normalizeFY(y: string): string {
+  return (y || '').replace(/^FY\s*/i, '').trim();
+}
+
 /** Convert a raw "YYYY/YY" string into the shape FiscalYearPicker wants. */
 function toPickerOptions(years: string[]): { fiscal_year: string; is_current?: boolean }[] {
   if (!years || years.length === 0) return [];
@@ -233,7 +243,15 @@ function EfficiencyBar({ score }: { score: number }) {
 
 export default function TransparencyPage() {
   const { data: fiscalYearsRaw } = useAvailableFiscalYears();
-  const years = fiscalYearsRaw && fiscalYearsRaw.length > 0 ? fiscalYearsRaw : DEFAULT_FISCAL_YEARS;
+  // Normalize every source to bare "YYYY/YY" so the API-returned
+  // "FY2025/26" doesn't diverge from the local `generateFiscalYears()`
+  // fallback — otherwise `selectedYear` (set from the fallback on
+  // first render) never matches any button once the API resolves, and
+  // no pill is highlighted.
+  const years = useMemo(() => {
+    const raw = fiscalYearsRaw && fiscalYearsRaw.length > 0 ? fiscalYearsRaw : DEFAULT_FISCAL_YEARS;
+    return raw.map(normalizeFY);
+  }, [fiscalYearsRaw]);
   const pickerYears = useMemo(() => toPickerOptions(years), [years]);
 
   const defaultYear = pickerYears.find((y) => y.is_current)?.fiscal_year ?? years[0];
