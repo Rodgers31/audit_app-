@@ -50,7 +50,13 @@ def run(
                 .model_copy(update={"finished_at": datetime.now(timezone.utc)})
             )
 
-    records = parser.parse_imf_weo(payload, vintage=started_at)
+    # Restrict to the countries we actually want in the DB. IMF's
+    # DataMapper returns the global dataset regardless of URL filter,
+    # which would otherwise flood us with ~200 countries and aggregate
+    # codes (some of which exceed VARCHAR(3)).
+    records = parser.parse_imf_weo(
+        payload, vintage=started_at, only_countries=fetcher.COUNTRIES
+    )
     stats = writer.persist_imf_weo(session, records, context)
     errors.extend(stats.errors)
 

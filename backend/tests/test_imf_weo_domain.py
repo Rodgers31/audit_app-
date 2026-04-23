@@ -159,6 +159,36 @@ def test_parser_tolerates_missing_values_node():
     assert rows == []
 
 
+def test_parser_filters_out_regional_aggregates():
+    """IMF DataMapper ignores the URL country filter and returns every
+    country plus aggregates like WEOWORLD, ADVEC, EURO. The parser must
+    drop anything not in ``only_countries`` so the DB stays scoped and
+    we never overflow VARCHAR(3/16) with 8-char aggregate codes."""
+    vintage = datetime.now(timezone.utc)
+    payload = {
+        "GGXWDG_NGDP": {
+            "values": {
+                "GGXWDG_NGDP": {
+                    "KEN": {"2024": 67.3},
+                    "USA": {"2024": 122.1},
+                    "WEOWORLD": {"2024": 92.5},  # 8-char aggregate
+                    "ADVEC": {"2024": 110.8},  # 5-char aggregate
+                    "EURO": {"2024": 88.2},  # 4-char aggregate
+                }
+            }
+        }
+    }
+    rows = imf_parser.parse_imf_weo(
+        payload, vintage=vintage, only_countries=("KEN",)
+    )
+    assert len(rows) == 1
+    assert rows[0]["country_code"] == "KEN"
+
+    # None means "store everything" — opt-in filter, not default.
+    rows_all = imf_parser.parse_imf_weo(payload, vintage=vintage)
+    assert len(rows_all) == 5
+
+
 # ── domain integration ───────────────────────────────────────────
 
 

@@ -27,17 +27,31 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, Iterable, List, Optional
 
 logger = logging.getLogger("seeding.imf_weo.parser")
 
 
 def parse_imf_weo(
-    payload: Dict[str, Dict[str, Any]], vintage: datetime
+    payload: Dict[str, Dict[str, Any]],
+    vintage: datetime,
+    only_countries: Optional[Iterable[str]] = None,
 ) -> List[Dict[str, Any]]:
-    """Flatten IMF responses into per-(country, indicator, year) rows."""
+    """Flatten IMF responses into per-(country, indicator, year) rows.
+
+    IMF's DataMapper REST API ignores the country filter in the URL
+    and returns the ENTIRE dataset — all ~190 ISO3 countries plus
+    regional aggregates like ``WEOWORLD`` (8 chars), ``ADVEC`` (5),
+    ``EURO`` (4), ``EU`` (2), etc. We only store the countries listed
+    in ``only_countries`` and silently drop everything else, so the
+    table stays scoped to what the app displays and ``VARCHAR(3)`` is
+    sufficient for ISO3 codes. ``None`` means "store everything".
+    """
     rows: List[Dict[str, Any]] = []
     projection_cutoff = vintage.year
+    allowed: Optional[set[str]] = (
+        {c.upper() for c in only_countries} if only_countries is not None else None
+    )
     for indicator, response in payload.items():
         values = response.get("values", {}).get(indicator, {})
         if not isinstance(values, dict):
@@ -46,6 +60,8 @@ def parse_imf_weo(
             )
             continue
         for country_code, year_vals in values.items():
+            if allowed is not None and country_code.upper() not in allowed:
+                continue
             if not isinstance(year_vals, dict):
                 continue
             for year_str, raw in year_vals.items():
