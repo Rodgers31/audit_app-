@@ -2,7 +2,12 @@
 
 import { DebtTimelineEntry } from '@/lib/api/debt';
 import { useLang } from '@/lib/i18n/LangProvider';
-import { useDebtTimeline, useNationalDebtOverview } from '@/lib/react-query/useDebt';
+import {
+  useBroaderDebt,
+  useDebtTimeline,
+  useNationalDebtOverview,
+} from '@/lib/react-query/useDebt';
+import Link from 'next/link';
 import { useFiscalSummary } from '@/lib/react-query/useFiscal';
 import { motion } from 'framer-motion';
 import { Skeleton, SkeletonChart } from '@/components/ui/Skeleton';
@@ -135,6 +140,14 @@ export default function NationalDebtCard() {
   const externalPct = totalDebt > 0 ? +((externalDebt / totalDebt) * 100).toFixed(1) : 0;
   const domesticPct = totalDebt > 0 ? +((domesticDebt / totalDebt) * 100).toFixed(1) : 0;
 
+  // IMF's "General Government Gross Debt" — the broader figure that
+  // includes counties, SOEs, pending bills + arrears. Shown here as a
+  // one-line callout so the homepage acknowledges the gap; the full
+  // dual-card + explainer lives on /debt.
+  const { data: broader } = useBroaderDebt();
+  const imfKes = broader?.status === 'success' ? broader.latest?.value_kes ?? null : null;
+  const imfPct = broader?.status === 'success' ? broader.latest?.debt_to_gdp ?? null : null;
+
   const growthMultiple =
     firstYear && lastYear ? (lastYear.total / firstYear.total).toFixed(1) : '—';
   const yearRange = firstYear && lastYear ? `${firstYear.year}–${lastYear.year}` : '—';
@@ -223,6 +236,22 @@ export default function NationalDebtCard() {
             accent='sage'
           />
         </div>
+
+        {/* Broader measure (IMF) callout — one-line, subtle, with a
+            link to the full dual-card + explainer on /debt. Hidden when
+            the seeder has not produced data yet so we never show a
+            misleading zero. */}
+        {imfKes != null && (
+          <Link
+            href='/debt#broader'
+            className='mt-3 block rounded-lg bg-gov-gold/[0.08] border border-gov-gold/25 px-3 py-2 text-[12px] text-gov-dark/85 hover:bg-gov-gold/[0.14] transition-colors'>
+            <span className='font-semibold text-gov-dark'>IMF broader measure:</span>{' '}
+            KES {(imfKes / 1e12).toFixed(2)}T
+            {imfPct != null && ` (${imfPct.toFixed(1)}% GDP)`} — includes counties,
+            SOEs, pending bills
+            <span className='text-gov-forest ml-1 font-medium'>→ why the gap</span>
+          </Link>
+        )}
       </div>
 
       {/* Chart */}

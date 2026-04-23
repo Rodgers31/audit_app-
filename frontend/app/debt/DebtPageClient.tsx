@@ -5,6 +5,7 @@ import DataIntegrityBanner from '@/components/DataIntegrityBanner';
 import InfoTip from '@/components/InfoTip';
 import PageShell from '@/components/layout/PageShell';
 import PDFExportButton from '@/components/PDFExportButton';
+import BroaderDebtCard from '@/components/debt/BroaderDebtCard';
 import DebtSourceReconciliation from '@/components/debt/DebtSourceReconciliation';
 import LenderTreemap from '@/components/debt/LenderTreemap';
 import MaturityLadder from '@/components/debt/MaturityLadder';
@@ -703,6 +704,17 @@ export default function NationalDebtPage() {
           lastUpdated={d.lastUpdated}
         />
       )}
+
+      {/* ═══════════ SECTION 1C — BROADER (IMF) MEASURE ═══════════
+          Placed right after the Treasury reconciliation so the progression
+          is: Treasury's numbers → IMF's broader number → the rest of the
+          debt page. That reading order mirrors "what the government
+          reports → what credit-rating agencies and citizens actually
+          carry → how it's composed". */}
+      <BroaderDebtCard
+        cbkTotalKes={d.totalDebt}
+        cbkAsOf={d.lastUpdated}
+      />
 
       {/* ═══════════ SECTION 2 — WHO KENYA OWES ═══════════ */}
       <motion.section
