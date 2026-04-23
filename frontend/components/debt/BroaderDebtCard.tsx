@@ -154,31 +154,44 @@ export default function BroaderDebtCard({ cbkTotalKes, cbkAsOf }: Props) {
         </div>
       </div>
 
-      {/* Accountability explainer */}
+      {/* Accountability explainer. Copy adjusts when the gap is small
+          (< 1T) so we don't oversell a 200–500B delta as a scandal — for
+          Kenya the counties/SOE/arrears overhang turns out to be modest
+          compared to what it is in, say, Brazil or South Africa. */}
       <div className='rounded-xl bg-gov-forest/[0.04] border border-gov-forest/15 p-4 flex gap-3'>
         <Info size={16} className='text-gov-forest mt-0.5 shrink-0' />
         <div className='text-sm text-gov-dark/85 leading-relaxed'>
-          <strong className='text-gov-dark'>What Treasury leaves out.</strong>{' '}
-          The CBK figure is what the National Treasury directly admits to
-          owing — loans on its own balance sheet. The IMF's broader measure
-          is the standard credit-rating agencies and international
-          institutions use, and it captures obligations Treasury leaves off
-          its headline:{' '}
+          <strong className='text-gov-dark'>What each number counts.</strong>{' '}
+          The CBK figure is Central-Government debt — loans Treasury owes
+          directly. IMF's figure is General-Government, the measure
+          credit-rating agencies and IMF Article IV use: it adds{' '}
           <strong>
-            county government debt, state-owned enterprise exposures Treasury
-            has guaranteed, pension arrears, and accumulated pending bills
+            county debt, state-owned enterprise guarantees, pension arrears,
+            and pending bills
           </strong>
           .{' '}
-          {gap != null && gap > 0 && (
+          {gap != null && gap > 0 && gap >= 1e12 ? (
             <>
               The{' '}
               <span className='font-semibold text-gov-dark'>
                 ~{fmtT(gap)} gap
               </span>{' '}
-              is public debt Kenyans will pay for — it's just not on
-              Treasury's preferred scorecard.
+              is public debt Kenyans will pay for — it&apos;s just not on
+              Treasury&apos;s preferred scorecard.
             </>
-          )}
+          ) : gap != null && gap > 0 ? (
+            <>
+              For Kenya the gap is modest — about{' '}
+              <span className='font-semibold text-gov-dark'>
+                {fmtT(gap)}
+              </span>
+              . That&apos;s a good sign: county and SOE exposures off
+              Treasury&apos;s book are smaller here than in many peer
+              economies. The number to watch is whether the gap
+              <em> widens</em> over time as pending bills and guarantees
+              accumulate.
+            </>
+          ) : null}
         </div>
       </div>
     </motion.section>

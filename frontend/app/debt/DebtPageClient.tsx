@@ -695,26 +695,54 @@ export default function NationalDebtPage() {
             • 11.85T — sum of every line item in CBK's Public Debt Bulletin
               (live-fetched, used as the headline everywhere on this site)
             • 12.5T — CBK/Treasury's published annual aggregate stock
-          They disagree by ~5% because of consolidation adjustments. Rather
-          than pick silently and confuse users who spot both numbers in the
-          press, we show both with their provenance and explain the gap. */}
-      {d.reconciliation && (
-        <DebtSourceReconciliation
-          reconciliation={d.reconciliation}
-          lastUpdated={d.lastUpdated}
-        />
-      )}
+          They disagree by ~5% because of consolidation adjustments.
 
-      {/* ═══════════ SECTION 1C — BROADER (IMF) MEASURE ═══════════
-          Placed right after the Treasury reconciliation so the progression
-          is: Treasury's numbers → IMF's broader number → the rest of the
-          debt page. That reading order mirrors "what the government
-          reports → what credit-rating agencies and citizens actually
-          carry → how it's composed". */}
+          Hidden behind a disclosure because it's a methodology-audit story,
+          not a headline one — most readers don't need the provenance dive.
+          The *real* "how big is Kenya's debt?" question is CBK-vs-IMF (next
+          section), so we lead with that and keep this available for anyone
+          who spotted 11.85 vs 12.5 in the press and wants to square them. */}
+
+      {/* ═══════════ SECTION 1B — BROADER (IMF) MEASURE ═══════════
+          Leads the "what does public debt actually mean?" story: Treasury's
+          narrow Central-Government number vs IMF's General-Government
+          measure (adds counties, SOE guarantees, arrears, pending bills).
+          For Kenya the gap is modest — the component's copy acknowledges
+          that rather than overselling it. */}
       <BroaderDebtCard
         cbkTotalKes={d.totalDebt}
         cbkAsOf={d.lastUpdated}
       />
+
+      {/* ═══════════ SECTION 1C — AUDIT TRAIL (collapsed by default) ═══════════
+          Compact disclosure: "How we got to 11.85T" — click to expand the
+          full Sources & Reconciliation card. Uses native <details> so it
+          works without client state and is keyboard-accessible by default. */}
+      {d.reconciliation && d.reconciliation.primary_value_kes != null && (
+        <details className='group rounded-xl border border-neutral-border/40 bg-white/60 overflow-hidden'>
+          <summary className='flex items-center justify-between gap-3 px-5 py-3.5 cursor-pointer list-none hover:bg-neutral-50/50 transition-colors'>
+            <div className='flex items-center gap-2.5 min-w-0'>
+              <span className='text-[10px] uppercase tracking-widest font-semibold text-neutral-muted shrink-0'>
+                Audit trail
+              </span>
+              <span className='text-sm text-gov-dark/85 truncate'>
+                How we got to the headline 11.85T — Treasury reports a
+                slightly different 12.50T; we reconcile the {((d.reconciliation.percent_diff) ?? 0).toFixed(1)}% gap.
+              </span>
+            </div>
+            <ChevronDown
+              size={16}
+              className='text-neutral-muted group-open:rotate-180 transition-transform shrink-0'
+            />
+          </summary>
+          <div className='border-t border-neutral-border/40'>
+            <DebtSourceReconciliation
+              reconciliation={d.reconciliation}
+              lastUpdated={d.lastUpdated}
+            />
+          </div>
+        </details>
+      )}
 
       {/* ═══════════ SECTION 2 — WHO KENYA OWES ═══════════ */}
       <motion.section

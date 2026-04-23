@@ -205,11 +205,13 @@ export default function DebtSourceReconciliation({ reconciliation, lastUpdated }
               headline because it&apos;s tied directly to the CBK bulletin our ETL parses
               daily — so the number you see moves when CBK publishes fresh data.
             </p>
-            {reconciliation.note && (
-              <p className='text-[11px] text-neutral-muted/80 italic mt-2 pl-3 border-l-2 border-gov-gold/30'>
-                Backend reconciliation note: {reconciliation.note}
-              </p>
-            )}
+            {/* The backend may attach a `note` string describing the
+                reconciliation state (divergent / consistent / which table
+                won), but it's phrased for developers — it references
+                internal table names like `DebtTimeline` and `loans_table`.
+                Keep it out of the UI; it belongs in logs. The paragraph
+                above already explains the gap in plain language, and the
+                percent-diff chip signals severity. */}
           </div>
         </div>
       </div>
