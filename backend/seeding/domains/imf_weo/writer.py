@@ -45,6 +45,15 @@ def persist_imf_weo(
     The unique constraint on (country, indicator, year, vintage) means
     re-runs within the same vintage are no-ops. Skipped counts reflect
     rows that already existed.
+
+    **Transaction management is the CLI's job, not ours.** Do NOT call
+    ``session.commit()`` or ``session.rollback()`` here — the outer
+    ``seeding/cli.py`` wraps this handler in a single transaction that
+    also writes the ``ingestion_jobs`` tracking row. If we commit early
+    the CLI's tracking update writes to a new txn; if we rollback on
+    error we take the IngestionJob row down with us, leaving the run
+    invisible in the admin dashboard. Let exceptions propagate so the
+    CLI can handle them consistently with every other domain.
     """
     stats = WriteStats()
     stats.processed = len(records)
@@ -57,30 +66,23 @@ def persist_imf_weo(
         logger.info("[dry-run] would upsert %d IMF WEO rows", len(records))
         return stats
 
-    try:
-        stmt = (
-            insert(ImfWeoObservation)
-            .values(records)
-            .on_conflict_do_nothing(
-                index_elements=[
-                    "country_code",
-                    "indicator",
-                    "year",
-                    "vintage",
-                ]
-            )
+    stmt = (
+        insert(ImfWeoObservation)
+        .values(records)
+        .on_conflict_do_nothing(
+            index_elements=[
+                "country_code",
+                "indicator",
+                "year",
+                "vintage",
+            ]
         )
-        result = session.execute(stmt)
-        session.commit()
-        # `rowcount` returns inserts; anything not inserted was a conflict.
-        inserted = result.rowcount or 0
-        stats.created = inserted
-        stats.skipped = len(records) - inserted
-    except Exception as exc:  # pragma: no cover
-        session.rollback()
-        logger.exception("Failed to persist IMF WEO rows")
-        stats.errors.append(str(exc))
-
+    )
+    result = session.execute(stmt)
+    # `rowcount` returns inserts; anything not inserted was a conflict.
+    inserted = result.rowcount or 0
+    stats.created = inserted
+    stats.skipped = len(records) - inserted
     return stats
 
 
