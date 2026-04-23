@@ -601,7 +601,11 @@ class ImfWeoObservation(Base):
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    country_code = Column(String(3), nullable=False)  # e.g. "KEN"
+    # ISO3 is 3 chars, but IMF DataMapper also returns regional aggregate
+    # codes (WEOWORLD, ADVEC, EURO, EU) that can reach ~8 chars. We filter
+    # them out in the parser, but widen the column as defense-in-depth so
+    # a parser regression surfaces as garbage data rather than a crash.
+    country_code = Column(String(16), nullable=False)  # e.g. "KEN"
     indicator = Column(String(32), nullable=False)  # e.g. "GGXWDG_NGDP"
     year = Column(Integer, nullable=False)
     # Can be NULL — some years have no IMF value (especially for recently
