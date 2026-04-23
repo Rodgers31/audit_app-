@@ -8454,6 +8454,129 @@ def _resolve_county_entity(db: Session, county_id: str):
     return entity
 
 
+# ── Debt — Broader (IMF General Government) ────────────────────────────
+
+
+# Default KES/USD rate used to convert IMF's USD-denominated nominal GDP
+# (`NGDPD`) into KES so we can display the debt figure in trillions of
+# shillings. The actual rate fluctuates; callers who want tighter
+# accuracy can override via env. This is documented in the response
+# payload (`fx_rate_used`) so readers can reproduce the math.
+IMF_BROADER_USD_KES = float(os.environ.get("IMF_BROADER_USD_KES", "130"))
+
+
+@app.get("/api/v1/debt/broader")
+@cached(key_prefix="debt:broader", ttl=86400)  # IMF WEO updates twice a year
+async def get_debt_broader(db: Session = Depends(get_db)):
+    """IMF's General-Government Gross Debt for Kenya.
+
+    Companion to ``/api/v1/debt/national`` (which returns CBK's
+    Central-Government figure). The two measures differ by ~400-600B
+    KES — the gap is county-government debt, SOE guarantees, pension
+    arrears, and pending bills that Treasury's headline number leaves
+    out. The debt page renders both side-by-side so readers can see
+    the gap and we can later surface its components (Phase 2).
+
+    Returns a timeseries with each year's debt-to-GDP ratio and an
+    absolute KES estimate derived from IMF's USD GDP projection times
+    ``IMF_BROADER_USD_KES``. The last-fetched vintage is included so
+    the frontend can mark the value "stale" when the seeder has not
+    run recently.
+    """
+    if not DATABASE_AVAILABLE:
+        return {"status": "unavailable", "reason": "database_not_configured"}
+
+    from sqlalchemy import func  # local — main.py uses local imports for sqla
+
+    from models import ImfWeoObservation  # local import — avoids circular
+
+    # Latest vintage per indicator. IMF publishes new vintages twice a
+    # year; within a vintage, the same year can have different values
+    # across indicators, but we want the NEWEST snapshot we've seen.
+    latest_vintage_subq = (
+        db.query(func.max(ImfWeoObservation.vintage))
+        .filter(ImfWeoObservation.country_code == "KEN")
+        .scalar()
+    )
+    if latest_vintage_subq is None:
+        # Seeder has never populated the table. Frontend hides the card.
+        return {"status": "unavailable", "reason": "not_seeded_yet"}
+
+    rows = (
+        db.query(ImfWeoObservation)
+        .filter(
+            ImfWeoObservation.country_code == "KEN",
+            ImfWeoObservation.vintage == latest_vintage_subq,
+        )
+        .order_by(
+            ImfWeoObservation.indicator, ImfWeoObservation.year
+        )
+        .all()
+    )
+
+    by_indicator: Dict[str, Dict[int, Any]] = {}
+    for row in rows:
+        bucket = by_indicator.setdefault(row.indicator, {})
+        bucket[row.year] = {
+            "value": float(row.value) if row.value is not None else None,
+            "is_projection": row.is_projection,
+        }
+
+    debt_pct = by_indicator.get("GGXWDG_NGDP", {})
+    gdp_usd = by_indicator.get("NGDPD", {})  # billions USD
+
+    fx = IMF_BROADER_USD_KES
+    timeseries = []
+    for year in sorted(set(debt_pct.keys()) | set(gdp_usd.keys())):
+        pct = debt_pct.get(year, {}).get("value")
+        gdp_b = gdp_usd.get(year, {}).get("value")
+        value_kes: float | None = None
+        gdp_kes: float | None = None
+        if pct is not None and gdp_b is not None:
+            # NGDPD is in USD billions → KES absolute
+            gdp_kes = gdp_b * 1e9 * fx
+            value_kes = gdp_kes * (pct / 100.0)
+        timeseries.append(
+            {
+                "year": year,
+                "debt_to_gdp": pct,
+                "gdp_kes": gdp_kes,
+                "value_kes": value_kes,
+                "is_projection": debt_pct.get(year, {}).get("is_projection", False),
+            }
+        )
+
+    # "Latest" = most recent year that has BOTH debt% and GDP, so the
+    # frontend always has a complete tuple to render.
+    complete = [t for t in timeseries if t["value_kes"] is not None]
+    latest = complete[-1] if complete else None
+
+    # Stale = vintage > 60 days old. IMF WEO publishes twice a year
+    # (April/October) — 60 days after either release is a reasonable
+    # "something is probably wrong" threshold.
+    age_days = (
+        datetime.datetime.now(datetime.timezone.utc) - latest_vintage_subq
+    ).days
+    stale = age_days > 60
+
+    return {
+        "status": "success",
+        "source": {
+            "name": "IMF World Economic Outlook",
+            "indicator": "General Government Gross Debt",
+            "code": "GGXWDG",
+            "dataset_url": "https://www.imf.org/external/datamapper/GGXWDG_NGDP@WEO/KEN",
+        },
+        "latest": latest,
+        "timeseries": timeseries,
+        "fx_rate_used": fx,
+        "vintage": latest_vintage_subq.isoformat(),
+        "vintage_age_days": age_days,
+        "stale": stale,
+        "as_of": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }
+
+
 # ── Debt Sustainability Indicators ─────────────────────────────────────
 
 

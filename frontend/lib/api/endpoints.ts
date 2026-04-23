@@ -90,6 +90,10 @@ export const BUDGET_ENDPOINTS = {
 export const DEBT_ENDPOINTS = {
   // National overview
   NATIONAL: '/debt/national',
+  // IMF's General-Government Gross Debt — the "broader measure" we
+  // display alongside CBK's central-gov figure. Source-of-truth for
+  // the shape: backend/main.py `get_debt_broader`.
+  BROADER: '/debt/broader',
   LOANS: '/debt/loans',
   BREAKDOWN: '/debt/breakdown',
   BREAKDOWN_BY_COUNTY: (countyId: string) => `/debt/breakdown/${countyId}`,

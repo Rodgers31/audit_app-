@@ -46,6 +46,15 @@ export default function InteractiveKenyaMap({
   const { t } = useLang();
   /* ── state ── */
   const [hoveredCounty, setHoveredCounty] = useState<string | null>(null);
+  // Cursor/centroid anchor in map-container local coordinates. Passed
+  // to MapTooltip so it can place itself next to the hovered county
+  // instead of floating at the center-top of the map, which leaves the
+  // user no way to move the cursor onto the card without crossing
+  // another county's hit area.
+  const [hoveredAnchor, setHoveredAnchor] = useState<
+    { x: number; y: number; containerWidth: number; containerHeight: number } | null
+  >(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const [animationMode, setAnimationMode] = useState<'slideshow' | 'pulse' | 'wave'>('slideshow');
   const [visualMode, setVisualMode] = useState<'focus' | 'overview'>('overview');
@@ -130,14 +139,30 @@ export default function InteractiveKenyaMap({
     if (idx >= 0) onCountyIndexChange(idx);
   };
 
+  /** Convert a DOM MouseEvent to map-container-local coordinates for
+   * the tooltip anchor. Using clientX/Y from the live event (rather
+   * than the path centroid) means the tooltip appears right where the
+   * cursor is — wherever inside the county the user happened to hover. */
+  const anchorFromEvent = (e?: React.MouseEvent): typeof hoveredAnchor => {
+    if (!e || !mapContainerRef.current) return null;
+    const box = mapContainerRef.current.getBoundingClientRect();
+    return {
+      x: e.clientX - box.left,
+      y: e.clientY - box.top,
+      containerWidth: box.width,
+      containerHeight: box.height,
+    };
+  };
+
   /* ── hover handlers ── */
-  const handleCountyMouseEnter = (countyName: string, county: any) => {
+  const handleCountyMouseEnter = (countyName: string, county: any, e?: React.MouseEvent) => {
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current);
       hideTimeoutRef.current = null;
     }
     isProcessingLeaveRef.current = false;
     setHoveredCounty(countyName);
+    setHoveredAnchor(anchorFromEvent(e));
     setShowTooltip(!!county);
     if (county && onCountyHover) onCountyHover(county);
   };
@@ -167,6 +192,7 @@ export default function InteractiveKenyaMap({
     hideTimeoutRef.current = setTimeout(() => {
       if (!isOverlayHoveredRef.current) {
         setHoveredCounty(null);
+        setHoveredAnchor(null);
         setShowTooltip(false);
         if (onCountyHover) onCountyHover(null);
       }
@@ -190,6 +216,7 @@ export default function InteractiveKenyaMap({
     if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
     hideTimeoutRef.current = setTimeout(() => {
       setHoveredCounty(null);
+      setHoveredAnchor(null);
       setShowTooltip(false);
       if (onCountyHover) onCountyHover(null);
       hideTimeoutRef.current = null;
@@ -207,6 +234,7 @@ export default function InteractiveKenyaMap({
     }
     isOverlayHoveredRef.current = false;
     setHoveredCounty(null);
+    setHoveredAnchor(null);
     setShowTooltip(false);
     if (onCountyHover) onCountyHover(null);
   };
@@ -323,6 +351,7 @@ export default function InteractiveKenyaMap({
 
       {/* ═══════════ Map Container ═══════════ */}
       <div
+        ref={mapContainerRef}
         className='relative w-full flex-1 rounded-xl overflow-hidden border border-white/30'
         role="application"
         aria-label={t('home.map.aria_label')}
@@ -431,7 +460,15 @@ export default function InteractiveKenyaMap({
                     transition={{ type: 'spring', stiffness: 300, damping: 25 }}>
                     <Geography
                       geography={geo}
-                      onMouseEnter={() => handleCountyMouseEnter(geoCountyName, county)}
+                      onMouseEnter={(e) =>
+                        handleCountyMouseEnter(geoCountyName, county, e as any)
+                      }
+                      // Anchor is pinned at the cursor's ENTRY point to
+                      // the county and does not follow mousemove. If we
+                      // track mousemove, the tooltip chases the cursor
+                      // upward as the user tries to move toward it, and
+                      // the user can never reach it. Pinning on enter
+                      // lets the user slide straight into the card.
                       onMouseLeave={handleCountyMouseLeave}
                       onClick={() => county && handleCountyClick(county)}
                       style={{
@@ -483,6 +520,11 @@ export default function InteractiveKenyaMap({
                   onMouseEnter={handleOverlayMouseEnter}
                   onMouseLeave={handleOverlayMouseLeave}
                   onCountyClick={handleCountyClick}
+                  // Desktop hover only: position the card at the cursor
+                  // so the user can slide straight up into it. Omitting
+                  // the prop on touch falls back to the center-top
+                  // placement where the fixed close button is reachable.
+                  anchor={!isTouch && hoveredAnchor ? hoveredAnchor : undefined}
                   // Only show the close button on coarse-pointer devices.
                   // Desktop users already have hover-dismiss, and a close
                   // button there would just be noise. `isTouch` is tracked
