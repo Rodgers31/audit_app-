@@ -17,6 +17,38 @@ interface MapTooltipProps {
    * corner. Used on touch devices where auto-dismiss-on-mouseleave would
    * close the tooltip before the user has time to read it. */
   onClose?: () => void;
+  /** Cursor (or county centroid) anchor, in map-container local
+   * coordinates. When set, the tooltip positions ITSELF just above/
+   * beside the anchor — the user can slide the cursor up into the card
+   * without losing hover. Omit to fall back to the legacy center-top
+   * placement (used on touch where there is no mouse cursor). */
+  anchor?: { x: number; y: number; containerWidth: number; containerHeight: number };
+}
+
+/** Tooltip intrinsic dimensions. Must stay in sync with the card's
+ * `w-[min(18rem, ...)]` class below. 18rem = 288px. ~260px tall with
+ * the default content; a bit of padding in the math is safe. */
+const TIP_W = 288;
+const TIP_H = 260;
+/** Gap between the cursor and the tooltip. Kept small so the tooltip's
+ * -inset-5 hit area (20px) fully bridges the gap. */
+const TIP_GAP = 12;
+
+/** Place the tooltip relative to a cursor/centroid anchor with edge
+ * collision. Prefers ABOVE the cursor (so the user can move up into
+ * it without the cursor crossing the card's bottom edge on the way);
+ * flips below if there is not enough room up top. Horizontally,
+ * centers on the cursor but clamps inside the container. */
+function placeAnchored(a: NonNullable<MapTooltipProps['anchor']>) {
+  const { x, y, containerWidth: W, containerHeight: H } = a;
+  // Horizontal: center on cursor, clamp 4px from either edge.
+  let left = x - TIP_W / 2;
+  left = Math.max(4, Math.min(left, W - TIP_W - 4));
+  // Vertical: prefer above cursor; flip below if no room.
+  let top = y - TIP_H - TIP_GAP;
+  if (top < 4) top = Math.min(H - TIP_H - 4, y + TIP_GAP);
+  top = Math.max(4, Math.min(top, H - TIP_H - 4));
+  return { left, top };
 }
 
 /* ── helpers ── */
@@ -63,6 +95,7 @@ export default function MapTooltip({
   onMouseLeave,
   onCountyClick,
   onClose,
+  anchor,
 }: MapTooltipProps) {
   const status = county.auditStatus || 'pending';
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
@@ -73,19 +106,44 @@ export default function MapTooltip({
   const fundingGap = (county.budget || 0) - (county.moneyReceived || 0);
   const auditIssuesCount = county.auditIssues?.length || 0;
 
+  // Two positioning modes:
+  //   1. Anchor-driven (desktop hover): tooltip follows the cursor/centroid
+  //      so the user can slide the cursor into the card without crossing
+  //      another county. Framer-motion's animation composes because we set
+  //      `left`/`top` via inline style and let `initial/animate` handle
+  //      opacity + scale only (no X/Y transform to clobber).
+  //   2. Center-top fallback (touch / no-anchor): the legacy placement.
+  //      On touch there is no cursor to follow, so anchoring is pointless.
+  const anchored = anchor ? placeAnchored(anchor) : null;
+  const positionStyle: React.CSSProperties = anchored
+    ? { left: anchored.left, top: anchored.top }
+    : {};
+
+  // When anchored we skip the -50% X shift (position is computed in
+  // absolute px already); when falling back we keep the center-top
+  // behaviour.
+  const motionProps = anchored
+    ? {
+        initial: { opacity: 0, scale: 0.92, y: 14 },
+        animate: { opacity: 1, scale: 1, y: 0 },
+        exit: { opacity: 0, scale: 0.92, y: 14 },
+      }
+    : {
+        initial: { opacity: 0, scale: 0.92, y: 14, x: '-50%' as const },
+        animate: { opacity: 1, scale: 1, y: 0, x: '-50%' as const },
+        exit: { opacity: 0, scale: 0.92, y: 14, x: '-50%' as const },
+      };
+
   return (
-    // Framer-motion writes inline `transform`, which clobbers Tailwind's
-    // `-translate-x-1/2` centering class. That left the tooltip stuck at
-    // left: 50% with no horizontal shift, so it rendered to the right of
-    // the map's center and clipped off the viewport on mobile. We include
-    // the -50% X shift in motion's own transform instead so it composes
-    // with the scale/y animation.
     <motion.div
-      initial={{ opacity: 0, scale: 0.92, y: 14, x: '-50%' }}
-      animate={{ opacity: 1, scale: 1, y: 0, x: '-50%' }}
-      exit={{ opacity: 0, scale: 0.92, y: 14, x: '-50%' }}
+      {...motionProps}
       transition={{ type: 'spring', damping: 22, stiffness: 340 }}
-      className='absolute z-50 top-[18%] left-1/2'>
+      style={positionStyle}
+      className={
+        anchored
+          ? 'absolute z-50'
+          : 'absolute z-50 top-[18%] left-1/2'
+      }>
       {/* Invisible hit-area so mouse doesn't lose hover in the gap */}
       <div
         className='absolute -inset-5 z-0'
