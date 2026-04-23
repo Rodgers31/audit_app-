@@ -6,10 +6,14 @@
 
 set -euo pipefail
 
-: "${OLD_DB:?Set OLD_DB}"
-: "${NEW_DB:?Set NEW_DB}"
-
 cd "$(dirname "$0")"
+if [[ -f .env.migration ]]; then
+  # shellcheck disable=SC1091
+  set -a; source .env.migration; set +a
+fi
+
+: "${OLD_DB:?Set OLD_DB — either export it or fill in .env.migration}"
+: "${NEW_DB:?Set NEW_DB — either export it or fill in .env.migration}"
 
 TABLES=$(psql "$NEW_DB" -Atq -f _list_tables.sql)
 TABLES="$TABLES

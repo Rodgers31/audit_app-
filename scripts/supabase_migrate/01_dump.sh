@@ -15,9 +15,17 @@
 
 set -euo pipefail
 
-: "${OLD_DB:?Set OLD_DB to the OLD project session-pooler URI (port 5432)}"
-
 cd "$(dirname "$0")"
+# Auto-load .env.migration if it exists — lets the user put OLD_DB and
+# NEW_DB in a file instead of exporting each time. The file is
+# gitignored so passwords never reach the repo.
+if [[ -f .env.migration ]]; then
+  # shellcheck disable=SC1091
+  set -a; source .env.migration; set +a
+fi
+
+: "${OLD_DB:?Set OLD_DB — either export it or fill in .env.migration}"
+
 mkdir -p dumps
 
 echo "▶ Checking prereqs…"

@@ -58,12 +58,31 @@ For the app's runtime (Render `DATABASE_URL`) you still want the
 
 ## Run the migration
 
+The scripts need two env vars: `OLD_DB` + `NEW_DB` (both session-pooler
+URIs from Supabase dashboard). Either export them each time, or put
+them in a local `.env.migration` file (gitignored) so the scripts pick
+them up automatically.
+
+### Option A (recommended): `.env.migration` file
+
 ```bash
 cd scripts/supabase_migrate
+cp .env.migration.example .env.migration
+# Edit .env.migration and fill in both URIs from Supabase dashboard
+# (Connect → Session pooler → URI). This file is gitignored.
+```
 
-export OLD_DB="postgresql://postgres.<OLD_REF>:<OLD_PW>@aws-0-ap-south-1.pooler.supabase.com:5432/postgres"
-export NEW_DB="postgresql://postgres.<NEW_REF>:<NEW_PW>@aws-0-eu-central-1.pooler.supabase.com:5432/postgres"
+### Option B: ad-hoc exports in your shell
 
+```bash
+cd scripts/supabase_migrate
+export OLD_DB='postgresql://postgres.<OLD_REF>:<OLD_PW>@aws-0-ap-south-1.pooler.supabase.com:5432/postgres'
+export NEW_DB='postgresql://postgres.<NEW_REF>:<NEW_PW>@aws-0-eu-central-1.pooler.supabase.com:5432/postgres'
+```
+
+### Then run, in order:
+
+```bash
 # Docker Desktop must be running
 ./01_dump.sh      # ~30s, writes ./dumps/
 ./02_restore.sh   # 1–5 min depending on data size

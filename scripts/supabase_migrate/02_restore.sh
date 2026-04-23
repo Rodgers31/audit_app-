@@ -8,9 +8,13 @@
 
 set -euo pipefail
 
-: "${NEW_DB:?Set NEW_DB to the NEW project session-pooler URI (port 5432)}"
-
 cd "$(dirname "$0")"
+if [[ -f .env.migration ]]; then
+  # shellcheck disable=SC1091
+  set -a; source .env.migration; set +a
+fi
+
+: "${NEW_DB:?Set NEW_DB — either export it or fill in .env.migration}"
 
 for f in roles.sql schema.sql data.sql; do
   [[ -f "dumps/$f" ]] || { echo "❌ dumps/$f missing — run 01_dump.sh first."; exit 1; }
