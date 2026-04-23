@@ -164,7 +164,7 @@ def test_parser_tolerates_missing_values_node():
 
 def test_domain_run_inserts_rows(sqlite_session, http_mock, tmp_path):
     settings = _build_settings(tmp_path)
-    context = DomainRunContext(dry_run=False)
+    context = DomainRunContext(since=None, dry_run=False)
 
     result = run_imf_weo_domain(sqlite_session, settings, context)
 
@@ -191,7 +191,7 @@ def test_rerun_within_same_vintage_is_idempotent(
     settings = _build_settings(tmp_path)
 
     first = run_imf_weo_domain(
-        sqlite_session, settings, DomainRunContext(dry_run=False)
+        sqlite_session, settings, DomainRunContext(since=None, dry_run=False)
     )
     count_after_first = sqlite_session.execute(select(ImfWeoObservation)).scalars().all()
     # NOTE: the real on_conflict clause is Postgres-specific. On SQLite
@@ -203,7 +203,7 @@ def test_rerun_within_same_vintage_is_idempotent(
     # about is the Postgres path, exercised in integration testing.
     try:
         second = run_imf_weo_domain(
-            sqlite_session, settings, DomainRunContext(dry_run=False)
+            sqlite_session, settings, DomainRunContext(since=None, dry_run=False)
         )
         rows_after_second = (
             sqlite_session.execute(select(ImfWeoObservation)).scalars().all()
@@ -236,7 +236,7 @@ def test_domain_reports_failure_when_imf_is_down(
 
     settings = _build_settings(tmp_path)
     result = run_imf_weo_domain(
-        sqlite_session, settings, DomainRunContext(dry_run=False)
+        sqlite_session, settings, DomainRunContext(since=None, dry_run=False)
     )
     assert result.errors, "expected an error to be recorded"
     assert result.items_created == 0
