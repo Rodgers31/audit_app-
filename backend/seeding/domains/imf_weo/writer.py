@@ -15,7 +15,12 @@ from typing import Any, Dict, List
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from ....models import ImfWeoObservation
+# Absolute import — sibling domains (audits, counties_budget, etc.) all
+# import models this way because the seeder runs with `backend/` on
+# PYTHONPATH. The nested relative path `....models` that I originally
+# used errors out in the CI test collector: "ImportError: attempted
+# relative import beyond top-level package".
+from models import ImfWeoObservation
 from ...types import DomainRunContext
 
 logger = logging.getLogger("seeding.imf_weo.writer")
