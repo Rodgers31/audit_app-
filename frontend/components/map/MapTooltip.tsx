@@ -30,9 +30,13 @@ interface MapTooltipProps {
  * the default content; a bit of padding in the math is safe. */
 const TIP_W = 288;
 const TIP_H = 260;
-/** Gap between the cursor and the tooltip. Kept small so the tooltip's
- * -inset-5 hit area (20px) fully bridges the gap. */
-const TIP_GAP = 12;
+/** Gap between the cursor and the tooltip. The smaller this is, the
+ * less neighboring-county territory the cursor must cross to reach the
+ * tooltip — in dense central-Kenya clusters (Meru, Nairobi, Kiambu)
+ * even a 12px gap was enough for SVG hit-testing to fire a neighbor's
+ * onMouseEnter mid-transit. The inset-8 hit zone (32px) on the card
+ * more than bridges this. */
+const TIP_GAP = 6;
 
 /** Place the tooltip relative to a cursor/centroid anchor with edge
  * collision. Prefers ABOVE the cursor (so the user can move up into
@@ -144,9 +148,13 @@ export default function MapTooltip({
           ? 'absolute z-50'
           : 'absolute z-50 top-[18%] left-1/2'
       }>
-      {/* Invisible hit-area so mouse doesn't lose hover in the gap */}
+      {/* Invisible hit-area so mouse doesn't lose hover in the gap.
+          Wider than TIP_GAP by design: the card is "easy to catch"
+          even if the cursor overshoots slightly while transiting from
+          the county — the 32px pad + 6px TIP_GAP means the hit zone
+          starts overlapping the county before the visual card does. */}
       <div
-        className='absolute -inset-5 z-0'
+        className='absolute -inset-8 z-0'
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
       />

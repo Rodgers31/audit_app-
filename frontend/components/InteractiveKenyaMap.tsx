@@ -72,6 +72,18 @@ export default function InteractiveKenyaMap({
   }, []);
   const isOverlayHoveredRef = useRef(false);
   const isProcessingLeaveRef = useRef(false);
+  // Short "hover intent" window after the cursor leaves a county path.
+  // While this is true, a neighbouring county's onMouseEnter is ignored
+  // so the user can travel across the SVG gap to the tooltip without
+  // the hover state flipping to a neighbor mid-transit. Released either
+  // when the cursor reaches the tooltip's hit zone (see
+  // handleOverlayMouseEnter) or when the timer below expires naturally.
+  // This targets the Meru-style case where the tooltip straddles
+  // dense-neighbour territory — large isolated counties are unaffected.
+  const transitLockoutRef = useRef(false);
+  const transitLockoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   // Must be a ref, not useState. State reads close over the render that
   // created the handler — if a mouseenter runs BEFORE React commits the
   // render after a mouseleave's `setHideTimeoutId(tid)`, the closure
@@ -156,6 +168,20 @@ export default function InteractiveKenyaMap({
 
   /* ── hover handlers ── */
   const handleCountyMouseEnter = (countyName: string, county: any, e?: React.MouseEvent) => {
+    // Hover-intent lockout: if the cursor just left another county,
+    // ignore neighbouring paths for a brief window so the user has
+    // time to reach the tooltip. Same-county re-entries (cursor
+    // wobbling inside Meru's bounds) aren't blocked — only swaps to a
+    // *different* county. If the cursor never reaches the tooltip,
+    // the timer releases the lockout and the neighbour takes over
+    // naturally. See transitLockoutRef declaration for full rationale.
+    if (
+      transitLockoutRef.current &&
+      hoveredCounty != null &&
+      countyName !== hoveredCounty
+    ) {
+      return;
+    }
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current);
       hideTimeoutRef.current = null;
@@ -187,6 +213,19 @@ export default function InteractiveKenyaMap({
     }
     if (isProcessingLeaveRef.current) return;
     isProcessingLeaveRef.current = true;
+    // Open the hover-intent window: any neighbour county path the
+    // cursor crosses on its way to the tooltip will be ignored for
+    // the next 150ms. That's enough to bridge the 6px TIP_GAP + 32px
+    // inset hit-zone without feeling laggy if the user is actually
+    // moving to a different county.
+    if (transitLockoutTimerRef.current) {
+      clearTimeout(transitLockoutTimerRef.current);
+    }
+    transitLockoutRef.current = true;
+    transitLockoutTimerRef.current = setTimeout(() => {
+      transitLockoutRef.current = false;
+      transitLockoutTimerRef.current = null;
+    }, 150);
     if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
     const hoveredAtLeave = hoveredCounty;
     hideTimeoutRef.current = setTimeout(() => {
@@ -207,6 +246,15 @@ export default function InteractiveKenyaMap({
       clearTimeout(hideTimeoutRef.current);
       hideTimeoutRef.current = null;
     }
+    // Cursor reached the tooltip — mission accomplished. Release the
+    // hover-intent lockout immediately so a subsequent mouseleave
+    // from the overlay back to a (possibly different) county works
+    // without a lingering 150ms window.
+    if (transitLockoutTimerRef.current) {
+      clearTimeout(transitLockoutTimerRef.current);
+      transitLockoutTimerRef.current = null;
+    }
+    transitLockoutRef.current = false;
   };
   const handleOverlayMouseLeave = () => {
     // See handleCountyMouseLeave — on touch the tooltip stays open until
@@ -263,6 +311,8 @@ export default function InteractiveKenyaMap({
   useEffect(
     () => () => {
       if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+      if (transitLockoutTimerRef.current)
+        clearTimeout(transitLockoutTimerRef.current);
     },
     []
   );
