@@ -7,6 +7,7 @@
 import { County } from '@/types';
 import { motion } from 'framer-motion';
 import { AlertTriangle, ArrowRight, Receipt, Scale, X } from 'lucide-react';
+import Link from 'next/link';
 
 interface MapTooltipProps {
   county: County;
@@ -254,11 +255,19 @@ export default function MapTooltip({
           )}
         </div>
 
-        {/* ── CTA ── */}
-        <div className='mt-3 pt-2 border-t border-gray-200/60 flex items-center justify-center gap-1 text-[11px] font-medium text-gov-forest'>
+        {/* ── CTA ──
+            Real Link, not just text. The card's wrapping onClick selects
+            the county (drives the home-dashboard side panel), but this
+            CTA is a distinct target for "take me to the full page". We
+            stopPropagation so the card's onClick doesn't also fire the
+            selection — the page transition makes that stale anyway. */}
+        <Link
+          href={`/counties/${county.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className='mt-3 pt-2 border-t border-gray-200/60 flex items-center justify-center gap-1 text-[11px] font-medium text-gov-forest hover:text-gov-dark transition-colors'>
           View detailed analysis
           <ArrowRight className='w-3 h-3' />
-        </div>
+        </Link>
       </div>
     </motion.div>
   );
