@@ -463,13 +463,12 @@ export default function InteractiveKenyaMap({
                       onMouseEnter={(e) =>
                         handleCountyMouseEnter(geoCountyName, county, e as any)
                       }
-                      // Keep the anchor following the cursor as it moves
-                      // within the same county — mouseenter only fires on
-                      // boundary crossings, so without mousemove the
-                      // tooltip would snap once and then lag.
-                      onMouseMove={(e) => {
-                        if (!isTouch) setHoveredAnchor(anchorFromEvent(e as any));
-                      }}
+                      // Anchor is pinned at the cursor's ENTRY point to
+                      // the county and does not follow mousemove. If we
+                      // track mousemove, the tooltip chases the cursor
+                      // upward as the user tries to move toward it, and
+                      // the user can never reach it. Pinning on enter
+                      // lets the user slide straight into the card.
                       onMouseLeave={handleCountyMouseLeave}
                       onClick={() => county && handleCountyClick(county)}
                       style={{
