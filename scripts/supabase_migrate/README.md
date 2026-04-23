@@ -3,25 +3,33 @@
 Scripts + playbook for moving the project's Postgres + Auth data off
 `ap-south-1` onto `eu-central-1`, co-located with the Render backend.
 
+Follows [Supabase's official migration guide](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore) —
+`supabase db dump`, single-transaction restore, `session_replication_role = replica`
+to disable triggers during data load.
+
 ## What this does
 
-- `01_dump.sh` — exports `public` schema (your app tables) + `auth` user
-  rows (preserves passwords / OAuth identities so nobody has to reset)
-  + sequence setvals. Writes to `./dumps/`.
+- `01_dump.sh` — uses `supabase db dump` to export roles, schema, data
+  (storage vector tables excluded per official guidance) and the
+  `supabase_migrations` history. Writes to `./dumps/`.
 - `02_restore.sh` — loads those dumps into a fresh Supabase project in
-  the target region.
-- `03_verify.sh` — row-count diff between old + new. Exit code 0 if
+  the target region, in a single transaction with triggers disabled.
+- `03_verify.sh` — row-count diff between old and new. Exit code 0 if
   everything matches.
 
 ## Prereqs
 
 ```bash
-# Postgres client tools (pg_dump / psql)
+# Postgres client tools (psql)
 brew install libpq
 brew link --force libpq
 
-# Supabase CLI (optional, only for the auth export path — see step 3)
+# Supabase CLI (wraps pg_dump with Supabase-specific flags)
 brew install supabase/tap/supabase
+
+# Docker Desktop — the Supabase CLI shells out to it for pg_dump
+# so it must be RUNNING (not just installed) when you run 01_dump.sh
+open -a Docker
 ```
 
 ## One-time: create the new project
@@ -29,21 +37,24 @@ brew install supabase/tap/supabase
 1. Dashboard → **New Project** → Region: `Europe Central (Frankfurt)`.
 2. Use the **same DB password** as the old project if you want the
    connection strings to be structurally identical.
-3. Wait ~2 min for the project to come up. Don't touch it yet.
+3. Wait ~2 min for the project to come up.
+4. Enable any non-default extensions you had on the old project
+   (`pg_stat_statements` is on by default; `pgvector`/`pgsodium` if
+   you added them). You are not using pgvector or pgsodium, so skip.
 
 ## Get your connection strings
 
-For each project: **Dashboard → Settings → Database → Connection string → URI**.
+For each project: **Dashboard → Connect → Session pooler → URI**.
 
 **Critical:** use the **session pooler (port 5432)**, not the transaction
-pooler (6543). `pg_dump` needs real sessions. The URL shape is:
+pooler (6543). `pg_dump` needs real sessions. Shape:
 
 ```
 postgresql://postgres.<REF>:<PW>@aws-0-<REGION>.pooler.supabase.com:5432/postgres
 ```
 
 For the app's runtime (Render `DATABASE_URL`) you still want the
-**transaction pooler (6543)**. Different purpose.
+**transaction pooler (6543)** — that's a different string.
 
 ## Run the migration
 
@@ -53,6 +64,7 @@ cd scripts/supabase_migrate
 export OLD_DB="postgresql://postgres.<OLD_REF>:<OLD_PW>@aws-0-ap-south-1.pooler.supabase.com:5432/postgres"
 export NEW_DB="postgresql://postgres.<NEW_REF>:<NEW_PW>@aws-0-eu-central-1.pooler.supabase.com:5432/postgres"
 
+# Docker Desktop must be running
 ./01_dump.sh      # ~30s, writes ./dumps/
 ./02_restore.sh   # 1–5 min depending on data size
 ./03_verify.sh    # row-count diff
@@ -82,22 +94,15 @@ Production (and Preview if you use it):
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://<NEW_REF>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<NEW anon key from new project's Settings → API>
-SUPABASE_SERVICE_ROLE_KEY=<NEW service_role key>   # if you have this set
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<NEW anon key from Settings → API>
+SUPABASE_SERVICE_ROLE_KEY=<NEW service_role key>
 ```
 
-Trigger a **Redeploy** (Deployments → latest → Redeploy).
+Trigger a **Redeploy**.
 
 ### Local `.env.local`
 
-Same three values as Vercel, plus `frontend/.env.local`:
-
-```
-NEXT_PUBLIC_SUPABASE_URL=https://<NEW_REF>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<NEW anon key>
-```
-
-…and your root `.env`:
+Same three values in `frontend/.env.local`, plus root `.env`:
 
 ```
 DATABASE_URL=postgresql://postgres.<NEW_REF>:<NEW_PW>@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require
@@ -107,12 +112,25 @@ DATABASE_URL=postgresql://postgres.<NEW_REF>:<NEW_PW>@aws-0-eu-central-1.pooler.
 
 With the new env live:
 
-- [ ] Sign in with an **existing** user account → should work with the
-      old password (auth.users was migrated with `encrypted_password`).
+- [ ] Sign in with an **existing** user account — should work with the
+      old password (auth.users migrated with `encrypted_password`).
 - [ ] Load `/counties` → the ranking table populates.
 - [ ] Load `/transparency` → waterfall renders.
-- [ ] Watchlist / alerts (any write endpoint) → persists correctly.
-- [ ] Sign up a new user → confirms the new project's auth is wired.
+- [ ] Watchlist / alerts (any write endpoint) → persists.
+- [ ] Sign up a new user → confirms new project's auth is wired.
+
+## Post-restore checks (from Supabase docs)
+
+These only matter if you use the feature — ignore if not:
+
+- **Realtime publications**: if you subscribe to DB changes via Realtime,
+  re-enable publications for the relevant tables in the new project:
+  Dashboard → Database → Publications.
+- **Database Webhooks**: if any were configured on the old project,
+  re-enable them in the new project.
+- **Column encryption (pgsodium)**: not used in this app, skip.
+- **Custom role passwords**: only if you added custom DB roles. You did
+  not, so skip.
 
 ## Rollback (if something breaks)
 
@@ -120,35 +138,30 @@ Two minutes to flip back:
 
 1. Revert the three env-var files/dashboards to the OLD values.
 2. Redeploy Render + Vercel.
-3. Old project is still live, no data lost. Figure out what went wrong
-   against the new project without users on it.
+3. Old project is still live, no data lost.
 
 ## When to delete the old project
 
-Leave the old (Mumbai) project running for **at least a week**. It costs
-nothing on Free tier. After a week of the new project being stable, go
-to Dashboard → old project → Settings → General → **Delete project**.
+Leave the old (Mumbai) project running **at least a week**. It costs
+nothing on Free tier. After a week of the new project being stable:
+Dashboard → old project → Settings → General → Delete project.
 
 ## Gotchas
 
-- **RLS policies** are included in the `public` dump. Spot-check a few
-  in the new project's SQL editor after restore.
-- **Alembic migrations**: don't re-run them against the new project —
-  the dump already includes the fully-migrated schema. If you do run
-  `alembic upgrade head` anyway, it'll be a no-op because
-  `alembic_version` table came across too.
-- **Custom policies / functions in the `auth` schema**: this script
-  doesn't migrate those. If you've written triggers against `auth.users`
-  (rare), dump them separately with
-  `pg_dump "$OLD_DB" --schema=auth --schema-only --no-owner`.
-- **Sessions invalidate**: all logged-in users get kicked out (their
-  JWTs were signed by the OLD project's key). One-time re-login — not
-  a password reset.
-- **Region in connection strings differs** between session pooler and
-  transaction pooler. Session pooler uses `aws-0-eu-central-1`,
-  transaction pooler uses the same prefix but port 6543.
+- **RLS policies** come through in `schema.sql`. Spot-check a few in
+  the new project's SQL editor after restore.
+- **Alembic migrations** — don't re-run them against the new project;
+  the schema dump already has everything applied.
+- **Sessions invalidate**: all users get kicked out (JWTs were signed
+  by the OLD project's signing key). One-time re-login, not a password
+  reset.
+- **`supabase_admin` ownership errors** during restore: comment out any
+  `ALTER ... OWNER TO "supabase_admin"` lines in `dumps/schema.sql`
+  before re-running `02_restore.sh`.
+- **`cli_login_postgres` grant errors**: comment out any
+  `GRANT "postgres" TO "cli_login_postgres"` line in `dumps/roles.sql`.
 
-## File layout after running
+## File layout
 
 ```
 scripts/supabase_migrate/
@@ -156,8 +169,11 @@ scripts/supabase_migrate/
 ├── 02_restore.sh
 ├── 03_verify.sh
 ├── README.md
-└── dumps/              # git-ignored — local only
-    ├── public.sql
-    ├── auth.sql
-    └── sequences.sql
+├── _list_tables.sql            # used by verify
+└── dumps/                      # git-ignored — local only
+    ├── roles.sql
+    ├── schema.sql
+    ├── data.sql
+    ├── history_schema.sql
+    └── history_data.sql
 ```
