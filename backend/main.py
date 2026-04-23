@@ -8466,7 +8466,6 @@ IMF_BROADER_USD_KES = float(os.environ.get("IMF_BROADER_USD_KES", "130"))
 
 
 @app.get("/api/v1/debt/broader")
-@cached(key_prefix="debt:broader", ttl=86400)  # IMF WEO updates twice a year
 async def get_debt_broader(db: Session = Depends(get_db)):
     """IMF's General-Government Gross Debt for Kenya.
 
@@ -8482,6 +8481,11 @@ async def get_debt_broader(db: Session = Depends(get_db)):
     ``IMF_BROADER_USD_KES``. The last-fetched vintage is included so
     the frontend can mark the value "stale" when the seeder has not
     run recently.
+
+    **Caching**: the "unavailable" branch is NOT cached, so the first
+    hit after the seeder finishes will see fresh data without waiting
+    for a TTL to expire. Successful payloads are cached 24h since IMF
+    WEO only publishes twice a year.
     """
     if not DATABASE_AVAILABLE:
         return {"status": "unavailable", "reason": "database_not_configured"}
@@ -8500,7 +8504,21 @@ async def get_debt_broader(db: Session = Depends(get_db)):
     )
     if latest_vintage_subq is None:
         # Seeder has never populated the table. Frontend hides the card.
+        # Do NOT cache — otherwise the first seeder run leaves users
+        # stuck with "unavailable" for up to 24h.
         return {"status": "unavailable", "reason": "not_seeded_yet"}
+    # Pass vintage as kwarg so @cached bakes it into the key —
+    # a new vintage invalidates the cache automatically.
+    return await _get_debt_broader_cached(
+        db=db, vintage=latest_vintage_subq.isoformat()
+    )
+
+
+@cached(key_prefix="debt:broader", ttl=86400)  # IMF WEO updates twice a year
+async def _get_debt_broader_cached(db: Session, vintage: str):
+    from models import ImfWeoObservation  # local — avoids circular import
+
+    latest_vintage_subq = datetime.datetime.fromisoformat(vintage)
 
     rows = (
         db.query(ImfWeoObservation)
@@ -8546,10 +8564,17 @@ async def get_debt_broader(db: Session = Depends(get_db)):
             }
         )
 
-    # "Latest" = most recent year that has BOTH debt% and GDP, so the
-    # frontend always has a complete tuple to render.
+    # "Latest" = most recent ACTUAL (non-projection) year that has both
+    # debt% and GDP. The timeseries includes IMF forecasts out to 2030;
+    # picking the furthest year would show a 5-6 year projection as the
+    # "current" figure, which overstates debt (debt and USD GDP both
+    # grow over time) and confuses readers comparing against CBK's
+    # "as-of-today" total. Fall back to the latest projection only when
+    # no non-projection rows exist (i.e. a very old vintage or brand-new
+    # country with only forecasts available).
     complete = [t for t in timeseries if t["value_kes"] is not None]
-    latest = complete[-1] if complete else None
+    actuals = [t for t in complete if not t.get("is_projection")]
+    latest = (actuals or complete)[-1] if complete else None
 
     # Stale = vintage > 60 days old. IMF WEO publishes twice a year
     # (April/October) — 60 days after either release is a reasonable
