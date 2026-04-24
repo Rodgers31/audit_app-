@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import signal
 import sys
+import threading
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -62,16 +63,29 @@ def _domain_timeout(seconds: int) -> Iterator[None]:
 
     Uses POSIX SIGALRM so the timeout actually kills Python-level work
     (including `time.sleep`, `httpx` connect/read, and pdfplumber between
-    its Python frames). Only installs the handler when we're on the main
-    thread of a POSIX system — the seeding CLI always is in CI, but the
-    guard keeps pytest runs on Windows / non-main-threads graceful.
+    its Python frames). Three preconditions must hold to install the
+    handler; if any fail we silently yield without a timeout so callers
+    in unsupported contexts degrade gracefully:
+
+      * `seconds > 0`
+      * SIGALRM exists (POSIX only — Windows has no equivalent)
+      * we are on the main thread (CPython's `signal.signal` raises
+        ValueError otherwise, which would crash rather than degrade).
+
+    The seeding CLI always runs in the main thread in CI; the main-
+    thread guard is there for pytest and embedded-runner scenarios
+    that invoke the CLI from a worker thread.
 
     Caveat: code stuck in a blocking C extension call that never yields
     to Python (e.g. some tabula JVM bridge calls) won't be interruptible
     until it returns. In practice SIGALRM catches most real-world stalls
     we've seen.
     """
-    if seconds <= 0 or not hasattr(signal, "SIGALRM"):
+    if (
+        seconds <= 0
+        or not hasattr(signal, "SIGALRM")
+        or threading.current_thread() is not threading.main_thread()
+    ):
         yield
         return
 
