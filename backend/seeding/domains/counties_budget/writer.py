@@ -16,7 +16,7 @@ from models import (
     FiscalPeriod,
     SourceDocument,
 )
-from sqlalchemy import and_, select
+from sqlalchemy import and_, insert, select
 from sqlalchemy.orm import Session
 
 from ...config import SeedingSettings
@@ -378,6 +378,15 @@ def persist_budget_records(
         }
 
     # ── 5. Resolve every record against the in-memory dicts ──────
+    # New rows are buffered into `new_line_values` and emitted as a
+    # single Core-level INSERT at the end of the pass. This replaces
+    # the previous session.add()-per-row path whose implicit flush
+    # issued one round-trip per row against Supabase — on a 1,880-row
+    # fixture that was ~5 min just for the INSERTs. A single
+    # INSERT ... VALUES (...), (...), (...) collapses that to one trip.
+    new_line_values: List[dict] = []
+    claimed_keys: set[Tuple[int, int, str, Optional[str]]] = set()
+
     for record in resolvable:
         entity = entities_by_slug[record.entity_slug]
         url = record.source_url or settings.budgets_dataset_url
@@ -402,22 +411,28 @@ def persist_budget_records(
         existing = existing_lines.get(key)
 
         if existing is None:
-            line = BudgetLine(
-                entity_id=entity.id,
-                period_id=period.id,
-                category=record.category,
-                subcategory=record.subcategory,
-                currency=currency,
-                allocated_amount=record.allocated_amount,
-                actual_spent=record.actual_amount,
-                committed_amount=record.committed_amount,
-                source_document_id=source.id,
-                notes=record.notes,
-                provenance=[provenance_entry] if provenance_entry else [],
-                source_hash=record_hash,
+            # Guard against the same (entity, period, category, subcategory)
+            # appearing twice in one batch — the DB's unique constraint
+            # would otherwise kill the bulk INSERT mid-flight.
+            if key in claimed_keys:
+                continue
+            claimed_keys.add(key)
+            new_line_values.append(
+                {
+                    "entity_id": entity.id,
+                    "period_id": period.id,
+                    "category": record.category,
+                    "subcategory": record.subcategory,
+                    "currency": currency,
+                    "allocated_amount": record.allocated_amount,
+                    "actual_spent": record.actual_amount,
+                    "committed_amount": record.committed_amount,
+                    "source_document_id": source.id,
+                    "notes": record.notes,
+                    "provenance": [provenance_entry] if provenance_entry else [],
+                    "source_hash": record_hash,
+                }
             )
-            session.add(line)
-            existing_lines[key] = line  # guard duplicates within the batch
             stats.created += 1
         else:
             if _apply_line(existing, record, currency, source.id, record_hash):
@@ -443,6 +458,10 @@ def persist_budget_records(
                 if not any(_dedupe_key(p) == new_key for p in provenance):
                     provenance.append(provenance_entry)
                     existing.provenance = provenance
+
+    # ── 6. Bulk-INSERT all the new rows in one statement ─────────
+    if new_line_values:
+        session.execute(insert(BudgetLine), new_line_values)
 
     return stats
 

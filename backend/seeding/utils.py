@@ -139,6 +139,35 @@ import re as _re
 _FY_PATTERN = _re.compile(r"^(?:FY\s*)?(\d{4})[/\-](\d{2,4})$")
 
 
+_SLUG_STRIP_RE = _re.compile(r"[^a-z0-9]+")
+
+
+def slugify_entity(name: str, *, county_suffix: bool = True) -> str:
+    """Canonicalise an entity name into the slug format used in the DB.
+
+    The ``entities`` table's ``slug`` column is kept in kebab-case with no
+    punctuation — e.g. ``muranga-county``, not ``murang'a-county``. Callers
+    historically did a naive ``name.lower().replace(" ", "-")`` which
+    produced ``murang'a-county`` for Murang'a and then failed the lookup,
+    generating the "Unknown entity slug" warnings we saw every run.
+
+    Rules:
+      * ASCII-lowercase.
+      * Every non-alphanumeric run collapses to a single hyphen (so
+        apostrophes, commas, dots, em-dashes, multi-spaces all normalise).
+      * Leading / trailing hyphens trimmed.
+      * Optionally appends ``-county`` — set to False when the caller
+        passes an already-fully-qualified entity name.
+    """
+    if not name:
+        return ""
+    lowered = name.strip().lower()
+    collapsed = _SLUG_STRIP_RE.sub("-", lowered).strip("-")
+    if county_suffix and not collapsed.endswith("-county"):
+        collapsed = f"{collapsed}-county"
+    return collapsed
+
+
 def normalize_fiscal_label(raw: str) -> str:
     """Normalise any fiscal-year string to the canonical ``FY{YYYY}/{YY}`` form.
 
@@ -166,4 +195,5 @@ __all__ = [
     "load_json_resource",
     "compute_hash",
     "normalize_fiscal_label",
+    "slugify_entity",
 ]
