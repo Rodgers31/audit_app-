@@ -16,11 +16,14 @@ import {
   ArrowRight,
   Bookmark,
   CheckCircle2,
+  CornerDownLeft,
   Hash,
   Lightbulb,
   ScrollText,
 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+
+import { renderProse, type ReferenceTarget } from './prose';
 
 /** Page-turn variants. `direction` is passed via AnimatePresence's custom prop. */
 const PAGE_VARIANTS: Variants = {
@@ -46,6 +49,20 @@ interface ArticleViewerProps {
   nextChapterNumber?: number;
   nextChapterTitle?: string;
   onGoNextChapter?: () => void;
+  /** Called when the reader clicks an "Article N" / "Chapter N"
+   * reference embedded in the prose. The parent decides whether the
+   * jump pushes history, opens in place, etc. */
+  onReferenceClick?: (target: ReferenceTarget) => void;
+  /** Label for the back-pill shown when the reader followed a
+   * reference into this article. `null` / `undefined` hides it. */
+  backTarget?: { articleNumber: number } | null;
+  onBack?: () => void;
+  /** Top-level clause the reader was pointed at — e.g. "3" when the
+   * reference was "Article 144(3)(c)". On arrival we flash + scroll
+   * to the paragraph whose leading "(X)" marker matches. `null` /
+   * absent means "no clause highlight" (plain-article or non-
+   * reference navigation: the page switch is itself the feedback). */
+  highlightClause?: string | null;
 }
 
 /** Cheap, allocation-light highlight: splits on case-insensitive query. */
@@ -91,7 +108,25 @@ export default function ArticleViewer({
   nextChapterNumber,
   nextChapterTitle,
   onGoNextChapter,
+  onReferenceClick,
+  backTarget,
+  onBack,
+  highlightClause,
 }: ArticleViewerProps) {
+  const clauseRef = useRef<HTMLParagraphElement | null>(null);
+
+  // When the viewer mounts with a clause to highlight, scroll that
+  // paragraph into view inside the overflow-y-auto body. `block:
+  // 'nearest'` (not 'start'): short articles where the whole body
+  // already fits need no scroll, and 'start' would try to align the
+  // paragraph with the viewport top — if the inner container can't
+  // scroll the browser walks up ancestors and ends up scrolling the
+  // outer page, visually pushing the article down. 'nearest' is a
+  // no-op whenever the paragraph is already visible.
+  useEffect(() => {
+    if (!highlightClause || !clauseRef.current) return;
+    clauseRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [article.number, highlightClause]);
   const pageKey = useMemo(
     () => `${chapter.number}-${article.number}`,
     [chapter.number, article.number]
@@ -114,6 +149,19 @@ export default function ArticleViewer({
           style={{ transformStyle: 'preserve-3d', transformOrigin: 'center' }}>
           {/* ── Header ── */}
           <header className='border-b border-neutral-border/70 px-5 pb-4 pt-5 sm:px-7 sm:pt-6'>
+            {/* Back pill — only shown when the reader arrived here via an
+                in-prose reference click. Sits above the chapter chip so it
+                reads as "you followed a thread; here's how to unwind it"
+                rather than general navigation (left/right arrows do that). */}
+            {backTarget && onBack && (
+              <button
+                type='button'
+                onClick={onBack}
+                className='mb-3 inline-flex items-center gap-1.5 rounded-full border border-gov-forest/20 bg-gov-forest/5 px-3 py-1 text-[11px] font-semibold text-gov-forest hover:bg-gov-forest/10 hover:border-gov-forest/40 transition-colors'>
+                <CornerDownLeft size={12} />
+                Back to Article {backTarget.articleNumber}
+              </button>
+            )}
             <div className='mb-2 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wider text-gov-forest/70'>
               <span className='inline-flex items-center gap-1 rounded-full bg-gov-forest/10 px-2 py-0.5 font-semibold'>
                 <ScrollText size={11} />
@@ -134,18 +182,51 @@ export default function ArticleViewer({
             {article.summary && (
               <p className='mt-3 rounded-xl border border-gov-sage/30 bg-gov-sage/10 px-3.5 py-2.5 text-[13.5px] leading-relaxed text-gov-forest'>
                 <Bookmark size={13} className='-mt-0.5 mr-1 inline text-gov-sage' />
-                {highlight(article.summary, query)}
+                {renderProse(article.summary, { query, onRefClick: onReferenceClick })}
               </p>
             )}
           </header>
 
-          {/* ── Paragraphs ── */}
+          {/* ── Paragraphs ──
+              No container-level flash anymore — only the paragraph
+              whose leading "(X)" marker matches highlightClause
+              flashes. That keeps the scope of the highlight aligned
+              with the scope of the reference: "Article 144(3)" lights
+              up clause (3), not the whole article. Paragraphs without
+              a leading clause marker, or when highlightClause is
+              absent, render unchanged. */}
           <div className='flex-1 space-y-3 overflow-y-auto px-5 py-5 text-[14.5px] leading-relaxed text-neutral-text sm:px-7 sm:py-6'>
-            {article.paragraphs.map((p, i) => (
-              <p key={i} className='font-serif first-letter:text-[1.15em] first-letter:font-semibold'>
-                {highlight(p, query)}
-              </p>
-            ))}
+            {article.paragraphs.map((p, i) => {
+              const leading = /^\s*\((\w+)\)/.exec(p)?.[1];
+              const isTarget = !!highlightClause && leading === highlightClause;
+              return (
+                <motion.p
+                  key={i}
+                  ref={isTarget ? clauseRef : undefined}
+                  initial={isTarget ? { backgroundColor: 'rgb(254, 249, 195)' } : undefined}
+                  animate={
+                    isTarget
+                      ? {
+                          backgroundColor: [
+                            'rgba(254, 249, 195, 1)',
+                            'rgba(254, 249, 195, 1)',
+                            'rgba(254, 249, 195, 0)',
+                          ],
+                        }
+                      : undefined
+                  }
+                  transition={
+                    isTarget
+                      ? { duration: 2.4, times: [0, 0.25, 1], ease: 'easeOut' }
+                      : undefined
+                  }
+                  className={`font-serif first-letter:text-[1.15em] first-letter:font-semibold ${
+                    isTarget ? 'rounded-md px-2 -mx-2 py-1 -my-1' : ''
+                  }`}>
+                  {renderProse(p, { query, onRefClick: onReferenceClick })}
+                </motion.p>
+              );
+            })}
 
             {article.explanation && (
               <div className='mt-4 rounded-xl bg-gradient-to-br from-gov-gold/15 via-gov-sand to-gov-cream/80 p-4 ring-1 ring-gov-gold/30'>
@@ -154,7 +235,7 @@ export default function ArticleViewer({
                   Why it matters
                 </div>
                 <p className='text-[13.5px] leading-relaxed text-gov-dark'>
-                  {highlight(article.explanation, query)}
+                  {renderProse(article.explanation, { query, onRefClick: onReferenceClick })}
                 </p>
               </div>
             )}
