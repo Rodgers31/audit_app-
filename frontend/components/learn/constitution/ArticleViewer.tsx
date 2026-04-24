@@ -116,12 +116,16 @@ export default function ArticleViewer({
   const clauseRef = useRef<HTMLParagraphElement | null>(null);
 
   // When the viewer mounts with a clause to highlight, scroll that
-  // paragraph into view inside the overflow-y-auto body. We run this
-  // after paint so the ref is populated, and key on article.number so
-  // a second ref-click to the same article re-triggers scrolling.
+  // paragraph into view inside the overflow-y-auto body. `block:
+  // 'nearest'` (not 'start'): short articles where the whole body
+  // already fits need no scroll, and 'start' would try to align the
+  // paragraph with the viewport top — if the inner container can't
+  // scroll the browser walks up ancestors and ends up scrolling the
+  // outer page, visually pushing the article down. 'nearest' is a
+  // no-op whenever the paragraph is already visible.
   useEffect(() => {
     if (!highlightClause || !clauseRef.current) return;
-    clauseRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    clauseRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [article.number, highlightClause]);
   const pageKey = useMemo(
     () => `${chapter.number}-${article.number}`,
