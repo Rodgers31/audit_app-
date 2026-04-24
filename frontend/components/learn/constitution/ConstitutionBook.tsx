@@ -23,6 +23,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import ArticleViewer from './ArticleViewer';
 import ChapterSidebar from './ChapterSidebar';
+import type { ReferenceTarget } from './prose';
 
 interface ConstitutionBookProps {
   /** Initial chapter to open. Defaults to Chapter 12 (Public Finance). */
@@ -48,6 +49,14 @@ export default function ConstitutionBook({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [direction, setDirection] = useState<number>(1);
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
+  // Breadcrumb of positions the reader left when they clicked a
+  // reference inside the prose. Pushed in navigateToReference(),
+  // popped in goBack(), cleared when the reader jumps via the sidebar
+  // (that's general navigation — the back-pill only makes sense when
+  // the user is following a chain of cross-references).
+  const [refHistory, setRefHistory] = useState<
+    Array<{ chapter: number; article: number }>
+  >([]);
 
   /* Use a ref for direction too so keyboard/swipe handlers always read the
      latest value regardless of render timing. */
@@ -112,6 +121,9 @@ export default function ConstitutionBook({
       setActiveChapter(n);
       // Drop the preselected article so the new chapter opens at #1.
       setActiveArticle(null);
+      // Sidebar / keyboard jumps aren't "following a reference", so the
+      // back-pill would be misleading here — start fresh.
+      setRefHistory([]);
     },
     [activeChapter]
   );
@@ -143,6 +155,61 @@ export default function ConstitutionBook({
     },
     [activeChapter, activeArticle]
   );
+
+  /** Follow a cross-reference from inside the prose. Pushes the
+   * current location onto refHistory so the viewer's Back pill can
+   * rewind — possibly across several hops. Chapter refs land on the
+   * chapter's first article. No-ops when the reference points at
+   * wherever the reader already is (self-references appear in summary
+   * text often enough to matter). */
+  const navigateToReference = useCallback(
+    (target: ReferenceTarget) => {
+      const sameChapter = target.chapterNumber === activeChapter;
+      const sameArticle =
+        target.kind === 'article' && sameChapter && target.articleNumber === activeArticle;
+      const sameChapterStart = target.kind === 'chapter' && sameChapter;
+      if (sameArticle || sameChapterStart) return;
+
+      if (activeArticle !== null) {
+        setRefHistory((h) => [...h, { chapter: activeChapter, article: activeArticle }]);
+      }
+      if (target.kind === 'chapter') {
+        setDirection(target.chapterNumber > activeChapter ? 1 : -1);
+        setActiveChapter(target.chapterNumber);
+        setActiveArticle(null); // fall through to first article
+        return;
+      }
+      // Article ref — same logic as selectArticle but we already
+      // managed direction / state above.
+      if (!sameChapter) {
+        setDirection(target.chapterNumber > activeChapter ? 1 : -1);
+        setActiveChapter(target.chapterNumber);
+        setActiveArticle(target.articleNumber);
+      } else {
+        setDirection(target.articleNumber > (activeArticle ?? 0) ? 1 : -1);
+        setActiveArticle(target.articleNumber);
+      }
+    },
+    [activeChapter, activeArticle]
+  );
+
+  const goBack = useCallback(() => {
+    setRefHistory((h) => {
+      if (h.length === 0) return h;
+      const prev = h[h.length - 1]!;
+      // Apply navigation as a side effect — React batches the history
+      // slice + the chapter/article sets into one render.
+      if (prev.chapter !== activeChapter) {
+        setDirection(prev.chapter > activeChapter ? 1 : -1);
+        setActiveChapter(prev.chapter);
+        setActiveArticle(prev.article);
+      } else {
+        setDirection(prev.article > (activeArticle ?? 0) ? 1 : -1);
+        setActiveArticle(prev.article);
+      }
+      return h.slice(0, -1);
+    });
+  }, [activeChapter, activeArticle]);
 
   /* ── Keyboard navigation (arrow keys) ── */
   useEffect(() => {
@@ -271,6 +338,13 @@ export default function ConstitutionBook({
               nextChapterNumber={nextChapterMeta?.number}
               nextChapterTitle={nextChapterMeta?.title}
               onGoNextChapter={goNextChapter}
+              onReferenceClick={navigateToReference}
+              backTarget={
+                refHistory.length > 0
+                  ? { articleNumber: refHistory[refHistory.length - 1]!.article }
+                  : null
+              }
+              onBack={goBack}
             />
           ) : null}
         </motion.div>

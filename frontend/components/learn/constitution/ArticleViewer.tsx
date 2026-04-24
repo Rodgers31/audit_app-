@@ -16,11 +16,14 @@ import {
   ArrowRight,
   Bookmark,
   CheckCircle2,
+  CornerDownLeft,
   Hash,
   Lightbulb,
   ScrollText,
 } from 'lucide-react';
 import { useMemo } from 'react';
+
+import { renderProse, type ReferenceTarget } from './prose';
 
 /** Page-turn variants. `direction` is passed via AnimatePresence's custom prop. */
 const PAGE_VARIANTS: Variants = {
@@ -46,6 +49,14 @@ interface ArticleViewerProps {
   nextChapterNumber?: number;
   nextChapterTitle?: string;
   onGoNextChapter?: () => void;
+  /** Called when the reader clicks an "Article N" / "Chapter N"
+   * reference embedded in the prose. The parent decides whether the
+   * jump pushes history, opens in place, etc. */
+  onReferenceClick?: (target: ReferenceTarget) => void;
+  /** Label for the back-pill shown when the reader followed a
+   * reference into this article. `null` / `undefined` hides it. */
+  backTarget?: { articleNumber: number } | null;
+  onBack?: () => void;
 }
 
 /** Cheap, allocation-light highlight: splits on case-insensitive query. */
@@ -91,6 +102,9 @@ export default function ArticleViewer({
   nextChapterNumber,
   nextChapterTitle,
   onGoNextChapter,
+  onReferenceClick,
+  backTarget,
+  onBack,
 }: ArticleViewerProps) {
   const pageKey = useMemo(
     () => `${chapter.number}-${article.number}`,
@@ -114,6 +128,19 @@ export default function ArticleViewer({
           style={{ transformStyle: 'preserve-3d', transformOrigin: 'center' }}>
           {/* ── Header ── */}
           <header className='border-b border-neutral-border/70 px-5 pb-4 pt-5 sm:px-7 sm:pt-6'>
+            {/* Back pill — only shown when the reader arrived here via an
+                in-prose reference click. Sits above the chapter chip so it
+                reads as "you followed a thread; here's how to unwind it"
+                rather than general navigation (left/right arrows do that). */}
+            {backTarget && onBack && (
+              <button
+                type='button'
+                onClick={onBack}
+                className='mb-3 inline-flex items-center gap-1.5 rounded-full border border-gov-forest/20 bg-gov-forest/5 px-3 py-1 text-[11px] font-semibold text-gov-forest hover:bg-gov-forest/10 hover:border-gov-forest/40 transition-colors'>
+                <CornerDownLeft size={12} />
+                Back to Article {backTarget.articleNumber}
+              </button>
+            )}
             <div className='mb-2 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wider text-gov-forest/70'>
               <span className='inline-flex items-center gap-1 rounded-full bg-gov-forest/10 px-2 py-0.5 font-semibold'>
                 <ScrollText size={11} />
@@ -134,7 +161,7 @@ export default function ArticleViewer({
             {article.summary && (
               <p className='mt-3 rounded-xl border border-gov-sage/30 bg-gov-sage/10 px-3.5 py-2.5 text-[13.5px] leading-relaxed text-gov-forest'>
                 <Bookmark size={13} className='-mt-0.5 mr-1 inline text-gov-sage' />
-                {highlight(article.summary, query)}
+                {renderProse(article.summary, { query, onRefClick: onReferenceClick })}
               </p>
             )}
           </header>
@@ -143,7 +170,7 @@ export default function ArticleViewer({
           <div className='flex-1 space-y-3 overflow-y-auto px-5 py-5 text-[14.5px] leading-relaxed text-neutral-text sm:px-7 sm:py-6'>
             {article.paragraphs.map((p, i) => (
               <p key={i} className='font-serif first-letter:text-[1.15em] first-letter:font-semibold'>
-                {highlight(p, query)}
+                {renderProse(p, { query, onRefClick: onReferenceClick })}
               </p>
             ))}
 
@@ -154,7 +181,7 @@ export default function ArticleViewer({
                   Why it matters
                 </div>
                 <p className='text-[13.5px] leading-relaxed text-gov-dark'>
-                  {highlight(article.explanation, query)}
+                  {renderProse(article.explanation, { query, onRefClick: onReferenceClick })}
                 </p>
               </div>
             )}
