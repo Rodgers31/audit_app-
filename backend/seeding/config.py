@@ -30,6 +30,7 @@ class SeedingSettings(BaseSettings):
     # slowest healthy domain runs in ~5 min.
     domain_timeout_seconds: int = Field(
         default=600,
+        ge=1,
         description="Per-domain hard timeout; aborts one domain without killing the run.",
     )
     max_retries: int = Field(
