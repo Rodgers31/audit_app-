@@ -164,6 +164,13 @@ def run_seed_command(args: argparse.Namespace, settings: SeedingSettings) -> int
                 session.add(job)
                 session.flush()
                 job_id = job.id
+                # Commit the RUNNING record immediately so it survives a
+                # later session.rollback() (e.g. on DomainTimeoutError or
+                # any other handler exception). Without this commit the
+                # job insert is inside the same transaction as the handler
+                # work, so rollback erases it and error_session.get(…)
+                # returns None, leaving no trace of the failed domain run.
+                session.commit()
 
                 context = DomainRunContext(since=since, dry_run=dry_run, job_id=job_id)
 
@@ -191,10 +198,44 @@ def run_seed_command(args: argparse.Namespace, settings: SeedingSettings) -> int
                     job.status = IngestionStatus.COMPLETED
 
                 if dry_run:
+                    finished_at_dry = datetime.now(timezone.utc)
                     session.rollback()
                     logger.info(
                         "Dry run - rolled back all changes", extra={"domain": domain}
                     )
+                    # The rollback above also undoes the in-flight job status
+                    # update (job was committed as RUNNING before the handler
+                    # ran). Persist the final status in a separate session so
+                    # the record doesn't stay orphaned in RUNNING state.
+                    if job_id:
+                        final_status = (
+                            IngestionStatus.COMPLETED_WITH_ERRORS
+                            if result and result.errors
+                            else IngestionStatus.COMPLETED
+                        )
+                        try:
+                            with SessionLocal() as status_session:
+                                dry_job = status_session.get(IngestionJob, job_id)
+                                if dry_job:
+                                    dry_job.status = final_status
+                                    dry_job.finished_at = finished_at_dry
+                                    dry_job.items_processed = (
+                                        result.items_processed if result else 0
+                                    )
+                                    dry_job.items_created = (
+                                        result.items_created if result else 0
+                                    )
+                                    dry_job.items_updated = (
+                                        result.items_updated if result else 0
+                                    )
+                                    dry_job.errors = result.errors if result else []
+                                    status_session.commit()
+                        except Exception:  # pragma: no cover - best-effort
+                            logger.warning(
+                                "Failed to update dry-run job status",
+                                extra={"domain": domain, "job_id": job_id},
+                                exc_info=True,
+                            )
                 else:
                     session.commit()
                     logger.info(
