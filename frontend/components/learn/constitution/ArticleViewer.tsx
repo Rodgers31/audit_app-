@@ -132,22 +132,8 @@ export default function ArticleViewer({
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           className='flex h-full flex-col'
           style={{ transformStyle: 'preserve-3d', transformOrigin: 'center' }}>
-          {/* ── Header ──
-              When flashOnMount is set we briefly bathe the header in a
-              soft yellow and fade it out over ~1.6s. The colour sits
-              between amber-100 (too cream) and amber-200 (too bright);
-              35% opacity keeps it readable-over. */}
-          <motion.header
-            initial={
-              flashOnMount
-                ? { backgroundColor: 'rgba(253, 230, 138, 0.35)' }
-                : undefined
-            }
-            animate={
-              flashOnMount ? { backgroundColor: 'rgba(253, 230, 138, 0)' } : undefined
-            }
-            transition={flashOnMount ? { duration: 1.6, ease: 'easeOut' } : undefined}
-            className='border-b border-neutral-border/70 px-5 pb-4 pt-5 sm:px-7 sm:pt-6'>
+          {/* ── Header ── */}
+          <header className='border-b border-neutral-border/70 px-5 pb-4 pt-5 sm:px-7 sm:pt-6'>
             {/* Back pill — only shown when the reader arrived here via an
                 in-prose reference click. Sits above the chapter chip so it
                 reads as "you followed a thread; here's how to unwind it"
@@ -184,10 +170,35 @@ export default function ArticleViewer({
                 {renderProse(article.summary, { query, onRefClick: onReferenceClick })}
               </p>
             )}
-          </motion.header>
+          </header>
 
-          {/* ── Paragraphs ── */}
-          <div className='flex-1 space-y-3 overflow-y-auto px-5 py-5 text-[14.5px] leading-relaxed text-neutral-text sm:px-7 sm:py-6'>
+          {/* ── Paragraphs ──
+              Arrival flash: when the reader clicks a cross-reference,
+              flashOnMount=true and this container holds a fully opaque
+              pale yellow (Tailwind yellow-100 ≈ #fef9c3) for ~0.6s,
+              then eases to transparent over ~1.8s. We use a solid
+              colour, not a translucent amber, because a parent
+              bg-white/70 backdrop was washing the previous rgba-based
+              tint below the perception threshold. */}
+          <motion.div
+            initial={
+              flashOnMount ? { backgroundColor: 'rgb(254, 249, 195)' } : undefined
+            }
+            animate={
+              flashOnMount
+                ? {
+                    backgroundColor: [
+                      'rgba(254, 249, 195, 1)',
+                      'rgba(254, 249, 195, 1)',
+                      'rgba(254, 249, 195, 0)',
+                    ],
+                  }
+                : undefined
+            }
+            transition={
+              flashOnMount ? { duration: 2.4, times: [0, 0.25, 1], ease: 'easeOut' } : undefined
+            }
+            className='flex-1 space-y-3 overflow-y-auto px-5 py-5 text-[14.5px] leading-relaxed text-neutral-text sm:px-7 sm:py-6'>
             {article.paragraphs.map((p, i) => (
               <p key={i} className='font-serif first-letter:text-[1.15em] first-letter:font-semibold'>
                 {renderProse(p, { query, onRefClick: onReferenceClick })}
@@ -243,7 +254,7 @@ export default function ArticleViewer({
                 </div>
               </div>
             )}
-          </div>
+          </motion.div>
 
           {/* ── Footer nav ── */}
           <footer className='flex items-center justify-between gap-3 border-t border-neutral-border/70 bg-gov-cream/60 px-5 py-3 sm:px-7'>
