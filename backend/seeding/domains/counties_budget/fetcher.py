@@ -187,10 +187,20 @@ def _discover_latest_county_birr_via_wp_api(
 ) -> Optional[str]:
     """Query the COB WordPress REST API for the latest county BIRR PDF.
 
-    The endpoint returns a JSON array of media items ordered newest-first.
-    We pick the first record whose title or filename matches a county
-    keyword. This avoids the HTML-scraping fragility and the 415/000
-    rejections we've seen from the CDN in front of the landing pages.
+    We can't blindly trust the API's `orderby=date&order=desc` or the
+    first "county" keyword match: empirically (CI run 24901989493) it
+    surfaced a 2015 single-county file as the "latest", which also
+    returned 404 because the CDN no longer hosts it. So:
+
+      1. Pull up to 100 PDFs (the API default cap).
+      2. Score each candidate by specificity — the *consolidated*
+         county BIRR is what we actually want, not ad-hoc single-
+         county files from years ago. Stronger keywords win.
+      3. Sort ourselves by (score desc, parsed date desc) to avoid
+         WordPress-plugin ordering quirks.
+      4. HEAD-probe each candidate in order; return the first 200.
+         Skipping 404s / 4xx / 5xx means a stale link in the API
+         feed no longer poisons the whole seeding run.
     """
     api_url = getattr(
         settings,
@@ -218,42 +228,101 @@ def _discover_latest_county_birr_via_wp_api(
         )
         return None
 
-    # Items are pre-sorted by upload date desc; pick the first county-
-    # related PDF. Fall back to the newest PDF overall if no keyword
-    # match — the downstream parser will reject non-BIRR documents by
-    # structure rather than by URL shape.
-    def _is_county(item: Dict[str, Any]) -> bool:
+    # Score reflects how specifically the filename/title screams "the
+    # consolidated, most-recent-BIRR-for-all-counties PDF". The same
+    # signal set as before is still used, but weighted — plain "county"
+    # alone is a weak hint; "consolidated" + "BIRR" + a FY marker win.
+    def _score(item: Dict[str, Any]) -> int:
         title = (item.get("title") or {}).get("rendered", "") or ""
         slug = item.get("slug") or ""
         source = item.get("source_url") or ""
         haystack = f"{title} {slug} {source}".lower()
-        return any(kw in haystack for kw in _COUNTY_PDF_KEYWORDS)
+        if not any(kw in haystack for kw in _COUNTY_PDF_KEYWORDS):
+            return 0
+        score = 1  # baseline for any county match
+        if "consolidated" in haystack:
+            score += 5
+        if "c-birr" in haystack or "cbirr" in haystack:
+            score += 3
+        if "budget-implementation-review" in haystack or "birr" in haystack:
+            score += 2
+        # FY markers — prefer recent years strongly.
+        # Matches "2024-25", "2024/25", "fy-2024-25", "fy2024-25", etc.
+        fy_match = re.search(r"(20\d{2})[-/](\d{2,4})", haystack)
+        if fy_match:
+            score += 1
+            year = int(fy_match.group(1))
+            # Give very recent fiscal years an extra nudge.
+            score += max(0, year - 2020)
+        return score
 
-    county_items = [i for i in items if isinstance(i, dict) and _is_county(i)]
-    chosen = county_items[0] if county_items else None
-    if chosen is None:
+    def _parsed_date(item: Dict[str, Any]) -> str:
+        # Fall back to empty string so sort is stable for items missing
+        # the field (they'll rank last).
+        return item.get("date") or ""
+
+    scored = [
+        (s, _parsed_date(i), i)
+        for i in items
+        if isinstance(i, dict) and (s := _score(i)) > 0
+    ]
+    if not scored:
         logger.warning(
             "COB WP REST API returned %d PDFs but none matched county keywords",
             len(items),
         )
         return None
+    scored.sort(key=lambda t: (t[0], t[1]), reverse=True)
 
-    source_url = chosen.get("source_url")
-    if not isinstance(source_url, str) or not source_url.lower().endswith(".pdf"):
-        logger.warning(
-            "COB WP REST API chose an item without a usable source_url: %r",
-            chosen.get("id"),
+    # Liveness probe candidates in order, skipping 404s / 4xx / 5xx.
+    # Keeps the failure mode of a stale feed entry (common with the
+    # COB WP-Download-Manager plugin's orphaned links) local: one bad
+    # URL just moves us on to the next candidate instead of poisoning
+    # the whole domain run.
+    head_headers = {
+        "User-Agent": _BROWSER_UA,
+        "Accept": "application/pdf,*/*;q=0.8",
+    }
+    for score, date, item in scored[:10]:
+        source_url = item.get("source_url")
+        if not isinstance(source_url, str) or not source_url.lower().endswith(".pdf"):
+            continue
+        try:
+            head = client.head(
+                source_url,
+                raise_for_status=False,
+                headers=head_headers,
+                timeout=20.0,
+            )
+        except Exception as exc:
+            logger.info(
+                "Candidate %s HEAD failed (%s); trying next",
+                source_url,
+                exc,
+            )
+            continue
+        if head.status_code >= 400:
+            logger.info(
+                "Candidate %s returned HTTP %d; trying next",
+                source_url,
+                head.status_code,
+            )
+            continue
+        title = (item.get("title") or {}).get("rendered", "")
+        logger.info(
+            "COB WP REST API selected BIRR PDF: %s (date=%s, score=%d, title=%r)",
+            source_url,
+            date,
+            score,
+            title,
         )
-        return None
+        return source_url
 
-    title = (chosen.get("title") or {}).get("rendered", "")
-    logger.info(
-        "COB WP REST API selected BIRR PDF: %s (date=%s, title=%r)",
-        source_url,
-        chosen.get("date"),
-        title,
+    logger.warning(
+        "COB WP REST API: %d scored candidates but none passed HEAD probe",
+        len(scored),
     )
-    return source_url
+    return None
 
 
 def _discover_latest_county_birr_via_html(
