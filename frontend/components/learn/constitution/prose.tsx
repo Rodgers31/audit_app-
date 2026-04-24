@@ -48,10 +48,19 @@ const REF_RE =
 const CONTINUATION_RE =
   /^(?:,\s+and\s+|,\s*|\s+and\s+|\s+or\s+)(\d+)((?:\([A-Za-z0-9]+\))*)/i;
 
-/** Turn a captured "(2)(a)" blob into ['2', 'a']. Empty string → []. */
+/** Turn a captured "(2)(a)" blob into ['2', 'a']. Empty string → [].
+ * Uses an exec loop rather than [...matchAll(...)] because this repo's
+ * tsconfig target doesn't include downlevelIteration support for the
+ * RegExpStringIterator return type. */
 function extractClauses(parenBlob: string | undefined): string[] {
   if (!parenBlob) return [];
-  return [...parenBlob.matchAll(/\(([A-Za-z0-9]+)\)/g)].map((m) => m[1]!);
+  const out: string[] = [];
+  const re = /\(([A-Za-z0-9]+)\)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(parenBlob)) !== null) {
+    out.push(m[1]!);
+  }
+  return out;
 }
 
 export type ReferenceTarget =
@@ -131,11 +140,16 @@ interface FoundRef {
 
 function findReferences(text: string): FoundRef[] {
   const out: FoundRef[] = [];
-  for (const match of text.matchAll(REF_RE)) {
+  // exec-loop rather than for...of on matchAll — see extractClauses
+  // for the tsconfig rationale. Clone the regex so the shared /g
+  // state at module level doesn't carry lastIndex across calls.
+  const re = new RegExp(REF_RE.source, REF_RE.flags);
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text)) !== null) {
     const [whole, kindWord, numStr, parenBlob] = match;
     const n = Number.parseInt(numStr!, 10);
     const clauses = extractClauses(parenBlob);
-    const start = match.index!;
+    const start = match.index;
     const end = start + whole.length;
     const isChapter = kindWord!.toLowerCase().startsWith('chapter');
     out.push({ start, end, target: buildTarget(n, isChapter, clauses) });
