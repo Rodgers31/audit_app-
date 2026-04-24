@@ -55,11 +55,12 @@ export default function MapWithDetailPanel({
 
   return (
     <motion.div
+      id='home-map'
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       viewport={{ once: true, margin: '-80px' }}
       transition={{ duration: 0.8, delay: 0.2 }}
-      className='grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-0 items-stretch rounded-xl bg-gray-50/60 border border-gray-200/40 overflow-hidden'>
+      className='grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-0 items-stretch rounded-xl bg-gray-50/60 border border-gray-200/40 overflow-hidden scroll-mt-24'>
       <InteractiveKenyaMap
         counties={counties}
         onCountySelect={setSelectedCounty}

@@ -762,6 +762,7 @@ export const MESSAGES = {
   'county.page.back_county_explorer': { en: 'Back to County Explorer', sw: 'Rudi kwa Kivinjari cha Kaunti', plain: 'Back to Counties' },
   'county.page.follow_money_short': { en: 'Follow the Money', sw: 'Fuatilia Pesa', plain: 'Follow the Money' },
   'county.page.all_counties_short': { en: 'All Counties', sw: 'Kaunti Zote', plain: 'All Counties' },
+  'county.page.back_to_home_map': { en: 'Back to map', sw: 'Rudi kwa ramani', plain: 'Back to map' },
 
   // Hero
   'county.hero.eyebrow': { en: 'County Government · Kenya', sw: 'Serikali ya Kaunti · Kenya', plain: 'County Government · Kenya' },

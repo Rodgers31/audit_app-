@@ -261,8 +261,13 @@ export default function MapTooltip({
             CTA is a distinct target for "take me to the full page". We
             stopPropagation so the card's onClick doesn't also fire the
             selection — the page transition makes that stale anyway. */}
+        {/* ?from=home-map is the signal the detail page uses to render
+            "Back to map" + "All counties" shortcuts. InteractiveKenyaMap
+            is only mounted on the home dashboard today, so the param is
+            always accurate here; if that changes, hoist this into a
+            prop. */}
         <Link
-          href={`/counties/${county.id}`}
+          href={`/counties/${county.id}?from=home-map`}
           onClick={(e) => e.stopPropagation()}
           className='mt-3 pt-2 border-t border-gray-200/60 flex items-center justify-center gap-1 text-[11px] font-medium text-gov-forest hover:text-gov-dark transition-colors'>
           View detailed analysis
