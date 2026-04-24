@@ -242,6 +242,13 @@ jobs:
 
       - name: Seed all domains
         if: github.event.inputs.domain == '' || github.event.inputs.domain == null
+        # Step-level cap below the job's 30-min timeout so the
+        # 'Check ingestion job results' step downstream (which runs on
+        # `if: always()`) still has room to persist partial-run data
+        # before the runner is torn down. Combined with the per-domain
+        # timeout in seeding/cli.py, a single stuck domain no longer
+        # swallows the whole nightly window.
+        timeout-minutes: 25
         run: |
           cd backend
           python -m seeding.cli seed --all ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}

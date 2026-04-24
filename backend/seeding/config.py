@@ -23,6 +23,15 @@ class SeedingSettings(BaseSettings):
         default=30.0,
         description="HTTP request timeout in seconds for upstream fetches.",
     )
+    # Hard cap on how long a single domain handler may run before the CLI
+    # aborts it and moves to the next domain. Protects `seed --all` from
+    # a single stuck domain (e.g. counties_budget blocking on a slow PDF
+    # parse) eating the whole nightly window. 10 min is generous — the
+    # slowest healthy domain runs in ~5 min.
+    domain_timeout_seconds: int = Field(
+        default=600,
+        description="Per-domain hard timeout; aborts one domain without killing the run.",
+    )
     max_retries: int = Field(
         default=3, description="Maximum retry attempts for transient HTTP failures."
     )

@@ -17,6 +17,7 @@ from __future__ import annotations
 import logging
 import re
 import tempfile
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urljoin
@@ -398,12 +399,20 @@ def _download_and_parse_county_pdf(
             "User-Agent": _BROWSER_UA,
             "Accept": "application/pdf,*/*;q=0.8",
         }
+        # Explicit phase logging — this domain stalled in CI without any
+        # signal between fetch-start and job timeout, so we couldn't tell
+        # whether the CDN was slow or the parser hung. The download and
+        # parse lines below bracket each phase and time them so future
+        # stalls point at the real culprit.
+        logger.info("Starting COB county BIRR PDF download: %s", pdf_url)
+        download_start = time.monotonic()
         response = client.get(
             pdf_url,
             raise_for_status=True,
             headers=pdf_headers,
             timeout=180.0,
         )
+        download_elapsed = time.monotonic() - download_start
 
         with tempfile.NamedTemporaryFile(
             suffix=".pdf", delete=False, prefix="cob_county_birr_"
@@ -412,13 +421,22 @@ def _download_and_parse_county_pdf(
             tmp_path = Path(tmp.name)
 
         logger.info(
-            "Downloaded COB county BIRR PDF (%d bytes) to %s",
+            "Downloaded COB county BIRR PDF (%d bytes, %.1fs) to %s",
             len(response.content),
+            download_elapsed,
             tmp_path,
         )
 
+        logger.info("Parsing COB county BIRR PDF: %s", tmp_path)
+        parse_start = time.monotonic()
         parser = CoBQuarterlyReportParser(tmp_path)
         parsed_records = parser.parse()
+        parse_elapsed = time.monotonic() - parse_start
+        logger.info(
+            "Parsed COB county BIRR PDF (%d records, %.1fs)",
+            len(parsed_records) if parsed_records else 0,
+            parse_elapsed,
+        )
 
         if not parsed_records:
             logger.warning("CoBQuarterlyReportParser returned no records")

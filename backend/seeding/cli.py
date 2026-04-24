@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import signal
 import sys
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, Optional, Sequence
+from typing import Iterable, Iterator, Optional, Sequence
 
 from dotenv import load_dotenv
 
@@ -48,6 +50,43 @@ def _collect_domains(requested: Iterable[str], include_all: bool) -> Sequence[st
     if unknown:
         raise ValueError(f"Unknown domain(s) requested: {', '.join(sorted(unknown))}")
     return domains
+
+
+class DomainTimeoutError(RuntimeError):
+    """Raised when a single domain handler exceeds its time budget."""
+
+
+@contextmanager
+def _domain_timeout(seconds: int) -> Iterator[None]:
+    """Abort the wrapped block with DomainTimeoutError after `seconds`.
+
+    Uses POSIX SIGALRM so the timeout actually kills Python-level work
+    (including `time.sleep`, `httpx` connect/read, and pdfplumber between
+    its Python frames). Only installs the handler when we're on the main
+    thread of a POSIX system — the seeding CLI always is in CI, but the
+    guard keeps pytest runs on Windows / non-main-threads graceful.
+
+    Caveat: code stuck in a blocking C extension call that never yields
+    to Python (e.g. some tabula JVM bridge calls) won't be interruptible
+    until it returns. In practice SIGALRM catches most real-world stalls
+    we've seen.
+    """
+    if seconds <= 0 or not hasattr(signal, "SIGALRM"):
+        yield
+        return
+
+    def _handler(signum, frame):  # pragma: no cover - signal path
+        raise DomainTimeoutError(
+            f"domain exceeded {seconds}s budget; aborted by the CLI"
+        )
+
+    previous = signal.signal(signal.SIGALRM, _handler)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, previous)
 
 
 def _ensure_db_sessionlocal() -> None:
@@ -114,7 +153,13 @@ def run_seed_command(args: argparse.Namespace, settings: SeedingSettings) -> int
 
                 context = DomainRunContext(since=since, dry_run=dry_run, job_id=job_id)
 
-                result = handler(session=session, settings=settings, context=context)
+                # Per-domain timeout so one stuck domain (e.g. a stalled
+                # PDF parse in counties_budget) can't take down the whole
+                # `seed --all` run. Falls through to the except below,
+                # which rolls back the session, marks the job FAILED,
+                # and lets the outer loop move to the next domain.
+                with _domain_timeout(settings.domain_timeout_seconds):
+                    result = handler(session=session, settings=settings, context=context)
 
                 # Update job with results
                 job.finished_at = datetime.now(timezone.utc)
