@@ -73,8 +73,10 @@ class TestWpApiDiscovery:
     newest county-tagged PDF."""
 
     def test_picks_newest_county_pdf_from_api(self, settings):
-        """The API returns items date-desc; fetcher should take the
-        first one whose title or URL looks county-related."""
+        """The API returns items date-desc; fetcher should pick the
+        best-scoring county-related PDF that also responds 200 to a
+        HEAD probe (the liveness check guards against stale feed
+        entries — cf. prod bug where a 2015 404'd link was chosen)."""
         captured_requests: List[httpx.Request] = []
 
         def handler(request: httpx.Request) -> httpx.Response:
@@ -113,6 +115,10 @@ class TestWpApiDiscovery:
                 return httpx.Response(
                     200, json=body, request=request
                 )
+            # HEAD probes of PDF URLs: report 200 so the liveness
+            # check accepts the chosen candidate.
+            if request.method == "HEAD" and request.url.path.endswith(".pdf"):
+                return httpx.Response(200, request=request)
             # Any other URL is unexpected — force an obvious failure
             return httpx.Response(500, request=request)
 
@@ -161,6 +167,69 @@ class TestWpApiDiscovery:
                 client, settings
             )
         assert url is None
+
+    def test_falls_through_when_top_candidate_404s(self, settings):
+        """Regression: CI run 24901989493 returned a 2015 Makueni file
+        as 'latest' and that URL had since been removed from the CDN,
+        returning 404. The selector must HEAD-probe candidates in
+        rank order and skip dead ones, falling through to a live
+        alternate rather than poisoning the whole domain run."""
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if "wp-json/wp/v2/media" in request.url.path:
+                return httpx.Response(
+                    200,
+                    json=_wp_api_payload(
+                        [
+                            # Top-ranked by score (consolidated + c-birr)
+                            # but the CDN has since deleted it.
+                            {
+                                "id": 50,
+                                "date": "2025-04-01T00:00:00",
+                                "slug": "consolidated-county-birr-fy2025-26",
+                                "title": {
+                                    "rendered": "Consolidated County BIRR FY2025/26"
+                                },
+                                "mime_type": "application/pdf",
+                                "source_url": (
+                                    "https://cob.go.ke/wp-content/uploads/"
+                                    "2025/04/stale.pdf"
+                                ),
+                            },
+                            # Lower score (only matches "county") but
+                            # still alive — should be returned after
+                            # the first candidate 404s.
+                            {
+                                "id": 40,
+                                "date": "2025-03-01T00:00:00",
+                                "slug": "county-backup-report",
+                                "title": {
+                                    "rendered": "County Backup Report"
+                                },
+                                "mime_type": "application/pdf",
+                                "source_url": (
+                                    "https://cob.go.ke/wp-content/uploads/"
+                                    "2025/03/alive.pdf"
+                                ),
+                            },
+                        ]
+                    ),
+                    request=request,
+                )
+            if request.method == "HEAD":
+                if "stale.pdf" in request.url.path:
+                    return httpx.Response(404, request=request)
+                if "alive.pdf" in request.url.path:
+                    return httpx.Response(200, request=request)
+            return httpx.Response(500, request=request)
+
+        with _make_client(settings, handler) as client:
+            url = cb_fetcher._discover_latest_county_birr_via_wp_api(
+                client, settings
+            )
+
+        assert url is not None
+        assert url.endswith("alive.pdf"), f"expected fallthrough to alive.pdf, got {url}"
 
     def test_skips_items_without_pdf_source_url(self, settings):
         """Items whose source_url is missing or not a .pdf must be
@@ -334,6 +403,9 @@ class TestFetchBudgetPayloadStrategyOrder:
                     ],
                     request=request,
                 )
+            # Liveness-probe HEAD on the chosen PDF must succeed.
+            if request.method == "HEAD" and request.url.path.endswith(".pdf"):
+                return httpx.Response(200, request=request)
             # Any other URL is an unexpected code path.
             return httpx.Response(500, request=request)
 
