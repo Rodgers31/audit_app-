@@ -57,6 +57,11 @@ interface ArticleViewerProps {
    * reference into this article. `null` / `undefined` hides it. */
   backTarget?: { articleNumber: number } | null;
   onBack?: () => void;
+  /** When true, the header briefly flashes a soft yellow on mount —
+   * the visual "you landed on the right thing" cue for reference
+   * arrivals. Pass false for prev/next/sidebar/back navigations where
+   * the reader already knows where they are. */
+  flashOnMount?: boolean;
 }
 
 /** Cheap, allocation-light highlight: splits on case-insensitive query. */
@@ -105,6 +110,7 @@ export default function ArticleViewer({
   onReferenceClick,
   backTarget,
   onBack,
+  flashOnMount = false,
 }: ArticleViewerProps) {
   const pageKey = useMemo(
     () => `${chapter.number}-${article.number}`,
@@ -126,8 +132,22 @@ export default function ArticleViewer({
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           className='flex h-full flex-col'
           style={{ transformStyle: 'preserve-3d', transformOrigin: 'center' }}>
-          {/* ── Header ── */}
-          <header className='border-b border-neutral-border/70 px-5 pb-4 pt-5 sm:px-7 sm:pt-6'>
+          {/* ── Header ──
+              When flashOnMount is set we briefly bathe the header in a
+              soft yellow and fade it out over ~1.6s. The colour sits
+              between amber-100 (too cream) and amber-200 (too bright);
+              35% opacity keeps it readable-over. */}
+          <motion.header
+            initial={
+              flashOnMount
+                ? { backgroundColor: 'rgba(253, 230, 138, 0.35)' }
+                : undefined
+            }
+            animate={
+              flashOnMount ? { backgroundColor: 'rgba(253, 230, 138, 0)' } : undefined
+            }
+            transition={flashOnMount ? { duration: 1.6, ease: 'easeOut' } : undefined}
+            className='border-b border-neutral-border/70 px-5 pb-4 pt-5 sm:px-7 sm:pt-6'>
             {/* Back pill — only shown when the reader arrived here via an
                 in-prose reference click. Sits above the chapter chip so it
                 reads as "you followed a thread; here's how to unwind it"
@@ -164,7 +184,7 @@ export default function ArticleViewer({
                 {renderProse(article.summary, { query, onRefClick: onReferenceClick })}
               </p>
             )}
-          </header>
+          </motion.header>
 
           {/* ── Paragraphs ── */}
           <div className='flex-1 space-y-3 overflow-y-auto px-5 py-5 text-[14.5px] leading-relaxed text-neutral-text sm:px-7 sm:py-6'>

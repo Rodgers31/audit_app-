@@ -16,19 +16,30 @@ import type React from 'react';
 import { CONSTITUTION_META, findChapterForArticle } from '@/data/constitution';
 
 /**
- * Matches:
- *   - "Article 152"      → { kind: 'article', n: 152 }
- *   - "Articles 156"     → { kind: 'article', n: 156 }
- *   - "Article 152(2)"   → navigate to Art. 152; the "(2)" marker is
- *                          cosmetic — we don't jump to subparagraphs.
- *   - "Chapter 12"       → { kind: 'chapter', n: 12 }
+ * Primary match — anchors the chain on an explicit keyword:
+ *   - "Article 152"      → article 152
+ *   - "Articles 156"     → article 156 (plural form)
+ *   - "Article 152(2)"   → article 152; the "(2)" marker is cosmetic,
+ *                          we don't jump to subparagraphs.
+ *   - "Chapter 12"       → chapter 12
  *
  * Skipped by design:
  *   - clause markers like "(1)", "(a)", "sub-paragraph (i)" — these
  *     are intra-article and have no useful navigation target.
  *   - phrases like "this Constitution" — self-referential.
  */
-const REF_RE = /\b(Article|Articles|Chapter)\s+(\d+)(\([A-Za-z0-9]+\))?/g;
+const REF_RE = /\b(Article|Articles|Chapter|Chapters)\s+(\d+)(\([A-Za-z0-9]+\))?/g;
+
+/**
+ * After a primary match, prose often continues with more bare numbers
+ * joined by ", ", " or ", " and ", or some combination ("Articles 152,
+ * 154, 155 and 156"). CONTINUATION_RE eats ONE of those separators
+ * plus the next number; we apply it repeatedly until the chain breaks
+ * so every number in a list becomes clickable under the same kind as
+ * the anchor.
+ */
+const CONTINUATION_RE =
+  /^(?:,\s+and\s+|,\s*|\s+and\s+|\s+or\s+)(\d+)(?:\([A-Za-z0-9]+\))?/i;
 
 export type ReferenceTarget =
   | { kind: 'article'; articleNumber: number; chapterNumber: number }
@@ -103,21 +114,40 @@ function findReferences(text: string): FoundRef[] {
     const n = Number.parseInt(numStr!, 10);
     const start = match.index!;
     const end = start + whole.length;
-    const isChapter = kindWord!.toLowerCase() === 'chapter';
-    let target: ReferenceTarget | null = null;
-    if (isChapter) {
-      if (CONSTITUTION_META.some((m) => m.number === n)) {
-        target = { kind: 'chapter', chapterNumber: n };
-      }
-    } else {
-      const meta = findChapterForArticle(n);
-      if (meta) {
-        target = { kind: 'article', articleNumber: n, chapterNumber: meta.number };
-      }
+    const isChapter = kindWord!.toLowerCase().startsWith('chapter');
+    out.push({ start, end, target: buildTarget(n, isChapter) });
+
+    // Chain continuation: "Article 144 or 145 and 146" — each extra
+    // number becomes its own clickable ref under the same kind as the
+    // anchor. We walk the text after the primary match one continuation
+    // at a time until the chain breaks on arbitrary prose.
+    let cursor = end;
+    while (cursor < text.length) {
+      const rest = text.slice(cursor);
+      const cont = CONTINUATION_RE.exec(rest);
+      if (!cont) break;
+      const sep = cont[0]!;
+      const numInChain = Number.parseInt(cont[1]!, 10);
+      // The link's clickable range is just the number (and any
+      // subparagraph paren) — the " or ", ", ", " and " glue stays as
+      // plain text so the sentence still reads naturally.
+      const numStart = cursor + sep.indexOf(cont[1]!);
+      const numEnd = cursor + sep.length;
+      out.push({ start: numStart, end: numEnd, target: buildTarget(numInChain, isChapter) });
+      cursor += sep.length;
     }
-    out.push({ start, end, target });
   }
   return out;
+}
+
+function buildTarget(n: number, isChapter: boolean): ReferenceTarget | null {
+  if (isChapter) {
+    return CONSTITUTION_META.some((m) => m.number === n)
+      ? { kind: 'chapter', chapterNumber: n }
+      : null;
+  }
+  const meta = findChapterForArticle(n);
+  return meta ? { kind: 'article', articleNumber: n, chapterNumber: meta.number } : null;
 }
 
 /** Cheap case-insensitive token highlight — mirror of the old helper
