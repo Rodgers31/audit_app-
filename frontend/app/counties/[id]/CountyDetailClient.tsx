@@ -29,7 +29,6 @@ import {
   HardHat,
   Info,
   Landmark,
-  Map as MapIcon,
   ShieldAlert,
   X,
 } from 'lucide-react';
@@ -564,10 +563,14 @@ export default function CountyDetailClient() {
             dedicated buttons instead. */}
         {fromHomeMap ? (
           <div className='flex flex-wrap items-center gap-2'>
+            {/* Primary action: solid forest fill + back arrow so it
+                reads as "rewind to where I came from". The all-counties
+                shortcut next to it is deliberately secondary (outlined
+                + muted) so the eye lands on the return path first. */}
             <Link
               href='/#home-map'
-              className='inline-flex items-center gap-1.5 rounded-full border border-gov-forest/20 bg-gov-forest/5 px-3 py-1.5 text-sm text-gov-forest hover:bg-gov-forest/10 hover:border-gov-forest/40 transition-colors'>
-              <MapIcon size={14} />
+              className='inline-flex items-center gap-1.5 rounded-full bg-gov-forest px-3.5 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-gov-dark transition-colors'>
+              <ArrowLeft size={14} />
               {t('county.page.back_to_home_map')}
             </Link>
             <Link
