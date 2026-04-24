@@ -24,7 +24,7 @@ from urllib.parse import urljoin
 
 from ...config import SeedingSettings
 from ...http_client import SeedingHttpClient
-from ...utils import load_json_resource
+from ...utils import load_json_resource, slugify_entity
 
 logger = logging.getLogger("seeding.counties_budget.fetcher")
 
@@ -523,7 +523,7 @@ def _download_and_parse_county_pdf(
         dropped_no_fy = 0
         for record in parsed_records:
             county = record.get("county", "Unknown")
-            entity_slug = county.lower().replace(" ", "-") + "-county"
+            entity_slug = slugify_entity(county)
             fy = record.get("fiscal_year", "")
 
             start_iso, end_iso = _derive_fiscal_year_dates(fy)

@@ -21,7 +21,7 @@ from urllib.parse import urljoin
 
 from ...config import SeedingSettings
 from ...http_client import SeedingHttpClient
-from ...utils import load_json_resource
+from ...utils import load_json_resource, slugify_entity
 
 logger = logging.getLogger("seeding.audits.fetcher")
 
@@ -295,9 +295,11 @@ def _extract_findings_from_text(
                     pass
 
             entity = current_county or "National Government"
-            entity_slug = entity.lower().replace(" ", "-")
-            if current_county:
-                entity_slug += "-county"
+            # slugify_entity collapses punctuation (incl. apostrophes) so
+            # "Murang'a" normalises to "muranga" — matches the DB slug
+            # format. Prior `.lower().replace(" ", "-")` left apostrophes
+            # in place and triggered "Unknown entity slug" warnings.
+            entity_slug = slugify_entity(entity, county_suffix=bool(current_county))
 
             # Truncate finding text to reasonable length
             finding_text = section.strip()[:500]
