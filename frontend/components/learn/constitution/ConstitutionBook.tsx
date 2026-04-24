@@ -57,11 +57,13 @@ export default function ConstitutionBook({
   const [refHistory, setRefHistory] = useState<
     Array<{ chapter: number; article: number }>
   >([]);
-  // True for exactly one render after navigateToReference(): lets the
-  // viewer flash a soft yellow on mount so the reader can see which
-  // article answered their click. Reset by every other navigation
-  // path (prev/next/sidebar/back) so routine scrolling doesn't flash.
-  const [flashOnArrival, setFlashOnArrival] = useState<boolean>(false);
+  // Top-level clause to flash + scroll into view after a reference
+  // click. Set in navigateToReference when the reference named a
+  // subparagraph (e.g. "Article 144(3)(c)" → "3"); cleared on every
+  // other navigation path. Plain "Article 144" refs don't set a
+  // clause, so the viewer mounts with no flash — the page switch
+  // itself is the feedback.
+  const [highlightClause, setHighlightClause] = useState<string | null>(null);
 
   /* Use a ref for direction too so keyboard/swipe handlers always read the
      latest value regardless of render timing. */
@@ -109,7 +111,7 @@ export default function ConstitutionBook({
     if (prevArticle) {
       setDirection(-1);
       setActiveArticle(prevArticle.number);
-      setFlashOnArrival(false);
+      setHighlightClause(null);
     }
   }, [prevArticle]);
 
@@ -117,7 +119,7 @@ export default function ConstitutionBook({
     if (nextArticle) {
       setDirection(1);
       setActiveArticle(nextArticle.number);
-      setFlashOnArrival(false);
+      setHighlightClause(null);
     }
   }, [nextArticle]);
 
@@ -131,7 +133,7 @@ export default function ConstitutionBook({
       // Sidebar / keyboard jumps aren't "following a reference", so the
       // back-pill would be misleading here — start fresh.
       setRefHistory([]);
-      setFlashOnArrival(false);
+      setHighlightClause(null);
     },
     [activeChapter]
   );
@@ -148,7 +150,7 @@ export default function ConstitutionBook({
     setDirection(1);
     setActiveChapter(nextChapterMeta.number);
     setActiveArticle(null);
-    setFlashOnArrival(false);
+    setHighlightClause(null);
   }, [nextChapterMeta]);
 
   const selectArticle = useCallback(
@@ -161,7 +163,7 @@ export default function ConstitutionBook({
         setDirection(articleNumber > (activeArticle ?? 0) ? 1 : -1);
         setActiveArticle(articleNumber);
       }
-      setFlashOnArrival(false);
+      setHighlightClause(null);
     },
     [activeChapter, activeArticle]
   );
@@ -183,7 +185,13 @@ export default function ConstitutionBook({
       if (activeArticle !== null) {
         setRefHistory((h) => [...h, { chapter: activeChapter, article: activeArticle }]);
       }
-      setFlashOnArrival(true);
+      // Only flash when the reference explicitly named a clause. A
+      // bare "Article 144" lands on the article with no highlight —
+      // the page switch is the feedback, the whole-article flash we
+      // had before was over-reaching.
+      setHighlightClause(
+        target.kind === 'article' && target.clauses.length > 0 ? target.clauses[0]! : null,
+      );
       if (target.kind === 'chapter') {
         setDirection(target.chapterNumber > activeChapter ? 1 : -1);
         setActiveChapter(target.chapterNumber);
@@ -223,7 +231,7 @@ export default function ConstitutionBook({
     // Returning somewhere the reader has already read shouldn't flash
     // — they know the content. Flashing would read as "new answer" and
     // be misleading.
-    setFlashOnArrival(false);
+    setHighlightClause(null);
   }, [activeChapter, activeArticle]);
 
   /* ── Keyboard navigation (arrow keys) ── */
@@ -360,7 +368,7 @@ export default function ConstitutionBook({
                   : null
               }
               onBack={goBack}
-              flashOnMount={flashOnArrival}
+              highlightClause={highlightClause}
             />
           ) : null}
         </motion.div>

@@ -17,18 +17,24 @@ import { CONSTITUTION_META, findChapterForArticle } from '@/data/constitution';
 
 /**
  * Primary match — anchors the chain on an explicit keyword:
- *   - "Article 152"      → article 152
- *   - "Articles 156"     → article 156 (plural form)
- *   - "Article 152(2)"   → article 152; the "(2)" marker is cosmetic,
- *                          we don't jump to subparagraphs.
- *   - "Chapter 12"       → chapter 12
+ *   - "Article 152"       → article 152, no clauses
+ *   - "Articles 156"      → article 156 (plural form), no clauses
+ *   - "Article 142(2)"    → article 142, clauses = ['2']
+ *   - "Article 136(2)(a)" → article 136, clauses = ['2', 'a']
+ *   - "Chapter 12"        → chapter 12
+ *
+ * The third capture group greedily collects zero-or-more parenthesised
+ * clause markers so we can jump to a specific subparagraph when the
+ * reference names one. Extracted via extractClauses() since the group
+ * captures the whole "(2)(a)" blob.
  *
  * Skipped by design:
  *   - clause markers like "(1)", "(a)", "sub-paragraph (i)" — these
  *     are intra-article and have no useful navigation target.
  *   - phrases like "this Constitution" — self-referential.
  */
-const REF_RE = /\b(Article|Articles|Chapter|Chapters)\s+(\d+)(\([A-Za-z0-9]+\))?/g;
+const REF_RE =
+  /\b(Article|Articles|Chapter|Chapters)\s+(\d+)((?:\([A-Za-z0-9]+\))*)/g;
 
 /**
  * After a primary match, prose often continues with more bare numbers
@@ -36,13 +42,29 @@ const REF_RE = /\b(Article|Articles|Chapter|Chapters)\s+(\d+)(\([A-Za-z0-9]+\))?
  * 154, 155 and 156"). CONTINUATION_RE eats ONE of those separators
  * plus the next number; we apply it repeatedly until the chain breaks
  * so every number in a list becomes clickable under the same kind as
- * the anchor.
+ * the anchor. Continuation numbers can carry their own subparagraph
+ * markers too (rarely: "Article 136(2)(a) or 137(1)").
  */
 const CONTINUATION_RE =
-  /^(?:,\s+and\s+|,\s*|\s+and\s+|\s+or\s+)(\d+)(?:\([A-Za-z0-9]+\))?/i;
+  /^(?:,\s+and\s+|,\s*|\s+and\s+|\s+or\s+)(\d+)((?:\([A-Za-z0-9]+\))*)/i;
+
+/** Turn a captured "(2)(a)" blob into ['2', 'a']. Empty string → []. */
+function extractClauses(parenBlob: string | undefined): string[] {
+  if (!parenBlob) return [];
+  return [...parenBlob.matchAll(/\(([A-Za-z0-9]+)\)/g)].map((m) => m[1]!);
+}
 
 export type ReferenceTarget =
-  | { kind: 'article'; articleNumber: number; chapterNumber: number }
+  | {
+      kind: 'article';
+      articleNumber: number;
+      chapterNumber: number;
+      /** Parsed clause path — e.g. ["3"] for "Article 144(3)" or
+       * ["3", "c"] for "Article 144(3)(c)". Top-level entry is the
+       * paragraph to scroll to / flash on arrival. Empty when the
+       * reference didn't name a clause. */
+      clauses: string[];
+    }
   | { kind: 'chapter'; chapterNumber: number };
 
 interface RenderProseOptions {
@@ -110,12 +132,13 @@ interface FoundRef {
 function findReferences(text: string): FoundRef[] {
   const out: FoundRef[] = [];
   for (const match of text.matchAll(REF_RE)) {
-    const [whole, kindWord, numStr] = match;
+    const [whole, kindWord, numStr, parenBlob] = match;
     const n = Number.parseInt(numStr!, 10);
+    const clauses = extractClauses(parenBlob);
     const start = match.index!;
     const end = start + whole.length;
     const isChapter = kindWord!.toLowerCase().startsWith('chapter');
-    out.push({ start, end, target: buildTarget(n, isChapter) });
+    out.push({ start, end, target: buildTarget(n, isChapter, clauses) });
 
     // Chain continuation: "Article 144 or 145 and 146" — each extra
     // number becomes its own clickable ref under the same kind as the
@@ -128,26 +151,37 @@ function findReferences(text: string): FoundRef[] {
       if (!cont) break;
       const sep = cont[0]!;
       const numInChain = Number.parseInt(cont[1]!, 10);
-      // The link's clickable range is just the number (and any
-      // subparagraph paren) — the " or ", ", ", " and " glue stays as
-      // plain text so the sentence still reads naturally.
+      const contClauses = extractClauses(cont[2]);
+      // The link's clickable range is just the number (+ any clause
+      // parens) — the " or ", ", ", " and " glue stays as plain text
+      // so the sentence still reads naturally.
       const numStart = cursor + sep.indexOf(cont[1]!);
       const numEnd = cursor + sep.length;
-      out.push({ start: numStart, end: numEnd, target: buildTarget(numInChain, isChapter) });
+      out.push({
+        start: numStart,
+        end: numEnd,
+        target: buildTarget(numInChain, isChapter, contClauses),
+      });
       cursor += sep.length;
     }
   }
   return out;
 }
 
-function buildTarget(n: number, isChapter: boolean): ReferenceTarget | null {
+function buildTarget(
+  n: number,
+  isChapter: boolean,
+  clauses: string[],
+): ReferenceTarget | null {
   if (isChapter) {
     return CONSTITUTION_META.some((m) => m.number === n)
       ? { kind: 'chapter', chapterNumber: n }
       : null;
   }
   const meta = findChapterForArticle(n);
-  return meta ? { kind: 'article', articleNumber: n, chapterNumber: meta.number } : null;
+  return meta
+    ? { kind: 'article', articleNumber: n, chapterNumber: meta.number, clauses }
+    : null;
 }
 
 /** Cheap case-insensitive token highlight — mirror of the old helper

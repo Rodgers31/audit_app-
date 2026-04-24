@@ -21,7 +21,7 @@ import {
   Lightbulb,
   ScrollText,
 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { renderProse, type ReferenceTarget } from './prose';
 
@@ -57,11 +57,12 @@ interface ArticleViewerProps {
    * reference into this article. `null` / `undefined` hides it. */
   backTarget?: { articleNumber: number } | null;
   onBack?: () => void;
-  /** When true, the header briefly flashes a soft yellow on mount —
-   * the visual "you landed on the right thing" cue for reference
-   * arrivals. Pass false for prev/next/sidebar/back navigations where
-   * the reader already knows where they are. */
-  flashOnMount?: boolean;
+  /** Top-level clause the reader was pointed at — e.g. "3" when the
+   * reference was "Article 144(3)(c)". On arrival we flash + scroll
+   * to the paragraph whose leading "(X)" marker matches. `null` /
+   * absent means "no clause highlight" (plain-article or non-
+   * reference navigation: the page switch is itself the feedback). */
+  highlightClause?: string | null;
 }
 
 /** Cheap, allocation-light highlight: splits on case-insensitive query. */
@@ -110,8 +111,18 @@ export default function ArticleViewer({
   onReferenceClick,
   backTarget,
   onBack,
-  flashOnMount = false,
+  highlightClause,
 }: ArticleViewerProps) {
+  const clauseRef = useRef<HTMLParagraphElement | null>(null);
+
+  // When the viewer mounts with a clause to highlight, scroll that
+  // paragraph into view inside the overflow-y-auto body. We run this
+  // after paint so the ref is populated, and key on article.number so
+  // a second ref-click to the same article re-triggers scrolling.
+  useEffect(() => {
+    if (!highlightClause || !clauseRef.current) return;
+    clauseRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [article.number, highlightClause]);
   const pageKey = useMemo(
     () => `${chapter.number}-${article.number}`,
     [chapter.number, article.number]
@@ -173,37 +184,45 @@ export default function ArticleViewer({
           </header>
 
           {/* ── Paragraphs ──
-              Arrival flash: when the reader clicks a cross-reference,
-              flashOnMount=true and this container holds a fully opaque
-              pale yellow (Tailwind yellow-100 ≈ #fef9c3) for ~0.6s,
-              then eases to transparent over ~1.8s. We use a solid
-              colour, not a translucent amber, because a parent
-              bg-white/70 backdrop was washing the previous rgba-based
-              tint below the perception threshold. */}
-          <motion.div
-            initial={
-              flashOnMount ? { backgroundColor: 'rgb(254, 249, 195)' } : undefined
-            }
-            animate={
-              flashOnMount
-                ? {
-                    backgroundColor: [
-                      'rgba(254, 249, 195, 1)',
-                      'rgba(254, 249, 195, 1)',
-                      'rgba(254, 249, 195, 0)',
-                    ],
+              No container-level flash anymore — only the paragraph
+              whose leading "(X)" marker matches highlightClause
+              flashes. That keeps the scope of the highlight aligned
+              with the scope of the reference: "Article 144(3)" lights
+              up clause (3), not the whole article. Paragraphs without
+              a leading clause marker, or when highlightClause is
+              absent, render unchanged. */}
+          <div className='flex-1 space-y-3 overflow-y-auto px-5 py-5 text-[14.5px] leading-relaxed text-neutral-text sm:px-7 sm:py-6'>
+            {article.paragraphs.map((p, i) => {
+              const leading = /^\s*\((\w+)\)/.exec(p)?.[1];
+              const isTarget = !!highlightClause && leading === highlightClause;
+              return (
+                <motion.p
+                  key={i}
+                  ref={isTarget ? clauseRef : undefined}
+                  initial={isTarget ? { backgroundColor: 'rgb(254, 249, 195)' } : undefined}
+                  animate={
+                    isTarget
+                      ? {
+                          backgroundColor: [
+                            'rgba(254, 249, 195, 1)',
+                            'rgba(254, 249, 195, 1)',
+                            'rgba(254, 249, 195, 0)',
+                          ],
+                        }
+                      : undefined
                   }
-                : undefined
-            }
-            transition={
-              flashOnMount ? { duration: 2.4, times: [0, 0.25, 1], ease: 'easeOut' } : undefined
-            }
-            className='flex-1 space-y-3 overflow-y-auto px-5 py-5 text-[14.5px] leading-relaxed text-neutral-text sm:px-7 sm:py-6'>
-            {article.paragraphs.map((p, i) => (
-              <p key={i} className='font-serif first-letter:text-[1.15em] first-letter:font-semibold'>
-                {renderProse(p, { query, onRefClick: onReferenceClick })}
-              </p>
-            ))}
+                  transition={
+                    isTarget
+                      ? { duration: 2.4, times: [0, 0.25, 1], ease: 'easeOut' }
+                      : undefined
+                  }
+                  className={`font-serif first-letter:text-[1.15em] first-letter:font-semibold ${
+                    isTarget ? 'rounded-md px-2 -mx-2 py-1 -my-1' : ''
+                  }`}>
+                  {renderProse(p, { query, onRefClick: onReferenceClick })}
+                </motion.p>
+              );
+            })}
 
             {article.explanation && (
               <div className='mt-4 rounded-xl bg-gradient-to-br from-gov-gold/15 via-gov-sand to-gov-cream/80 p-4 ring-1 ring-gov-gold/30'>
@@ -254,7 +273,7 @@ export default function ArticleViewer({
                 </div>
               </div>
             )}
-          </motion.div>
+          </div>
 
           {/* ── Footer nav ── */}
           <footer className='flex items-center justify-between gap-3 border-t border-neutral-border/70 bg-gov-cream/60 px-5 py-3 sm:px-7'>
