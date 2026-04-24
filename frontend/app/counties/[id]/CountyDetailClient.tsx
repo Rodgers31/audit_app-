@@ -25,6 +25,7 @@ import {
   CircleDollarSign,
   Clock,
   ExternalLink,
+  Grid3x3,
   HardHat,
   Info,
   Landmark,
@@ -535,6 +536,13 @@ export default function CountyDetailClient() {
   }[tab];
 
   const fromParam = searchParams.get('from');
+  // from=home-map is set by InteractiveKenyaMap's tooltip CTA. It
+  // means "the user arrived here by clicking a county on the home
+  // dashboard map" — render two explicit shortcuts (back to that
+  // map, or jump to the all-counties explorer) instead of the single
+  // SmartBackLink. Other from= values keep the existing single-link
+  // behaviour.
+  const fromHomeMap = fromParam === 'home-map';
   const topBackHref = fromParam === 'transparency' ? '/transparency' : '/counties';
   const topBackLabel =
     fromParam === 'transparency'
@@ -546,15 +554,40 @@ export default function CountyDetailClient() {
       <PageShell
         title={`${data.name} ${t('county.page.name_suffix')}`}
         subtitle={t('county.page.subtitle')}>
-        {/* Back — uses SmartBackLink so coming from /counties?p=2 pops
-            history (restoring pagination, filters, scroll) instead of
-            pushing a fresh /counties. */}
-        <SmartBackLink
-          href={topBackHref}
-          className='inline-flex items-center gap-1.5 text-sm text-gov-forest hover:text-gov-dark transition-colors'>
-          <ArrowLeft size={14} />
-          {topBackLabel}
-        </SmartBackLink>
+        {/* Back — default flow uses SmartBackLink so coming from
+            /counties?p=2 pops history (restoring pagination, filters,
+            scroll) instead of pushing a fresh /counties. The home-map
+            arrival path is different: we want an explicit "rewind to
+            the exact scroll position of the map" (via /#home-map) AND
+            a separate shortcut to the full list — so we render two
+            dedicated buttons instead. */}
+        {fromHomeMap ? (
+          <div className='flex flex-wrap items-center gap-2'>
+            {/* Primary action: solid forest fill + back arrow so it
+                reads as "rewind to where I came from". The all-counties
+                shortcut next to it is deliberately secondary (outlined
+                + muted) so the eye lands on the return path first. */}
+            <Link
+              href='/#home-map'
+              className='inline-flex items-center gap-1.5 rounded-full bg-gov-forest px-3.5 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-gov-dark transition-colors'>
+              <ArrowLeft size={14} />
+              {t('county.page.back_to_home_map')}
+            </Link>
+            <Link
+              href='/counties'
+              className='inline-flex items-center gap-1.5 rounded-full border border-neutral-border/60 bg-white px-3 py-1.5 text-sm text-neutral-muted hover:text-gov-dark hover:border-neutral-border transition-colors'>
+              <Grid3x3 size={14} />
+              {t('county.page.all_counties_short')}
+            </Link>
+          </div>
+        ) : (
+          <SmartBackLink
+            href={topBackHref}
+            className='inline-flex items-center gap-1.5 text-sm text-gov-forest hover:text-gov-dark transition-colors'>
+            <ArrowLeft size={14} />
+            {topBackLabel}
+          </SmartBackLink>
+        )}
 
         {/* ── Hero ── */}
         <motion.div

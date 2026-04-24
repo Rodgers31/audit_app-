@@ -18,7 +18,11 @@ import PageShell from '@/components/layout/PageShell';
 import ConstitutionBook from '@/components/learn/constitution/ConstitutionBook';
 import LearnHero from '@/components/learn/LearnHero';
 import PopularQuestions from '@/components/learn/PopularQuestions';
-import { findChapterForArticle } from '@/data/constitution';
+import {
+  CONSTITUTION_META,
+  findChapterForArticle,
+  TOTAL_ARTICLES,
+} from '@/data/constitution';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
@@ -166,7 +170,7 @@ export default function LearningHubPage() {
               The Constitution, as a book you can actually read
             </h2>
             <p className='text-sm text-neutral-muted'>
-              Six chapters, dozens of articles, every one with a plain-English note.
+              {CONSTITUTION_META.length} chapters, {TOTAL_ARTICLES} articles, every one with a plain-English note.
             </p>
           </div>
           <Link
