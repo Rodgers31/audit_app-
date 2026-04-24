@@ -140,29 +140,43 @@ _FY_PATTERN = _re.compile(r"^(?:FY\s*)?(\d{4})[/\-](\d{2,4})$")
 
 
 _SLUG_STRIP_RE = _re.compile(r"[^a-z0-9]+")
+# Apostrophes (ASCII + Unicode right-single-quote) are *stripped*
+# rather than replaced with a hyphen so "Murang'a" → "muranga"
+# matches the canonical DB slug. Everything else non-alphanumeric
+# collapses to a hyphen.
+_APOSTROPHE_RE = _re.compile(r"['\u2019]")
 
 
 def slugify_entity(name: str, *, county_suffix: bool = True) -> str:
     """Canonicalise an entity name into the slug format used in the DB.
 
-    The ``entities`` table's ``slug`` column is kept in kebab-case with no
-    punctuation — e.g. ``muranga-county``, not ``murang'a-county``. Callers
-    historically did a naive ``name.lower().replace(" ", "-")`` which
-    produced ``murang'a-county`` for Murang'a and then failed the lookup,
-    generating the "Unknown entity slug" warnings we saw every run.
+    The ``entities`` table's ``slug`` column is kept in kebab-case with
+    no punctuation — e.g. ``muranga-county``, not ``murang'a-county``.
+    Callers historically did a naive ``name.lower().replace(" ", "-")``
+    which produced ``murang'a-county`` for Murang'a and then failed the
+    lookup, generating the "Unknown entity slug" warnings we saw every
+    run.
 
     Rules:
       * ASCII-lowercase.
-      * Every non-alphanumeric run collapses to a single hyphen (so
-        apostrophes, commas, dots, em-dashes, multi-spaces all normalise).
+      * Apostrophes are stripped (so Murang'a → muranga, O'Brien → obrien).
+      * Every other non-alphanumeric run collapses to a single hyphen
+        (commas, dots, em-dashes, multi-spaces all normalise).
       * Leading / trailing hyphens trimmed.
+      * Whitespace-only input returns "" (no stray ``-county`` leaks).
       * Optionally appends ``-county`` — set to False when the caller
-        passes an already-fully-qualified entity name.
+        passes an already-fully-qualified entity name like
+        "National Government".
     """
     if not name:
         return ""
     lowered = name.strip().lower()
-    collapsed = _SLUG_STRIP_RE.sub("-", lowered).strip("-")
+    # Strip apostrophes BEFORE the non-alphanumeric collapse so they
+    # don't leave hyphens behind.
+    deaposted = _APOSTROPHE_RE.sub("", lowered)
+    collapsed = _SLUG_STRIP_RE.sub("-", deaposted).strip("-")
+    if not collapsed:
+        return ""
     if county_suffix and not collapsed.endswith("-county"):
         collapsed = f"{collapsed}-county"
     return collapsed

@@ -22,7 +22,14 @@ class TestSlugifyEntity:
         assert slugify_entity("Murang'a") == "muranga-county"
 
     def test_strips_apostrophe_regardless_of_position(self):
-        assert slugify_entity("O'Brien") == "o-brien-county"
+        # Apostrophe is stripped, not replaced with a hyphen — so
+        # "O'Brien" → "obrien", not "o-brien".
+        assert slugify_entity("O'Brien") == "obrien-county"
+
+    def test_strips_unicode_right_single_quote(self):
+        # Some upstream JSON uses "Murang\u2019a" (curly apostrophe)
+        # instead of the ASCII form — both must normalise identically.
+        assert slugify_entity("Murang\u2019a") == "muranga-county"
 
     def test_keeps_simple_name_untouched(self):
         assert slugify_entity("Nairobi") == "nairobi-county"
