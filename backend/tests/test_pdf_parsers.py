@@ -353,6 +353,59 @@ class TestCoBQuarterlyReportParser:
         assert rec_sample["allocated"] == Decimal("600")
 
     @patch("seeding.pdf_parsers.extract_all_tables")
+    def test_validator_falls_through_top_anchor_when_columns_unresolvable(
+        self, mock_extract
+    ):
+        """Regression for the seeding run on 2026-04-25
+        ([24934906752](https://github.com/Rodgers31/audit_app/actions/runs/24934906752)):
+
+        Real BIRR PDF had FIVE tables with >=30 county anchors. The
+        Arrears table on page 52 ranked highest (45 anchors, no
+        budget keywords); the Budget Execution table on page 55 ranked
+        third (39 anchors). Tiebreaker rules can't recover from this —
+        the parser must validate each candidate against its actual
+        column needs and fall through when the top pick can't supply
+        a usable Total/allocated column.
+        """
+        from seeding.pdf_parsers import KENYAN_COUNTIES
+
+        # Top-ranked: many county rows but no budget column.
+        arrears_high_anchor = ExtractedTable(
+            page_number=52, table_index=0,
+            headers=["County", "Arrears (Kshs.Million)", "", "", ""],
+            rows=[
+                ["", "Ordinary OSR", "FIF", "Equitable Share", "Totals"],
+                *[[c, "10", "5", "8", "23"] for c in KENYAN_COUNTIES],  # 47 hits
+            ],
+            bbox=(0, 0, 100, 100),
+        )
+        # Lower-ranked: fewer counties but the actual budget data.
+        budget_lower_anchor = ExtractedTable(
+            page_number=55, table_index=0,
+            headers=[
+                "County",
+                "Budget Estimates (Kshs.Million)", "", "",
+                "Actual Expenditure (Kshs.Million)", "", "",
+            ],
+            rows=[
+                ["", "Rec", "Dev", "Total", "Rec", "Dev", "Total"],
+                # Only 35 counties → 35 anchors, less than arrears_high's 47.
+                *[[c, "1", "2", "3", "1", "1", "2"]
+                  for c in KENYAN_COUNTIES[:35]],
+            ],
+            bbox=(0, 0, 100, 100),
+        )
+        mock_extract.return_value = [arrears_high_anchor, budget_lower_anchor]
+
+        records = CoBQuarterlyReportParser(Path("validator.pdf")).parse()
+
+        assert records, "validator must fall through arrears to budget"
+        # Budget table values are alloc=3 / abs=2 — Arrears would have
+        # been alloc=8 (Equitable Share) / abs=23 (Totals).
+        assert records[0]["allocated"] == Decimal("3")
+        assert records[0]["absorbed"] == Decimal("2")
+
+    @patch("seeding.pdf_parsers.extract_all_tables")
     def test_anchor_score_outranks_header_score(self, mock_extract):
         """Pin sort precedence: anchor count is primary, header
         synonyms are only the tiebreaker. A junk-header table with
