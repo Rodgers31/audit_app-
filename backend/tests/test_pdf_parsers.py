@@ -249,6 +249,90 @@ class TestCoBQuarterlyReportParser:
         assert sample["absorption_rate"] == 46.0
 
     @patch("seeding.pdf_parsers.extract_all_tables")
+    def test_anchor_matches_hyphenated_county_forms(self, mock_extract):
+        """Regression: COB sometimes prints "Taita-Taveta" /
+        "Trans-Nzoia" / "Tharaka-Nithi" / "Elgeyo-Marakwet" with a
+        hyphen instead of a space. The canonical anchor list uses the
+        space form. Without hyphen normalisation those rows wouldn't
+        substring-match and we'd silently lose 4 counties from the
+        anchor count — possibly dropping us under the min_matches
+        threshold. Both sides of the comparison must normalise."""
+        from seeding.pdf_parsers import KENYAN_COUNTIES
+
+        hyphen_rows = [
+            ["Taita-Taveta", "1", "2", "3", "1", "1", "2"],
+            ["Tharaka-Nithi", "1", "2", "3", "1", "1", "2"],
+            ["Trans-Nzoia", "1", "2", "3", "1", "1", "2"],
+            ["Elgeyo-Marakwet", "1", "2", "3", "1", "1", "2"],
+        ]
+        # Pad with enough extra space-form counties to clear the
+        # min_matches=30 threshold the parser uses.
+        others = [
+            c for c in KENYAN_COUNTIES
+            if c not in ("Taita Taveta", "Tharaka Nithi", "Trans Nzoia", "Elgeyo Marakwet")
+        ]
+        extra_rows = [[c, "1", "2", "3", "1", "1", "2"] for c in others[:27]]
+        mock_extract.return_value = [
+            ExtractedTable(
+                page_number=55, table_index=0,
+                headers=[
+                    "County",
+                    "Budget Estimates (Kshs.Million)", "", "",
+                    "Actual Expenditure (Kshs.Million)", "", "",
+                ],
+                rows=[
+                    ["", "Rec", "Dev", "Total", "Rec", "Dev", "Total"],
+                    *hyphen_rows,
+                    *extra_rows,
+                ],
+                bbox=(0, 0, 100, 100),
+            )
+        ]
+        records = CoBQuarterlyReportParser(Path("hyphenated.pdf")).parse()
+        counties = {r["county"] for r in records}
+        # The parser preserves the original spelling — the hyphenated
+        # rows are still extracted (we don't rewrite the row label,
+        # only the matching code is hyphen-insensitive).
+        assert "Taita-Taveta" in counties
+        assert "Tharaka-Nithi" in counties
+        assert "Trans-Nzoia" in counties
+        assert "Elgeyo-Marakwet" in counties
+
+    @patch("seeding.pdf_parsers.extract_all_tables")
+    def test_anchor_score_outranks_header_score(self, mock_extract):
+        """Pin sort precedence: anchor count is primary, header
+        synonyms are only the tiebreaker. A junk-header table with
+        all 47 counties must beat a clean-header table with only 2
+        counties — otherwise "invariant-anchored" loses to vocabulary
+        matching, which is the whole bug we're trying to fix."""
+        from seeding.pdf_parsers import (
+            KENYAN_COUNTIES, find_table_by_row_anchors,
+        )
+
+        big_anchor_junk_header = ExtractedTable(
+            page_number=99, table_index=0,
+            headers=["County", "Junk Header"],
+            rows=[["", "x"], *[[c, "1"] for c in KENYAN_COUNTIES]],
+            bbox=(0, 0, 100, 100),
+        )
+        small_anchor_clean_header = ExtractedTable(
+            page_number=1, table_index=0,
+            headers=["County", "Budget Estimates Total", "Actual Expenditure Total"],
+            rows=[["Mombasa", "5", "2"], ["Kwale", "3", "1"]],
+            bbox=(0, 0, 100, 100),
+        )
+        result = find_table_by_row_anchors(
+            [big_anchor_junk_header, small_anchor_clean_header],
+            list(KENYAN_COUNTIES),
+            min_matches=2,
+            header_synonyms=[["budget", "expenditure"]],
+        )
+        assert result is big_anchor_junk_header, (
+            "anchor count must outrank header_score; got page "
+            f"{result.page_number if result else 'None'}"
+        )
+
+    @patch("seeding.pdf_parsers.extract_all_tables")
     def test_picks_budget_table_when_multiple_county_tables_present(
         self, mock_extract
     ):

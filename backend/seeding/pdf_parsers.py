@@ -276,12 +276,21 @@ def find_table_by_row_anchors(
     apostrophes are stripped so "Murang'a" lines up with the
     canonical "Muranga".
     """
-    normalised_anchors = [
-        a.lower().replace("'", "").replace("\u2019", "") for a in anchors
-    ]
+    # Normalise on both sides: COB sometimes prints hyphenated forms
+    # ("Taita-Taveta", "Trans-Nzoia") that wouldn't substring-match a
+    # space-separated canonical anchor. Also collapse all unicode
+    # apostrophes and dashes, then squish whitespace.
+    def _normalise(s: str) -> str:
+        s = s.lower().replace("'", "").replace("\u2019", "")
+        # Map every dash variant (ASCII + unicode \u2010-\u2015) to a space.
+        for ch in ("-", "\u2010", "\u2011", "\u2012", "\u2013", "\u2014", "\u2015"):
+            s = s.replace(ch, " ")
+        return re.sub(r"\s+", " ", s).strip()
+
+    normalised_anchors = [_normalise(a) for a in anchors]
 
     def _strip(s: str) -> str:
-        return s.lower().replace("'", "").replace("\u2019", "")
+        return _normalise(s)
 
     candidates: List[Tuple[int, int, ExtractedTable]] = []  # (anchor_score, header_score, table)
     for table in tables:
@@ -312,9 +321,11 @@ def find_table_by_row_anchors(
 
     if not candidates:
         return None
-    # Rank: header_score desc (when synonyms passed) then anchor_score desc.
-    # Stable sort means PDF-order is the final tiebreaker (earliest wins).
-    candidates.sort(key=lambda t: (t[1], t[0]), reverse=True)
+    # Rank: anchor_score primary (the whole point of "invariant-anchored"),
+    # header_score as the tiebreaker for the common case where MANY tables
+    # in one report happen to list all 47 counties (revenue, arrears,
+    # expenditure …). Stable sort means PDF-order is the final tiebreaker.
+    candidates.sort(key=lambda t: (t[0], t[1]), reverse=True)
     return candidates[0][2]
 
 
@@ -359,9 +370,15 @@ def flatten_grouped_headers(table: ExtractedTable) -> ExtractedTable:
         if cell:
             last_group = cell
         filled_groups.append(last_group)
+    # zip_longest, not zip — pdfplumber occasionally returns ragged
+    # tables where the sub-row is shorter than the group-row. Truncating
+    # would silently drop trailing columns and break find_column_index
+    # downstream. Fillvalue "" so missing sub-labels just leave the
+    # group label intact.
+    from itertools import zip_longest
     combined = [
         " ".join(filter(None, [grp, sub])).strip()
-        for grp, sub in zip(filled_groups, sub_row)
+        for grp, sub in zip_longest(filled_groups, sub_row, fillvalue="")
     ]
     return ExtractedTable(
         page_number=table.page_number,
@@ -599,6 +616,22 @@ class CoBQuarterlyReportParser:
             # We only require the allocated and absorbed columns;
             # absorption rate is derivable when missing.
             if allocated_col is None or absorbed_col is None:
+                # Log at INFO not WARNING — categories CAN legitimately be
+                # missing (e.g. older PDFs only carry the Total column;
+                # the Recurrent / Development synonyms then won't match).
+                # But silent-skip-without-signal makes partial-parse
+                # failures invisible in nightly runs, so emit the
+                # available headers so an operator can confirm.
+                logger.info(
+                    "Skipping consolidated category — required columns not resolved",
+                    extra={
+                        "source": str(self.pdf_path),
+                        "category": category,
+                        "available_headers": budget_table.headers,
+                        "allocated_col": allocated_col,
+                        "absorbed_col": absorbed_col,
+                    },
+                )
                 continue
             records.extend(
                 self._rows_from_columns(
