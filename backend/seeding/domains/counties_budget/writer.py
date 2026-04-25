@@ -210,13 +210,20 @@ def persist_budget_records(
     in four bulk queries and resolves per-record work in-memory, so
     total DB round-trips for N records are O(1) + a single final flush.
     """
-    from ...utils import normalize_fiscal_label
+    from ...utils import canonicalize_slug, normalize_fiscal_label
 
     stats = PersistenceStats()
     records = list(records)
     stats.processed = len(records)
     if not records:
         return stats
+
+    # Re-canonicalise every incoming slug at the boundary. Fixtures and
+    # partner exports occasionally carry slugs with apostrophes or stray
+    # whitespace ("murang'a-county", "Muranga County"). Slugify here so
+    # the rest of the pipeline only sees the DB's canonical form.
+    for r in records:
+        r.entity_slug = canonicalize_slug(r.entity_slug)
 
     # ── 1. Bulk-load entities ────────────────────────────────────
     entity_slugs = {r.entity_slug for r in records}
@@ -446,12 +453,20 @@ def persist_budget_records(
             if provenance_entry:
                 provenance = list(existing.provenance or [])
 
+                # Dedupe key intentionally excludes ingestion_job_id and
+                # ingested_at so an idempotent re-seed (same dataset,
+                # same quality, same source label, no changed values)
+                # doesn't append a fresh entry and thereby mark the row
+                # dirty. Before this trim every nightly run added an
+                # entry per record → 1,880 UPDATE statements on a
+                # no-change re-seed (~3 min over Frankfurt RTT).
+                # The audit trail of "which job last touched the row"
+                # is still on the IngestionJob row itself.
                 def _dedupe_key(e: dict) -> tuple:
                     return (
                         e.get("dataset_id"),
                         e.get("data_quality"),
                         e.get("source_label"),
-                        e.get("ingestion_job_id"),
                     )
 
                 new_key = _dedupe_key(provenance_entry)

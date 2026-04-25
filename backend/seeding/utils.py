@@ -147,6 +147,24 @@ _SLUG_STRIP_RE = _re.compile(r"[^a-z0-9]+")
 _APOSTROPHE_RE = _re.compile(r"['\u2019]")
 
 
+def canonicalize_slug(slug: str) -> str:
+    """Normalise an already-formed slug to canonical kebab-case.
+
+    Use on slugs coming in from JSON fixtures or partner exports before
+    you do an Entity-by-slug lookup. This is the SAFE re-canoncalisation:
+    strip apostrophes, collapse non-alphanumeric runs, trim edges. It
+    does NOT add or remove the ``-county`` suffix because national vs
+    county entities differ and we don't want ``national-government`` to
+    accidentally become ``national-government-county``.
+
+    Idempotent — applying twice yields the same result.
+    """
+    if not slug:
+        return ""
+    deaposted = _APOSTROPHE_RE.sub("", slug.strip().lower())
+    return _SLUG_STRIP_RE.sub("-", deaposted).strip("-")
+
+
 def slugify_entity(name: str, *, county_suffix: bool = True) -> str:
     """Canonicalise an entity name into the slug format used in the DB.
 
@@ -210,4 +228,5 @@ __all__ = [
     "compute_hash",
     "normalize_fiscal_label",
     "slugify_entity",
+    "canonicalize_slug",
 ]
