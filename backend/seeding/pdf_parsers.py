@@ -329,6 +329,66 @@ def find_table_by_row_anchors(
     return candidates[0][2]
 
 
+def rank_tables_by_row_anchors(
+    tables: List[ExtractedTable],
+    anchors: List[str],
+    *,
+    min_matches: int = 30,
+    column: int = 0,
+    header_synonyms: Optional[List[List[str]]] = None,
+) -> List[ExtractedTable]:
+    """Like ``find_table_by_row_anchors`` but returns ALL qualifying
+    candidates ranked best-first, instead of only the top hit.
+
+    Why this exists: in real reports, ranking-by-anchor-count can be
+    fooled. A 700-page CoB BIRR has multiple tables that list all 47
+    counties (Arrears, Expenditure, Pending Bills, …). The single-pick
+    version commits to the top-scoring candidate even if that candidate
+    turns out to be unparseable for the caller's use-case (e.g. Arrears
+    has no "allocated" column). With the ranked list the caller can
+    walk it, validating each table — if column resolution fails on
+    candidate #1, fall through to candidate #2, etc. That makes the
+    pipeline robust to noisy pdfplumber output and to PDFs where the
+    "right" table isn't the highest-scoring one.
+
+    Same scoring/normalisation as the single-pick version. Stable sort
+    so PDF order breaks ties beyond anchor + header score.
+    """
+    def _normalise(s: str) -> str:
+        s = s.lower().replace("'", "").replace("\u2019", "")
+        for ch in ("-", "\u2010", "\u2011", "\u2012", "\u2013", "\u2014", "\u2015"):
+            s = s.replace(ch, " ")
+        return re.sub(r"\s+", " ", s).strip()
+
+    normalised_anchors = [_normalise(a) for a in anchors]
+    candidates: List[Tuple[int, int, ExtractedTable]] = []
+    for table in tables:
+        if not table.rows:
+            continue
+        col_values = [
+            _normalise(row[column]) if len(row) > column else ""
+            for row in table.rows
+        ]
+        anchor_score = sum(
+            1 for a in normalised_anchors if any(a in v for v in col_values)
+        )
+        if anchor_score < min_matches:
+            continue
+        header_score = 0
+        if header_synonyms is not None:
+            haystack = " ".join(table.headers).lower()
+            if table.rows:
+                haystack += " " + " ".join(table.rows[0]).lower()
+            header_score = sum(
+                1
+                for group in header_synonyms
+                if all(kw.lower() in haystack for kw in group)
+            )
+        candidates.append((anchor_score, header_score, table))
+    candidates.sort(key=lambda t: (t[0], t[1]), reverse=True)
+    return [t for _, _, t in candidates]
+
+
 def flatten_grouped_headers(table: ExtractedTable) -> ExtractedTable:
     """Fold a two-row "group label / sub-label" header into single labels.
 
@@ -500,20 +560,33 @@ class CoBQuarterlyReportParser:
         """
         self.tables = extract_all_tables(self.pdf_path)
 
-        # ── Primary path: invariant-anchored lookup ────────────────
+        # ── Primary path: invariant-anchored, validator-driven ─────
         # COB reword the table headers every couple of vintages
         # ("Allocated"/"Absorbed" → "Budget Estimates"/"Actual
         # Expenditure" in FY2025/26), but the row labels stay constant
         # — there are always 47 Kenyan counties down the left column.
-        # Find the table by counting county-name matches; that
-        # survives any future header drift.
         #
-        # Header synonyms are passed as a tiebreaker because a single
-        # report typically lists all 47 counties in MANY tables
-        # (revenue, arrears, expenditure, …). We want the
-        # budget-execution table specifically, identified by header
-        # words that survive each rewording cycle.
-        anchored = find_table_by_row_anchors(
+        # A 700-page BIRR typically has SEVERAL tables that list all
+        # 47 counties (Arrears, Pending Bills, Recurrent/Development
+        # Expenditure, the consolidated Budget Execution table, …).
+        # Anchor-count ranking alone picks the wrong one in real PDFs:
+        # the Arrears table on page 52 had 45 county hits and beat the
+        # actual budget table on page 55 (39 hits) in CI run
+        # 24934906752. The header-synonym tiebreaker is too easy to
+        # spoof when pdfplumber returns degraded headers.
+        #
+        # Robust answer: get the RANKED candidate list and walk it,
+        # validating each one against the parser's actual needs (can
+        # we resolve a "Total allocated" column?). First validating
+        # candidate wins; reject others with a debug log so future
+        # mis-picks are visible.
+        primary_total_synonyms: List[List[str]] = [
+            ["budget", "estimates", "total"],
+            ["approved", "budget", "total"],
+            ["allocated", "total"],
+            ["allocated"],
+        ]
+        ranked = rank_tables_by_row_anchors(
             self.tables,
             list(KENYAN_COUNTIES),
             min_matches=30,
@@ -526,25 +599,34 @@ class CoBQuarterlyReportParser:
             ],
         )
 
+        budget_table: Optional[ExtractedTable] = None
+        for candidate in ranked:
+            flat = flatten_grouped_headers(candidate)
+            if find_column_index(flat.headers, primary_total_synonyms) is not None:
+                budget_table = flat
+                break
+            logger.info(
+                "Anchored candidate at page %d rejected — no Total allocated column",
+                candidate.page_number,
+                extra={"page": candidate.page_number, "headers": flat.headers},
+            )
+
         # ── Legacy fallback: original 3-keyword header probe ───────
         # Kept so the existing test fixtures and any older PDFs that
         # still use the literal "allocated"/"absorbed" wording still
         # work. The anchor pass above handles every vintage we've
         # seen since 2024.
-        if anchored is None:
-            anchored = find_table_by_header(
+        if budget_table is None:
+            legacy = find_table_by_header(
                 self.tables, ["county", "allocated", "absorbed"]
             )
-        if anchored is None:
+            if legacy is not None:
+                budget_table = flatten_grouped_headers(legacy)
+
+        if budget_table is None:
             raise TableNotFoundError(
                 "Could not find county budget execution table in report"
             )
-
-        # Two-row "group / sub" headers (Budget Estimates over
-        # Rec/Dev/Total) collapse to flat labels like "Budget Estimates
-        # Total" so the column-index lookup below has something
-        # unambiguous to match.
-        budget_table = flatten_grouped_headers(anchored)
 
         records: List[Dict[str, Any]] = []
 
