@@ -13,11 +13,12 @@ Strategy
    fixture row in-place; lenders WB doesn't break out (specific
    bilateral countries) keep their fixture values.
 
-3. Domestic debt — currently still on the fixture. CBK Statistical
-   Bulletin parsing for live domestic data is queued as a follow-up
-   (the relevant table on page 57 of the bulletin lays months
-   horizontally inside one cell, so it needs a more involved parser
-   than the counties_budget approach).
+3. Overlay CBK Statistical Bulletin Table 4.1.4 ("Composition of
+   Government Gross Domestic Debt by Instrument") on top, when the
+   bulletin URL is configured. CBK is the only live source for the
+   per-instrument domestic split (T-bills/T-bonds/overdraft). See
+   ``cbk_bulletin.py`` for the parsing approach (text-mode regex
+   because pdfplumber's table extractor smushes the cells).
 
 Why we dropped the CBK PDF discovery path
 -----------------------------------------
@@ -41,6 +42,7 @@ from typing import Any, Dict, List
 from ...config import SeedingSettings
 from ...http_client import SeedingHttpClient
 from ...utils import load_json_resource
+from .cbk_bulletin import fetch_domestic_debt_from_cbk_bulletin
 from .wb_ids import fetch_external_debt_from_wb_ids
 
 logger = logging.getLogger("seeding.national_debt.fetcher")
@@ -86,6 +88,33 @@ def fetch_debt_payload(
         meta = dict(payload.get("metadata", {}))
         meta["wb_ids_overlay_applied"] = True
         meta["wb_ids_overlay_count"] = len(wb_loans)
+        payload["metadata"] = meta
+
+    # ── Overlay: CBK Statistical Bulletin domestic debt ────────────
+    # Disjoint from WB IDS — CBK covers the domestic instruments
+    # (T-bills, T-bonds, overdraft) that IDS doesn't publish. Same
+    # overlay merge: fixture lender names that match get replaced;
+    # new lenders (Advances, Other) get appended.
+    try:
+        cbk_loans = fetch_domestic_debt_from_cbk_bulletin(client, settings)
+    except Exception as exc:
+        logger.warning("CBK bulletin fetch failed entirely: %s", exc)
+        cbk_loans = []
+
+    if cbk_loans:
+        before = len(payload.get("loans", []))
+        payload = _overlay_loans(payload, cbk_loans)
+        after = len(payload.get("loans", []))
+        logger.info(
+            "Merged %d CBK bulletin rows into national debt payload "
+            "(loans: %d → %d)",
+            len(cbk_loans),
+            before,
+            after,
+        )
+        meta = dict(payload.get("metadata", {}))
+        meta["cbk_bulletin_overlay_applied"] = True
+        meta["cbk_bulletin_overlay_count"] = len(cbk_loans)
         payload["metadata"] = meta
 
     return payload
