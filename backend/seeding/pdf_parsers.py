@@ -643,6 +643,29 @@ class CoBQuarterlyReportParser:
                 )
             )
 
+        # ── Backward-compat fallbacks for older PDF formats ────────
+        # Pre-FY2024 reports published Recurrent / Development as
+        # SEPARATE tables rather than as sub-columns of a consolidated
+        # one. The new parser path above prefers the consolidated table,
+        # but if a category came up empty we try the legacy separate-
+        # table path before giving up — so old fixtures and any older
+        # vintage that resurfaces still produce useful output.
+        extracted_categories = {r["category"] for r in records}
+        for category, header_keywords in (
+            ("Recurrent", ["recurrent"]),
+            ("Development", ["development"]),
+        ):
+            if category in extracted_categories:
+                continue
+            fallback = self._extract_category(category, header_keywords)
+            if fallback:
+                logger.info(
+                    "%s category extracted via legacy separate-table fallback "
+                    "(consolidated table didn't carry it)",
+                    category,
+                )
+                records.extend(fallback)
+
         # Personnel Emoluments still lives in its own table when
         # present — the consolidated table doesn't break PE out.
         records.extend(
@@ -724,9 +747,21 @@ class CoBQuarterlyReportParser:
 
                 allocated, currency = parse_currency(row[allocated_col])
                 absorbed, _ = parse_currency(row[absorbed_col])
-                absorption_rate = None
+                absorption_rate: Optional[float] = None
                 if rate_col is not None and len(row) > rate_col:
                     absorption_rate = parse_percentage(row[rate_col])
+                # Derive when missing or unparseable. Some vintages drop
+                # the absorption-rate sub-column entirely; downstream
+                # consumers (the /budget/overview probe in particular)
+                # expect this field, so compute it ourselves rather than
+                # leaving a None that propagates as a UI gap.
+                if (
+                    absorption_rate is None
+                    and allocated
+                    and absorbed is not None
+                    and allocated != Decimal("0")
+                ):
+                    absorption_rate = float(absorbed / allocated * Decimal("100"))
 
                 out.append(
                     {

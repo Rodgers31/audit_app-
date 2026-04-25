@@ -299,6 +299,60 @@ class TestCoBQuarterlyReportParser:
         assert "Elgeyo-Marakwet" in counties
 
     @patch("seeding.pdf_parsers.extract_all_tables")
+    def test_derives_absorption_rate_when_column_missing(self, mock_extract):
+        """Some BIRR vintages drop the absorption-rate sub-column.
+        We should compute it ourselves from absorbed/allocated rather
+        than leak a None into downstream consumers (the
+        /budget/overview probe expects this field)."""
+        from seeding.pdf_parsers import KENYAN_COUNTIES
+
+        # Headers cover Total only — no rate column.
+        mock_extract.return_value = [
+            ExtractedTable(
+                page_number=1, table_index=0,
+                headers=["County", "Budget Estimates Total", "Actual Expenditure Total"],
+                rows=[[c, "1000", "500"] for c in KENYAN_COUNTIES],
+                bbox=(0, 0, 100, 100),
+            )
+        ]
+        records = CoBQuarterlyReportParser(Path("no-rate.pdf")).parse()
+        total = next(r for r in records if r["category"] == "Total")
+        assert total["absorption_rate"] == 50.0
+
+    @patch("seeding.pdf_parsers.extract_all_tables")
+    def test_falls_back_to_separate_recurrent_table_for_legacy_format(
+        self, mock_extract
+    ):
+        """Pre-FY2024 BIRR PDFs published Recurrent / Development as
+        SEPARATE tables instead of as sub-columns of a consolidated
+        one. The new parser should still pick them up via the legacy
+        _extract_category fallback when the consolidated table didn't
+        carry that category — otherwise we silently drop categories
+        for older vintages that resurface."""
+        from seeding.pdf_parsers import KENYAN_COUNTIES
+
+        consolidated_total_only = ExtractedTable(
+            page_number=1, table_index=0,
+            headers=["County", "Budget Estimates Total", "Actual Expenditure Total"],
+            rows=[[c, "1000", "500"] for c in KENYAN_COUNTIES],
+            bbox=(0, 0, 100, 100),
+        )
+        recurrent_separate = ExtractedTable(
+            page_number=2, table_index=0,
+            headers=["County", "Recurrent Allocated", "Recurrent Absorbed", "Rate"],
+            rows=[[c, "600", "400", "67"] for c in KENYAN_COUNTIES],
+            bbox=(0, 0, 100, 100),
+        )
+        mock_extract.return_value = [consolidated_total_only, recurrent_separate]
+
+        records = CoBQuarterlyReportParser(Path("legacy.pdf")).parse()
+        cats = {r["category"] for r in records}
+        assert "Total" in cats
+        assert "Recurrent" in cats, "legacy separate-table fallback should fire"
+        rec_sample = next(r for r in records if r["category"] == "Recurrent")
+        assert rec_sample["allocated"] == Decimal("600")
+
+    @patch("seeding.pdf_parsers.extract_all_tables")
     def test_anchor_score_outranks_header_score(self, mock_extract):
         """Pin sort precedence: anchor count is primary, header
         synonyms are only the tiebreaker. A junk-header table with
