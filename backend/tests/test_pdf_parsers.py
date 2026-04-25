@@ -188,6 +188,113 @@ class TestCoBQuarterlyReportParser:
         with pytest.raises(TableNotFoundError):
             parser.parse()
 
+    @patch("seeding.pdf_parsers.extract_all_tables")
+    def test_parse_h1_fy2025_26_layout(self, mock_extract):
+        """Regression: COB H1 FY2025/26 reword headers from
+        Allocated/Absorbed → Budget Estimates / Actual Expenditure
+        and added a two-row "group / Rec/Dev/Total" sub-header.
+        The new parser must:
+          (a) find the table by 47-county anchor (not literal keywords),
+          (b) flatten the two-row header into combined labels,
+          (c) extract Total + Recurrent + Development from one table
+              by addressing different sub-columns.
+        """
+        from seeding.pdf_parsers import KENYAN_COUNTIES
+
+        # Header row + sub-row + 47 county data rows.
+        group_headers = [
+            "County",
+            "Budget Estimates (Kshs.Million)", "", "",
+            "Actual Expenditure (Kshs.Million)", "", "",
+            "Absorption Rate(%)", "", "",
+        ]
+        sub_row = [
+            "", "Rec", "Dev", "Total",
+            "Rec", "Dev", "Total",
+            "Rec", "Dev", "Total",
+        ]
+        county_rows = [
+            [c, "5,000", "3,000", "8,000",
+                 "2,500", "1,200", "3,700",
+                 "50", "40", "46"]
+            for c in KENYAN_COUNTIES
+        ]
+        mock_extract.return_value = [
+            ExtractedTable(
+                page_number=55, table_index=0,
+                headers=group_headers,
+                rows=[sub_row, *county_rows],
+                bbox=(0, 0, 100, 100),
+            )
+        ]
+
+        parser = CoBQuarterlyReportParser(
+            Path("h1-fy2025-26-county-birr.pdf")
+        )
+        records = parser.parse()
+
+        # 47 counties × 3 categories = 141 records (no PE table).
+        assert len(records) == 141
+        cats = {r["category"] for r in records}
+        assert cats == {"Total", "Recurrent", "Development"}
+        counties_seen = {r["county"] for r in records if r["category"] == "Total"}
+        assert "Murang'a" in counties_seen, "apostrophe county must round-trip"
+        assert len(counties_seen) == 47
+
+        # Pin the column-resolution: "Total" must read sub-columns
+        # 3 (Budget Estimates Total) and 6 (Actual Expenditure Total).
+        sample = next(r for r in records if r["county"] == "Nairobi" and r["category"] == "Total")
+        assert sample["allocated"] == Decimal("8000")
+        assert sample["absorbed"] == Decimal("3700")
+        assert sample["absorption_rate"] == 46.0
+
+    @patch("seeding.pdf_parsers.extract_all_tables")
+    def test_picks_budget_table_when_multiple_county_tables_present(
+        self, mock_extract
+    ):
+        """A real BIRR has many tables that all list the 47 counties
+        (revenue, arrears, expenditure, …). The header_synonyms
+        tiebreaker must prefer the budget-execution table over
+        unrelated ones — otherwise we'd parse the arrears table on
+        page 52 instead of the budget table on page 55."""
+        from seeding.pdf_parsers import KENYAN_COUNTIES
+
+        arrears = ExtractedTable(
+            page_number=52, table_index=0,
+            headers=["County", "Arrears as at 31st December 2025", "", "", ""],
+            rows=[
+                ["", "Ordinary OSR", "FIF", "Equitable Share", "Totals"],
+                *[[c, "10", "5", "8", "23"] for c in KENYAN_COUNTIES],
+            ],
+            bbox=(0, 0, 100, 100),
+        )
+        budget = ExtractedTable(
+            page_number=55, table_index=0,
+            headers=[
+                "County",
+                "Budget Estimates (Kshs.Million)", "", "",
+                "Actual Expenditure (Kshs.Million)", "", "",
+            ],
+            rows=[
+                ["", "Rec", "Dev", "Total", "Rec", "Dev", "Total"],
+                *[[c, "1", "2", "3", "1", "1", "2"] for c in KENYAN_COUNTIES],
+            ],
+            bbox=(0, 0, 100, 100),
+        )
+
+        # Arrears comes FIRST in the list — without a header tiebreaker
+        # it would win the anchor match and yield zero useful records.
+        mock_extract.return_value = [arrears, budget]
+        parser = CoBQuarterlyReportParser(Path("multi-table.pdf"))
+        records = parser.parse()
+
+        assert len(records) > 0, "should pick the budget table over arrears"
+        # All records must have come from the budget table — its
+        # alloc=3 / abs=2 values are unambiguous.
+        sample = records[0]
+        assert sample["allocated"] == Decimal("3")
+        assert sample["absorbed"] == Decimal("2")
+
 
 class TestOAGAuditReportParser:
     """Test OAG audit report parser."""
