@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from seeding.utils import slugify_entity
+from seeding.utils import canonicalize_slug, slugify_entity
 
 
 class TestSlugifyEntity:
@@ -61,3 +61,36 @@ class TestSlugifyEntity:
     def test_empty_input_returns_empty(self):
         assert slugify_entity("") == ""
         assert slugify_entity("   ") == ""
+
+
+class TestCanonicalizeSlug:
+    """canonicalize_slug normalises an EXISTING slug without touching
+    the -county suffix — used at the writer's lookup boundary so
+    fixture/JSON-derived slugs match the DB's canonical form even when
+    they carry apostrophes or stray whitespace."""
+
+    def test_strips_apostrophe_in_existing_slug(self):
+        # The exact prod regression: fixture had "murang'a-county",
+        # DB has "muranga-county", lookup failed and 6 audits were
+        # silently dropped each nightly run.
+        assert canonicalize_slug("murang'a-county") == "muranga-county"
+
+    def test_does_not_add_county_suffix(self):
+        # Unlike slugify_entity, this helper must NEVER append -county
+        # because callers may pass national-level slugs.
+        assert canonicalize_slug("national-government") == "national-government"
+
+    def test_idempotent(self):
+        canonical = "muranga-county"
+        assert canonicalize_slug(canonical) == canonical
+        assert canonicalize_slug(canonicalize_slug(canonical)) == canonical
+
+    def test_handles_uppercase_and_spaces(self):
+        assert canonicalize_slug("Muranga County") == "muranga-county"
+
+    def test_strips_unicode_apostrophe(self):
+        assert canonicalize_slug("murang\u2019a-county") == "muranga-county"
+
+    def test_empty_returns_empty(self):
+        assert canonicalize_slug("") == ""
+        assert canonicalize_slug("   ") == ""
