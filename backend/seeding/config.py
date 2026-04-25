@@ -171,6 +171,22 @@ class SeedingSettings(BaseSettings):
             "Monthly Statistical Bulletin PDF link."
         ),
     )
+    cbk_statistical_bulletin_url: Optional[str] = Field(
+        default=None,
+        description=(
+            "Direct URL to the latest CBK Statistical Bulletin PDF. "
+            "When set, the national_debt domain extracts Table 4.1.4 "
+            "('Composition of Government Gross Domestic Debt by "
+            "Instrument') and overlays per-instrument domestic debt "
+            "values onto the fixture. When unset (the default) or the "
+            "URL 404s, domestic debt stays on fixture values. "
+            "Example: https://www.centralbank.go.ke/uploads/cbk_"
+            "statistical_bulletins/<hash>/sbull_jun25.pdf — the path "
+            "changes each release, so this is opt-in via env var. "
+            "Auto-discovery from the CBK statistics page is a planned "
+            "follow-up."
+        ),
+    )
     cob_birr_page_url: str = Field(
         default="https://cob.go.ke/publications/national-government-budget-implementation-review-reports/",
         description=(
