@@ -194,9 +194,16 @@ def _brop_result_to_payload(
         notes = "Treasury BROP Table 10"
         if breakdown_parts:
             notes += " — " + "; ".join(breakdown_parts)
+        # Match the fixture's "{County} County" entity-name format —
+        # the writer's _get_or_create_entity does an exact
+        # canonical_name match first, and that's the format the
+        # bootstrap-seeded county entities use. Earlier seed run
+        # 24966698677 had this code emitting "County Government of
+        # X" which fell through to the ILIKE fallback and failed for
+        # all 46 counties.
         pending_bills.append(
             {
-                "entity_name": f"County Government of {cb.county}",
+                "entity_name": f"{cb.county} County",
                 "entity_type": "county",
                 "category": "county",
                 "fiscal_year": fy_label,
