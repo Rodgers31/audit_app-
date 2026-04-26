@@ -45,6 +45,7 @@ Caveats
 
 from __future__ import annotations
 
+import calendar
 import logging
 import re
 from dataclasses import dataclass
@@ -157,10 +158,12 @@ def _detect_period(pdf: pdfplumber.PDF) -> Optional[PeriodInfo]:
             break
 
     end_year = fy_start_year if end_month >= 7 else fy_start_year + 1
-    end_date = (
-        date(end_year, end_month, 30) if end_month in (3, 6, 9)
-        else date(end_year, end_month, 31)
-    )
+    # Use the actual last day of the month — March has 31 days, not
+    # 30 (caught by Copilot review on PR #81). The ``calendar`` module
+    # handles leap years correctly for the few cases where it might
+    # matter.
+    end_day = calendar.monthrange(end_year, end_month)[1]
+    end_date = date(end_year, end_month, end_day)
     label = f"{fy_label} {sub_label}" if sub_label else fy_label
     return PeriodInfo(
         label=label,

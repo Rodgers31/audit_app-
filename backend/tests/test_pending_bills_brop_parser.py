@@ -104,7 +104,9 @@ class TestDetectNationalParagraph:
         return pdf
 
     def test_extracts_three_amounts_and_date(self):
-        result = bp._detect_national_paragraph(self._stub_pdf(_REAL_PARA_18))
+        result = bp._detect_national_paragraph(
+            self._stub_pdf(_REAL_PARA_18), "FY 2024/25"
+        )
         assert result is not None
         assert result.total == Decimal("525900000000")
         assert result.state_corporations == Decimal("404300000000")
@@ -113,9 +115,49 @@ class TestDetectNationalParagraph:
 
     def test_returns_none_when_paragraph_absent(self):
         result = bp._detect_national_paragraph(
-            self._stub_pdf("Just some narrative without the para-18 anchor.")
+            self._stub_pdf(
+                "Just some narrative without the para-18 anchor."
+            ),
+            "FY 2024/25",
         )
         assert result is None
+
+    def test_falls_back_to_fy_end_date_when_as_at_missing(self):
+        """If the para-18 anchor matches but the 'as at' date phrase
+        is rephrased / dropped in a future BROP, the as-at date must
+        be inferred from the FY label (Jun 30 of FY's second
+        calendar year). The previous ``date(2000, 6, 30)`` placeholder
+        would have produced a wrong natural key in the writer
+        (Copilot review on PR #81)."""
+        para_without_date = (
+            "Pending Bills\n"
+            "18. The total outstanding National Government pending bills "
+            "amounted to KSh 525.9 billion. These comprise of KSh 404.3 "
+            "billion (76.9 percent) and KSh 121.6 billion (23.1 percent) "
+            "for the State Corporations and MDAs, respectively."
+        )
+        result = bp._detect_national_paragraph(
+            self._stub_pdf(para_without_date), "FY 2024/25"
+        )
+        assert result is not None
+        # FY 2024/25 → ends 30 June 2025.
+        assert result.as_at_date == date(2025, 6, 30)
+
+
+class TestInferFyEndDate:
+    def test_short_form_fy_label(self):
+        assert bp._infer_fy_end_date("FY 2024/25") == date(2025, 6, 30)
+
+    def test_long_form_fy_label(self):
+        assert bp._infer_fy_end_date("FY 2024/2025") == date(2025, 6, 30)
+
+    def test_fallback_when_label_unparseable(self):
+        """Last-resort: a recent FY-end (today's most recent Jun 30).
+        The exact date depends on the test's wall-clock so we just
+        assert it's not the legacy date(2000, ...) sentinel."""
+        result = bp._infer_fy_end_date("FY ?")
+        assert result.year >= 2024
+        assert (result.month, result.day) == (6, 30)
 
 
 # ── _COUNTY_ROW_RE + _parse_county_row_numbers ──────────────────────
@@ -170,6 +212,61 @@ class TestCountyRowRegex:
         m = bp._COUNTY_ROW_RE.match(line)
         assert m is not None
         assert m.group("county") == "Murang'a"
+
+
+class TestParseCountyRowNumbers:
+    def test_full_six_breakdown_row_with_preserved_dash(self):
+        """Kilifi-shaped row: pdfplumber renders the missing
+        assembly-development cell as a literal '-' token. We MUST
+        keep that as a positional ``None`` placeholder so subsequent
+        cells stay column-aligned. Pre-fix bug: the dash was filtered
+        out, shifting the assembly_subtotal into ``asm_dev`` and
+        misattributing the value (Copilot review on PR #81)."""
+        # 9 tokens: exec_R, exec_D, exec_Sub, asm_R, "-", asm_Sub,
+        # total, fy_budget, pct.
+        tokens = [
+            "3,820.1", "5,367.4", "9,187.4",
+            "68.2", "-", "68.2",
+            "9,255.6", "21,406.50", "43.2",
+        ]
+        out = bp._parse_county_row_numbers(tokens)
+        assert out is not None
+        # Executive cells fully populated.
+        assert out["exec_rec"] == Decimal("3820100000")
+        assert out["exec_dev"] == Decimal("5367400000")
+        assert out["exec_sub"] == Decimal("9187400000")
+        # Assembly: recurrent + subtotal both 68.2M, dev correctly None.
+        assert out["asm_rec"] == Decimal("68200000")
+        assert out["asm_dev"] is None
+        assert out["asm_sub"] == Decimal("68200000")
+        # Reliable last-three columns.
+        assert out["total"] == Decimal("9255600000")
+        assert out["fy_budget"] == Decimal("21406500000")
+
+    def test_short_row_leaves_assembly_unset(self):
+        """When pdfplumber drops a dash entirely (Nairobi-shaped: 8
+        tokens with no '-'), we can't tell which assembly cell was
+        omitted from the text. Persist exec + last-three columns and
+        leave the ambiguous cells as None rather than guess."""
+        # 8 tokens — pdfplumber dropped one assembly cell. Last 3 are
+        # total/budget/pct; first 3 are exec_R/D/Sub; middle 2 are
+        # ambiguous between (asm_R, asm_Sub) and (asm_R, asm_D).
+        tokens = [
+            "78,949.1", "7,169.4", "86,118.6",
+            "650.6", "650.6",
+            "86,769.2", "43,564.27", "199.2",
+        ]
+        out = bp._parse_county_row_numbers(tokens)
+        assert out is not None
+        assert out["exec_rec"] == Decimal("78949100000")
+        assert out["exec_dev"] == Decimal("7169400000")
+        assert out["exec_sub"] == Decimal("86118600000")
+        # Ambiguous cells unset.
+        assert "asm_rec" not in out
+        assert "asm_dev" not in out
+        assert "asm_sub" not in out
+        # Reliable columns still present.
+        assert out["total"] == Decimal("86769200000")
 
 
 # ── _dehyphenate_text ───────────────────────────────────────────────

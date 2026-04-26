@@ -46,9 +46,13 @@ def fetch_pending_bills_payload(
       2. If pending_bills_dataset_url is configured, load fixture/API.
       3. Otherwise, run the live ETL extractor against COB website.
     """
-    # Strategy 1: Treasury BROP — only when URL is configured. Defaults
-    # to None so an unconfigured deployment doesn't loudly skip it on
-    # every run; the fixture fallback (Strategy 2) covers that case.
+    # Strategy 1: Treasury BROP. ``treasury_brop_url`` ships with the
+    # latest known BROP URL as its default and is overridable via
+    # ``SEED_TREASURY_BROP_URL`` env var when the next BROP drops; an
+    # operator can also explicitly set it to None to fall through to
+    # the fixture path (Strategy 2). The ``getattr`` fallback to
+    # ``None`` is defensive — older settings instances may not have
+    # the field if a stale module is imported.
     brop_url = getattr(settings, "treasury_brop_url", None)
     if settings.live_pdf_fetch_enabled and brop_url:
         try:

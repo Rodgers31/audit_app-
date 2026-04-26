@@ -168,6 +168,19 @@ class TestDetectPeriod:
         assert info.label == "FY 2024/25 Q1"
         assert info.end_date == date(2024, 9, 30)
 
+    def test_first_nine_months_uses_actual_march_31(self):
+        """End-month March has 31 days, not 30. Pre-fix code
+        hard-coded month-30 for the (3, 6, 9) bucket and produced
+        2025-03-30, mismatching the bulletin's stated period
+        (Copilot review on PR #81)."""
+        info = ng_pdf._detect_period(
+            _stub_pdf_with_cover(
+                "NATIONAL GOVERNMENT BIRR\nFIRST NINE MONTHS\nFY 2024/2025"
+            )
+        )
+        assert info.label == "FY 2024/25 9M"
+        assert info.end_date == date(2025, 3, 31)
+
     def test_annual_when_no_subperiod_descriptor(self):
         """If only a 'FY YYYY/YYYY' label is present, treat as annual:
         end on Jun 30 of the FY's second calendar year."""
