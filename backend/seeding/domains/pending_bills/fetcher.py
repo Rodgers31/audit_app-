@@ -11,13 +11,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import re
 import tempfile
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from urllib.parse import urljoin
 
+from ...cob_discovery import discover_latest_cob_pdf_url
 from ...config import SeedingSettings
 from ...http_client import SeedingHttpClient
 
@@ -93,47 +92,24 @@ def _fetch_from_cob_pdf(
     return _download_and_parse_cob_pdf(client, pdf_url)
 
 
+_BIRR_KEYWORDS = (
+    "birr", "budget-implementation", "budget_implementation",
+    "implementation-review", "implementation_review",
+    "pending-bill", "pending_bill",
+)
+
+
 def _discover_latest_birr_pdf(html: str, base_url: str) -> Optional[str]:
     """Extract the most recent BIRR PDF URL from the COB reports page.
 
-    Looks for links matching common COB BIRR naming patterns like:
-    - BIRR-*.pdf
-    - Budget-Implementation-Review-*.pdf
-    - NG-BIRR-*.pdf
-    - national-government-budget-implementation*.pdf
+    Delegates to the shared COB WPDM discovery helper — see
+    ``seeding.cob_discovery`` for why direct ``.pdf`` regex stopped
+    matching after COB migrated to the WordPress Download Manager
+    plugin.
     """
-    pdf_pattern = re.compile(
-        r'href=["\']([^"\']*\.pdf)["\']',
-        re.IGNORECASE,
+    return discover_latest_cob_pdf_url(
+        html, base_url, keywords=_BIRR_KEYWORDS
     )
-    all_pdfs = pdf_pattern.findall(html)
-
-    if not all_pdfs:
-        return None
-
-    # Filter for BIRR-related PDFs
-    birr_keywords = [
-        "birr", "budget-implementation", "budget_implementation",
-        "implementation-review", "implementation_review",
-        "pending-bill", "pending_bill",
-    ]
-    birr_pdfs = [
-        url for url in all_pdfs
-        if any(kw in url.lower() for kw in birr_keywords)
-    ]
-
-    candidates = birr_pdfs if birr_pdfs else all_pdfs
-
-    if not candidates:
-        return None
-
-    # Pick the first match (usually the most recent)
-    chosen = candidates[0]
-
-    if not chosen.startswith(("http://", "https://")):
-        chosen = urljoin(base_url, chosen)
-
-    return chosen
 
 
 def _download_and_parse_cob_pdf(
