@@ -12,12 +12,11 @@ quarterly NG-BIRR reports.
 from __future__ import annotations
 
 import logging
-import re
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from urllib.parse import urljoin
 
+from ...cob_discovery import discover_latest_cob_pdf_url
 from ...config import SeedingSettings
 from ...http_client import SeedingHttpClient
 from ...utils import load_json_resource
@@ -90,37 +89,26 @@ def _fetch_from_cob_ng_pdf(
     return _download_and_parse_ng_pdf(client, pdf_url)
 
 
+_NG_BIRR_KEYWORDS = (
+    "ng-birr", "national-government-budget",
+    "national_government_budget", "birr",
+    "budget-implementation", "budget_implementation",
+)
+
+
 def _discover_latest_ng_birr_pdf(
     html: str, base_url: str
 ) -> Optional[str]:
-    """Extract the most recent NG-BIRR PDF URL from the COB page."""
-    pdf_pattern = re.compile(
-        r'href=["\']([^"\']*\.pdf)["\']',
-        re.IGNORECASE,
+    """Extract the most recent NG-BIRR PDF URL from the COB page.
+
+    Delegates to the shared COB WPDM discovery helper — see
+    ``seeding.cob_discovery`` for why direct ``.pdf`` regex stopped
+    matching after COB migrated to the WordPress Download Manager
+    plugin.
+    """
+    return discover_latest_cob_pdf_url(
+        html, base_url, keywords=_NG_BIRR_KEYWORDS
     )
-    all_pdfs = pdf_pattern.findall(html)
-    if not all_pdfs:
-        return None
-
-    birr_keywords = [
-        "ng-birr", "national-government-budget",
-        "national_government_budget", "birr",
-        "budget-implementation", "budget_implementation",
-    ]
-    birr_pdfs = [
-        url for url in all_pdfs
-        if any(kw in url.lower() for kw in birr_keywords)
-    ]
-
-    candidates = birr_pdfs if birr_pdfs else all_pdfs
-    if not candidates:
-        return None
-
-    chosen = candidates[0]
-    if not chosen.startswith(("http://", "https://")):
-        chosen = urljoin(base_url, chosen)
-
-    return chosen
 
 
 def _download_and_parse_ng_pdf(

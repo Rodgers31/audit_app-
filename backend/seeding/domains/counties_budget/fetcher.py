@@ -20,8 +20,8 @@ import tempfile
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import urljoin
 
+from ...cob_discovery import discover_latest_cob_pdf_url
 from ...config import SeedingSettings
 from ...http_client import SeedingHttpClient
 from ...utils import load_json_resource, slugify_entity
@@ -371,80 +371,25 @@ def _discover_latest_county_birr_via_html(
     return pdf_url
 
 
+_COUNTY_BIRR_KEYWORDS = (
+    "county", "c-birr", "cbirr", "county-government",
+    "county_government", "county-budget", "counties",
+    "consolidated-county",
+)
+
+
 def _discover_latest_county_birr_pdf(
     html: str, base_url: str
 ) -> Optional[str]:
     """Extract the most recent county BIRR PDF URL from the COB page.
 
-    COB wraps their PDFs in the WordPress Download Manager plugin, so the
-    anchors look like
-
-        <a ... onclick="location.href='https://cob.go.ke/download/
-        county-governments-budget-implementation-review-report-
-        first-half-of-fy-2025-26/?wpdmdl=16349';return false;">
-
-    not raw `.pdf` hrefs. Hitting the `?wpdmdl=NNN` URL with
-    ``Accept: application/pdf`` streams the file directly
-    (Content-Type: application/pdf). Higher ``wpdmdl`` IDs correspond to
-    newer uploads (WPDM's monotonic internal counter), so we sort by ID
-    descending and pick the highest county-slug match.
-
-    We also keep the original `.pdf` href scan as a fallback for:
-      * Legacy pages still hosting direct PDF links.
-      * Test fixtures / mocks written before WPDM was on the scene.
+    Delegates to the shared COB WPDM discovery helper. See
+    ``seeding.cob_discovery`` for the WPDM anchor + legacy ``.pdf``
+    fallback strategy.
     """
-    county_keywords = [
-        "county", "c-birr", "cbirr", "county-government",
-        "county_government", "county-budget", "counties",
-        "consolidated-county",
-    ]
-
-    # Strategy 1: WordPress Download Manager `wpdmdl=NNN` links.
-    wpdm_pattern = re.compile(
-        r"""(?P<prefix>location\.href=['"]|href=['"])"""
-        r"""(?P<url>https?://[^'"\s]+\?(?:[^'"\s]*&)?wpdmdl=(?P<id>\d+)[^'"\s]*)""",
-        re.IGNORECASE,
+    return discover_latest_cob_pdf_url(
+        html, base_url, keywords=_COUNTY_BIRR_KEYWORDS
     )
-    wpdm_matches = [
-        (int(m.group("id")), m.group("url")) for m in wpdm_pattern.finditer(html)
-    ]
-    if wpdm_matches:
-        county_wpdm = [
-            (wid, url)
-            for wid, url in wpdm_matches
-            if any(kw in url.lower() for kw in county_keywords)
-        ]
-        pool = county_wpdm if county_wpdm else wpdm_matches
-        # Highest ID = most recent upload per WPDM's monotonic counter.
-        pool.sort(key=lambda t: t[0], reverse=True)
-        chosen_url = pool[0][1]
-        if not chosen_url.startswith(("http://", "https://")):
-            chosen_url = urljoin(base_url, chosen_url)
-        return chosen_url
-
-    # Strategy 2: direct `.pdf` hrefs (legacy pages, test fixtures).
-    pdf_pattern = re.compile(
-        r'href=["\']([^"\']*\.pdf)["\']',
-        re.IGNORECASE,
-    )
-    all_pdfs = pdf_pattern.findall(html)
-    if not all_pdfs:
-        return None
-
-    county_pdfs = [
-        url for url in all_pdfs
-        if any(kw in url.lower() for kw in county_keywords)
-    ]
-
-    candidates = county_pdfs if county_pdfs else all_pdfs
-    if not candidates:
-        return None
-
-    chosen = candidates[0]
-    if not chosen.startswith(("http://", "https://")):
-        chosen = urljoin(base_url, chosen)
-
-    return chosen
 
 
 def _download_and_parse_county_pdf(
