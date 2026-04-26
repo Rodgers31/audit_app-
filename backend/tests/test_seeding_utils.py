@@ -10,7 +10,11 @@ from __future__ import annotations
 
 import pytest
 
-from seeding.utils import canonicalize_slug, slugify_entity
+from seeding.utils import (
+    canonicalize_slug,
+    normalize_fiscal_label,
+    slugify_entity,
+)
 
 
 class TestSlugifyEntity:
@@ -94,3 +98,51 @@ class TestCanonicalizeSlug:
     def test_empty_returns_empty(self):
         assert canonicalize_slug("") == ""
         assert canonicalize_slug("   ") == ""
+
+
+class TestNormalizeFiscalLabel:
+    """The canonical fiscal-label form is ``FY{YYYY}/{YY}`` with an
+    optional sub-period suffix preserved (``H1``, ``Q1``..``Q4``,
+    ``9M``). The seed run on 2026-04-26 failed because the COB BIRR
+    domains emit labels like ``FY 2025/26 H1`` and the older regex
+    rejected anything with trailing tokens — keeping the suffix is
+    essential for the FiscalPeriod natural key (entity+period) to
+    distinguish a half-year report from the full FY annual rollup.
+    """
+
+    @pytest.mark.parametrize(
+        "raw,expected",
+        [
+            # Backwards-compat: pre-existing label shapes.
+            ("FY2023/24", "FY2023/24"),
+            ("FY 2024/25", "FY2024/25"),
+            ("2023/2024", "FY2023/24"),
+            ("2022/2023", "FY2022/23"),
+            ("FY2025/26", "FY2025/26"),
+            # Sub-period preservation (the regression behind the
+            # 'Cannot normalise fiscal label: FY 2025/26 H1' failure).
+            ("FY 2025/26 H1", "FY2025/26 H1"),
+            ("FY2025/26 Q1", "FY2025/26 Q1"),
+            ("FY 2024/25 9M", "FY2024/25 9M"),
+            ("FY 2023/24 Q4", "FY2023/24 Q4"),
+            # Case-insensitive: parser may emit lower-case 'h1' if a
+            # future BROP renames its descriptor; we still canonicalise.
+            ("FY 2024/25 q3", "FY2024/25 Q3"),
+            # Idempotent on already-canonical input.
+            ("FY2025/26 H1", "FY2025/26 H1"),
+        ],
+    )
+    def test_canonicalises_known_shapes(self, raw, expected):
+        assert normalize_fiscal_label(raw) == expected
+
+    @pytest.mark.parametrize("bad", ["", "garbage", "FY abc/def", "2025"])
+    def test_rejects_unparseable(self, bad):
+        with pytest.raises(ValueError, match="Cannot normalise"):
+            normalize_fiscal_label(bad)
+
+    def test_rejects_unknown_sub_period(self):
+        """Only H1/H2, Q1-Q4, NM (digits-M) are accepted. Anything
+        else is rejected so a typo doesn't silently produce a fresh
+        FiscalPeriod row."""
+        with pytest.raises(ValueError, match="Cannot normalise"):
+            normalize_fiscal_label("FY 2025/26 ANNUAL")
