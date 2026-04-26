@@ -201,6 +201,22 @@ class SeedingSettings(BaseSettings):
             "Scraped to discover the latest BPS PDF."
         ),
     )
+    treasury_brop_url: Optional[str] = Field(
+        default=(
+            "https://www.treasury.go.ke/sites/default/files/"
+            "2025-Budget-Review-and-Outlook-Paper-1.pdf"
+        ),
+        description=(
+            "Direct URL to the latest National Treasury Budget Review "
+            "and Outlook Paper (BROP) PDF. The pending_bills domain "
+            "extracts paragraph 18 (national aggregate) and Table 10 "
+            "(per-county breakdown) from this document. The path "
+            "changes each year — set ``SEED_TREASURY_BROP_URL`` to the "
+            "new release URL when the next BROP drops, or set to None "
+            "to skip live fetch and use the fixture. Auto-discovery "
+            "from the Treasury landing page is a planned follow-up."
+        ),
+    )
     live_pdf_fetch_enabled: bool = Field(
         default=True,
         description=(
