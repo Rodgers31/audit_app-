@@ -117,8 +117,21 @@ def fetch_external_debt_from_wb_ids(
             secondary = _fetch_latest(
                 client, creditor["combine_with"], at_year=latest_year
             )
-            if secondary:
-                kes_value += Decimal(str(secondary["value"])) * _USD_KES_RATE
+            if secondary is None:
+                # Skip the row entirely rather than write a misleading
+                # partial. For combined indicators (IBRD + IDA), the
+                # primary value alone undercounts the lender bucket by a
+                # large factor — silently writing IBRD-only as "World
+                # Bank" overwrote the fixture row with a 7x understatement
+                # in a real prod run. Better to keep the fixture in place
+                # than corrupt it; the next run will retry the secondary.
+                logger.warning(
+                    "WB IDS skipping %s: combine_with %s unavailable; "
+                    "fixture row stays in place",
+                    creditor["lender"], creditor["combine_with"],
+                )
+                continue
+            kes_value += Decimal(str(secondary["value"])) * _USD_KES_RATE
         out.append(
             {
                 "entity_name": "National Government",

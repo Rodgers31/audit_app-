@@ -188,6 +188,32 @@ class TestWbIdsFetcher:
         loans = wb_ids.fetch_external_debt_from_wb_ids(FakeClient(), settings)
         assert loans == []
 
+    def test_skips_combined_row_when_secondary_fails(self, settings):
+        """If the primary indicator (IBRD) succeeds but the
+        ``combine_with`` secondary (IDA) fails — e.g. WB API returns
+        an intermittent 400 — we MUST NOT emit the IBRD-only value as
+        the World Bank total. A real prod run silently undercounted
+        WB lending by 7x ($1.9B vs the $13.8B IBRD+IDA combined). The
+        whole row is dropped so the fixture stays in place; the next
+        run retries."""
+
+        class FakeClient:
+            def get(self, url, **_kwargs):
+                if "MIDA" in url:  # the combine_with secondary
+                    raise RuntimeError("simulated WB API 400")
+                # Both MIBR (IBRD primary) and DIMF (IMF) succeed.
+                class R:
+                    def json(self_):
+                        return _wb_response(1_000_000_000)
+                return R()
+
+        loans = wb_ids.fetch_external_debt_from_wb_ids(FakeClient(), settings)
+        lenders = {l["lender"] for l in loans}
+        # WB row dropped because IDA leg unavailable.
+        assert "Multilateral (World Bank / IDA / IBRD)" not in lenders
+        # IMF (no combine_with) is unaffected.
+        assert "Multilateral (IMF — Extended Credit & Resilience Trust)" in lenders
+
 
 # ── fetcher._overlay_loans ──
 
