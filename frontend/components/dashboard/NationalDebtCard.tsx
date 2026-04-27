@@ -44,13 +44,21 @@ function toChartData(timeline: DebtTimelineEntry[]): ChartEntry[] {
   }));
 }
 
+// 2-decimal precision for trillion-scale values. Matches both
+// ``HeroSection.tsx`` (the page-top "Total Debt as of YYYY" KPI) and
+// ``DebtPageClient.tsx``'s shared formatter — pre-fix this card was
+// the lone outlier at ``toFixed(1)``, so a value of 12.66T on the
+// hero displayed as "12.7T" here, plus the External + Domestic
+// breakdown ("6.5T + 6.2T") didn't add back up to the displayed
+// "12.7T" total. 2 decimals reconciles all three.
 function fmtT(val: number): string {
-  if (val >= 1000) return `${(val / 1000).toFixed(1)}T`;
+  if (val >= 1000) return `${(val / 1000).toFixed(2)}T`;
   return `${val}B`;
 }
 
 function fmtKES(val: number): string {
-  if (val >= 1_000_000_000_000) return `KES ${(val / 1_000_000_000_000).toFixed(1)}T`;
+  if (val >= 1_000_000_000_000)
+    return `KES ${(val / 1_000_000_000_000).toFixed(2)}T`;
   if (val >= 1_000_000_000) return `KES ${(val / 1_000_000_000).toFixed(0)}B`;
   return `KES ${val.toLocaleString()}`;
 }

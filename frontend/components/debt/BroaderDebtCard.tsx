@@ -98,7 +98,17 @@ export default function BroaderDebtCard({ cbkTotalKes, cbkAsOf }: Props) {
             Central Government debt — loans the National Treasury owes directly.
           </p>
           <div className='mt-3 pt-3 border-t border-neutral-border/40 text-[11px] text-neutral-muted space-y-0.5'>
-            <div>Source: CBK Public Debt Bulletin (line-by-line)</div>
+            <div>
+              Source:{' '}
+              <a
+                href='https://www.centralbank.go.ke/releases/statistical-bulletin/'
+                target='_blank'
+                rel='noopener noreferrer'
+                className='text-gov-forest hover:underline inline-flex items-center gap-0.5'>
+                CBK Statistical Bulletin
+                <ArrowUpRight size={11} />
+              </a>
+            </div>
             <div>As of {fmtDate(cbkAsOf)}</div>
           </div>
         </div>

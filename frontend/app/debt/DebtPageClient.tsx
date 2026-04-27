@@ -715,34 +715,62 @@ export default function NationalDebtPage() {
       />
 
       {/* ═══════════ SECTION 1C — AUDIT TRAIL (collapsed by default) ═══════════
-          Compact disclosure: "How we got to 11.85T" — click to expand the
-          full Sources & Reconciliation card. Uses native <details> so it
-          works without client state and is keyboard-accessible by default. */}
-      {d.reconciliation && d.reconciliation.primary_value_kes != null && (
-        <details className='group rounded-xl border border-neutral-border/40 bg-white/60 overflow-hidden'>
-          <summary className='flex items-center justify-between gap-3 px-5 py-3.5 cursor-pointer list-none hover:bg-neutral-50/50 transition-colors'>
-            <div className='flex items-center gap-2.5 min-w-0'>
-              <span className='text-[10px] uppercase tracking-widest font-semibold text-neutral-muted shrink-0'>
-                Audit trail
-              </span>
-              <span className='text-sm text-gov-dark/85 truncate'>
-                How we got to the headline 11.85T — Treasury reports a
-                slightly different 12.50T; we reconcile the {((d.reconciliation.percent_diff) ?? 0).toFixed(1)}% gap.
-              </span>
+          Compact disclosure: live primary/secondary debt totals from the
+          reconciliation block — click to expand the full Sources &
+          Reconciliation card. Uses native <details> so it works without
+          client state and is keyboard-accessible by default.
+
+          Gate on BOTH primary_value_kes AND secondary_value_kes — pre-fix
+          the headline + comparator were hardcoded "11.85T" / "12.50T"
+          strings, which silently went stale every time the live data
+          moved (CBK overlay, WB IDS overlay, fixture refresh…). The
+          ``percent_diff`` slot was already dynamic so the rest of the
+          line was internally inconsistent: "headline 11.85T … 1.3% gap"
+          was actually a ~6% gap on the live numbers. */}
+      {d.reconciliation &&
+        d.reconciliation.primary_value_kes != null &&
+        d.reconciliation.secondary_value_kes != null && (
+          <details className='group rounded-xl border border-neutral-border/40 bg-white/60 overflow-hidden'>
+            <summary className='flex items-center justify-between gap-3 px-5 py-3.5 cursor-pointer list-none hover:bg-neutral-50/50 transition-colors'>
+              <div className='flex items-center gap-2.5 min-w-0'>
+                <span className='text-[10px] uppercase tracking-widest font-semibold text-neutral-muted shrink-0'>
+                  Audit trail
+                </span>
+                {/* Data vintage note: CBK publishes the Statistical
+                    Bulletin biannually (June + December issues, ~6-month
+                    publication lag). Surfacing the issue date in this
+                    one-liner tells citizens our headline isn't stale per
+                    se — it's the latest CBK has published — which is the
+                    question they actually asked when they saw the number
+                    move. The "June 2025 issue" string is currently
+                    static; it'll need updating when the December 2025
+                    issue ships (typically ~July 2026). TODO: plumb the
+                    measurement_date the cbk_bulletin parser already
+                    captures (in the loan record's ``notes`` field)
+                    through the /debt/national API so this can be
+                    rendered dynamically. */}
+                <span className='text-sm text-gov-dark/85 truncate'>
+                  Our {fmtT(d.reconciliation.primary_value_kes)} figure is the
+                  loan-level sum from CBK&apos;s Statistical Bulletin (June 2025
+                  issue, the most recent published). The CBK/Treasury annual
+                  aggregate reports {fmtT(d.reconciliation.secondary_value_kes)}{' '}
+                  — a {(d.reconciliation.percent_diff ?? 0).toFixed(1)}% gap
+                  typical for line-level vs. roll-up data. Click for details.
+                </span>
+              </div>
+              <ChevronDown
+                size={16}
+                className='text-neutral-muted group-open:rotate-180 transition-transform shrink-0'
+              />
+            </summary>
+            <div className='border-t border-neutral-border/40'>
+              <DebtSourceReconciliation
+                reconciliation={d.reconciliation}
+                lastUpdated={d.lastUpdated}
+              />
             </div>
-            <ChevronDown
-              size={16}
-              className='text-neutral-muted group-open:rotate-180 transition-transform shrink-0'
-            />
-          </summary>
-          <div className='border-t border-neutral-border/40'>
-            <DebtSourceReconciliation
-              reconciliation={d.reconciliation}
-              lastUpdated={d.lastUpdated}
-            />
-          </div>
-        </details>
-      )}
+          </details>
+        )}
 
       {/* ═══════════ SECTION 2 — WHO KENYA OWES ═══════════ */}
       <motion.section
