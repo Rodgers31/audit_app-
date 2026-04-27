@@ -36,7 +36,12 @@ function ResetPasswordForm() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [error, setError] = useState(linkError || '');
+  // Form-submit error only — the URL `?error=` param flows through
+  // its own UI branch below (see `linkError && !isAuthenticated`
+  // ternary). Don't seed this from linkError or the in-form error
+  // panel will show the URL leftover instead of the actual submit
+  // failure once the user starts interacting.
+  const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -63,6 +68,13 @@ function ResetPasswordForm() {
         await updatePassword(password);
         setSuccess(true);
       } catch (err: any) {
+        // Surface the Supabase error verbatim when present — e.g.
+        // "New password should be different from the old password."
+        // for the same_password code. Console-log the full object so
+        // a future "spinner stuck, no message" report is debuggable
+        // from DevTools without round-tripping back to this fix.
+        // eslint-disable-next-line no-console
+        console.error('[reset-password] updatePassword failed', err);
         setError(
           err?.message ||
             'Failed to update password. The link may have expired — please request a new one.'
@@ -237,9 +249,18 @@ function ResetPasswordForm() {
                   )}
                 </div>
 
-                {/* Error */}
+                {/* Error — show whenever an in-form submit fails.
+                    Pre-fix this was gated on `!linkError`, which
+                    silently hid the actual same_password / weak-
+                    password error from Supabase whenever the URL
+                    still carried the original ``?error=`` token-
+                    exchange parameter. linkError gets its own
+                    dedicated UI branch above (the
+                    ``linkError && !isAuthenticated`` ternary), so
+                    once we're rendering the form, in-form errors
+                    are always meaningful. */}
                 <AnimatePresence>
-                  {error && !linkError && (
+                  {error && (
                     <motion.div
                       initial={{ opacity: 0, y: -8 }}
                       animate={{ opacity: 1, y: 0 }}
