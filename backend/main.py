@@ -300,6 +300,47 @@ def _latest_national_period(db) -> Optional[int]:
     return row[0] if row else None
 
 
+def _is_debt_loan(loan) -> bool:
+    """True when a Loan row counts as DEBT for total-debt aggregations.
+
+    The single piece of business logic this encodes: ``PENDING_BILLS``
+    rows live in the ``loans`` table for storage convenience but are
+    NOT borrowed money — they're unpaid obligations and must NOT be
+    summed into "total national debt" or any "debt-to-GDP" ratio.
+    Use this predicate (or :func:`_debt_loans_query`) every time you
+    iterate ``loans`` to compute a debt total, so a future endpoint
+    can't silently inflate the displayed debt by 700B+ the way
+    ``/api/v1/debt/national`` did before this helper landed (the
+    pending-bills records from PR #84 started writing to the
+    ``loans`` table successfully and immediately broke the headline
+    Total Debt KPI on the frontend).
+
+    Loans with no ``debt_category`` set count as debt — that matches
+    every existing aggregator's pre-fix behaviour.
+    """
+    from models import DebtCategory as _DC
+
+    if loan.debt_category is None:
+        return True
+    return loan.debt_category != _DC.PENDING_BILLS
+
+
+def _debt_loans_query(db, entity_filter):
+    """SQLAlchemy query for Loan rows that count as debt.
+
+    Companion to :func:`_is_debt_loan` for the case where the caller
+    only needs debt-only loans and never iterates the pending-bills
+    rows for any other purpose. Pass ``entity_filter`` as a SQL
+    expression — single entity (``DBLoan.entity_id == eid``) or a set
+    (``DBLoan.entity_id.in_(eids)``).
+    """
+    from models import DebtCategory as _DC
+
+    return db.query(DBLoan).filter(
+        entity_filter, DBLoan.debt_category != _DC.PENDING_BILLS
+    )
+
+
 def _entity_period_budget_query(db, entity_id: int, period_id: Optional[int] = None):
     """Return BudgetLine query scoped to a single entity and (optionally) period.
 
@@ -1741,16 +1782,25 @@ async def get_country_summary(country_id: int):
 
                 _nat = db.query(DBEntity).filter(DBEntity.type == _ET.NATIONAL).first()
                 if _nat:
+                    # Exclude PENDING_BILLS — see ``_is_debt_loan``.
+                    from models import DebtCategory as _DC
+
                     total_debt_result = (
                         db.query(func.sum(DBLoan.outstanding))
-                        .filter(DBLoan.entity_id == _nat.id)
+                        .filter(
+                            DBLoan.entity_id == _nat.id,
+                            DBLoan.debt_category != _DC.PENDING_BILLS,
+                        )
                         .scalar()
                     )
                     total_debt = float(total_debt_result or 0)
                     if total_debt == 0:
                         total_debt = float(
                             db.query(func.sum(DBLoan.principal))
-                            .filter(DBLoan.entity_id == _nat.id)
+                            .filter(
+                                DBLoan.entity_id == _nat.id,
+                                DBLoan.debt_category != _DC.PENDING_BILLS,
+                            )
                             .scalar()
                             or 0
                         )
@@ -2059,7 +2109,9 @@ async def get_counties(fiscal_year: Optional[str] = None):
                         )
 
                 total_debt = sum(
-                    float(loan.outstanding or loan.principal or 0) for loan in loans
+                    float(loan.outstanding or loan.principal or 0)
+                    for loan in loans
+                    if _is_debt_loan(loan)
                 )
 
                 pending_bills = sum(
@@ -2276,7 +2328,9 @@ async def get_county_details(county_id: str, fiscal_year: Optional[str] = None):
 
                     loans = db.query(DBLoan).filter(DBLoan.entity_id == e.id).all()
                     total_debt = sum(
-                        float(loan.outstanding or loan.principal or 0) for loan in loans
+                        float(loan.outstanding or loan.principal or 0)
+                        for loan in loans
+                        if _is_debt_loan(loan)
                     )
 
                     pending_bills = sum(
@@ -2546,8 +2600,16 @@ async def get_county_comprehensive(
                 recurrent_total = float(metrics.get("recurrent_budget", 0))
 
             # --- Loans / Debt ---
+            # Keep ALL loans in the local list — the per-loan
+            # ``debt_breakdown`` and ``pending_bills_from_loans``
+            # blocks below both iterate it. Only the total filters out
+            # PENDING_BILLS (see ``_is_debt_loan`` for why).
             loans = db.query(DBLoan).filter(DBLoan.entity_id == entity.id).all()
-            total_debt = sum(float(l.outstanding or l.principal or 0) for l in loans)
+            total_debt = sum(
+                float(l.outstanding or l.principal or 0)
+                for l in loans
+                if _is_debt_loan(l)
+            )
 
             debt_breakdown = []
             for loan in loans:
@@ -3105,8 +3167,11 @@ async def get_county_debt(county_id: str):
                         status_code=404, detail="County entity not found in DB"
                     )
 
-                # Real debt from Loan table
-                loans = db.query(DBLoan).filter(DBLoan.entity_id == e.id).all()
+                # Real debt from Loan table — exclude PENDING_BILLS
+                # so the total reflects borrowed money, not unpaid
+                # obligations. Pending bills land in this same table
+                # via the seeding writer; see ``_is_debt_loan``.
+                loans = _debt_loans_query(db, DBLoan.entity_id == e.id).all()
                 total_principal = sum(float(l.principal or 0) for l in loans)
                 total_outstanding = sum(float(l.outstanding or 0) for l in loans)
 
@@ -6974,9 +7039,17 @@ async def get_debt_timeline(db: Session = Depends(get_db)):
                 db.query(DBEntity).filter(DBEntity.type == _ET.NATIONAL).first()
             )
             if national_entity:
+                # Reconcile against /debt/national, which excludes
+                # PENDING_BILLS — match that filter so the diff_pct
+                # below isn't dominated by a category mismatch.
+                from models import DebtCategory as _DC
+
                 loan_sum = (
                     db.query(func.sum(DBLoan.outstanding))
-                    .filter(DBLoan.entity_id == national_entity.id)
+                    .filter(
+                        DBLoan.entity_id == national_entity.id,
+                        DBLoan.debt_category != _DC.PENDING_BILLS,
+                    )
                     .scalar()
                     or 0
                 )
@@ -7427,10 +7500,23 @@ async def get_national_debt():
                     loans = []
 
                 if loans:
-                    # Calculate totals
-                    total_debt = sum(float(loan.principal or 0) for loan in loans)
+                    # Calculate totals — exclude PENDING_BILLS so the
+                    # headline "Total Debt" KPI doesn't inflate by the
+                    # ~702B of pending bills that PR #84 started landing
+                    # in the loans table. The per-category breakdown
+                    # below still reports pending_bills as its own line
+                    # via ``categories["pending_bills"]``, so no data
+                    # is lost — only the misleading top-level sum is
+                    # corrected.
+                    total_debt = sum(
+                        float(loan.principal or 0)
+                        for loan in loans
+                        if _is_debt_loan(loan)
+                    )
                     total_outstanding = sum(
-                        float(loan.outstanding or 0) for loan in loans
+                        float(loan.outstanding or 0)
+                        for loan in loans
+                        if _is_debt_loan(loan)
                     )
 
                     # Get real GDP from GDPData table
@@ -9503,7 +9589,8 @@ async def dashboard_debt_mix():
             with next(get_db()) as db:
                 _nat = db.query(DBEntity).filter(DBEntity.type == _ET.NATIONAL).first()
                 if _nat:
-                    loans = db.query(DBLoan).filter(DBLoan.entity_id == _nat.id).all()
+                    # Exclude PENDING_BILLS — see ``_is_debt_loan``.
+                    loans = _debt_loans_query(db, DBLoan.entity_id == _nat.id).all()
                     if loans:
                         total = sum(float(l.principal or 0) for l in loans)
                         external_kw = [
