@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useState } from 'react';
+import { Suspense, useCallback, useRef, useState } from 'react';
 
 /* ── Minimum password requirements ── */
 function getPasswordStrength(pw: string) {
@@ -44,6 +44,19 @@ function ResetPasswordForm() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  // Synchronous ref-based gate to block double submission. The
+  // ``isSubmitting`` state alone isn't enough: setIsSubmitting(true)
+  // is async, so a fast double-click (or the iOS quick-tap that
+  // fires two events) slips past the button's ``disabled`` flag
+  // before React re-renders. Both submits then race in
+  // supabase.auth.updateUser — the second one acquires the lock
+  // with steal:true (the "Lock broken by another request" console
+  // message), AND the API now sees the password as already-this
+  // value because the first call already succeeded, so it returns
+  // ``code: same_password``. Net effect for the user: their password
+  // DID change, but they see a misleading "should be different"
+  // error and have to retry-and-fail to realise it's done.
+  const submittingRef = useRef(false);
 
   const strength = getPasswordStrength(password);
   const allMet = strength.every((c) => c.met);
@@ -52,6 +65,14 @@ function ResetPasswordForm() {
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
+
+      // Hard-stop if a previous submit is still in flight. The ref
+      // mutates synchronously (unlike ``isSubmitting``'s state
+      // update) so it blocks the second event of a fast double-tap
+      // before either submit reaches updateUser. See ref's defining
+      // comment for the full failure mode this guards against.
+      if (submittingRef.current) return;
+
       setError('');
 
       if (!allMet) {
@@ -63,6 +84,7 @@ function ResetPasswordForm() {
         return;
       }
 
+      submittingRef.current = true;
       setIsSubmitting(true);
       try {
         await updatePassword(password);
@@ -80,6 +102,7 @@ function ResetPasswordForm() {
             'Failed to update password. The link may have expired — please request a new one.'
         );
       } finally {
+        submittingRef.current = false;
         setIsSubmitting(false);
       }
     },
