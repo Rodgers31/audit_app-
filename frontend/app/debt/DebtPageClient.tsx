@@ -737,10 +737,12 @@ export default function NationalDebtPage() {
                   Audit trail
                 </span>
                 <span className='text-sm text-gov-dark/85 truncate'>
-                  How we got to the headline {fmtT(d.reconciliation.primary_value_kes)}
-                  {' '}— Treasury reports a slightly different{' '}
-                  {fmtT(d.reconciliation.secondary_value_kes)}; we reconcile the{' '}
-                  {(d.reconciliation.percent_diff ?? 0).toFixed(1)}% gap.
+                  Our {fmtT(d.reconciliation.primary_value_kes)} figure comes
+                  from CBK&apos;s loan-by-loan Public Debt Bulletin. The
+                  CBK/Treasury annual aggregate reports{' '}
+                  {fmtT(d.reconciliation.secondary_value_kes)} — a{' '}
+                  {(d.reconciliation.percent_diff ?? 0).toFixed(1)}% gap typical
+                  for line-level vs. roll-up data. Click for details.
                 </span>
               </div>
               <ChevronDown
