@@ -333,11 +333,27 @@ def _debt_loans_query(db, entity_filter):
     rows for any other purpose. Pass ``entity_filter`` as a SQL
     expression — single entity (``DBLoan.entity_id == eid``) or a set
     (``DBLoan.entity_id.in_(eids)``).
+
+    NULL handling matters here: ``loans.debt_category`` is nullable
+    (the model has a Python-side default of ``OTHER`` but the writer
+    can pass ``debt_category=None`` which overrides the default, and
+    older rows seeded before that default existed may also be NULL).
+    A naive ``debt_category != PENDING_BILLS`` filter silently drops
+    those rows — SQL's three-valued logic makes ``NULL != value``
+    evaluate to ``UNKNOWN``, treated as ``FALSE`` in WHERE. Mirror
+    :func:`_is_debt_loan`'s "NULL counts as debt" rule by explicitly
+    OR-ing in the ``IS NULL`` branch (Copilot review on PR #90
+    flagged this on the inline filter sites; baking it into the
+    helper keeps every future caller correct by default).
     """
     from models import DebtCategory as _DC
 
     return db.query(DBLoan).filter(
-        entity_filter, DBLoan.debt_category != _DC.PENDING_BILLS
+        entity_filter,
+        or_(
+            DBLoan.debt_category.is_(None),
+            DBLoan.debt_category != _DC.PENDING_BILLS,
+        ),
     )
 
 
@@ -1783,13 +1799,20 @@ async def get_country_summary(country_id: int):
                 _nat = db.query(DBEntity).filter(DBEntity.type == _ET.NATIONAL).first()
                 if _nat:
                     # Exclude PENDING_BILLS — see ``_is_debt_loan``.
+                    # NULL ``debt_category`` rows must still count as
+                    # debt (predicate's contract); see _debt_loans_query
+                    # for why a naive ``!=`` would silently drop them.
                     from models import DebtCategory as _DC
 
+                    _debt_category_filter = or_(
+                        DBLoan.debt_category.is_(None),
+                        DBLoan.debt_category != _DC.PENDING_BILLS,
+                    )
                     total_debt_result = (
                         db.query(func.sum(DBLoan.outstanding))
                         .filter(
                             DBLoan.entity_id == _nat.id,
-                            DBLoan.debt_category != _DC.PENDING_BILLS,
+                            _debt_category_filter,
                         )
                         .scalar()
                     )
@@ -1799,7 +1822,7 @@ async def get_country_summary(country_id: int):
                             db.query(func.sum(DBLoan.principal))
                             .filter(
                                 DBLoan.entity_id == _nat.id,
-                                DBLoan.debt_category != _DC.PENDING_BILLS,
+                                _debt_category_filter,
                             )
                             .scalar()
                             or 0
@@ -7040,15 +7063,20 @@ async def get_debt_timeline(db: Session = Depends(get_db)):
             )
             if national_entity:
                 # Reconcile against /debt/national, which excludes
-                # PENDING_BILLS — match that filter so the diff_pct
-                # below isn't dominated by a category mismatch.
+                # PENDING_BILLS — match that filter (including the
+                # NULL-counts-as-debt rule from ``_is_debt_loan``) so
+                # the diff_pct below isn't dominated by a category
+                # mismatch.
                 from models import DebtCategory as _DC
 
                 loan_sum = (
                     db.query(func.sum(DBLoan.outstanding))
                     .filter(
                         DBLoan.entity_id == national_entity.id,
-                        DBLoan.debt_category != _DC.PENDING_BILLS,
+                        or_(
+                            DBLoan.debt_category.is_(None),
+                            DBLoan.debt_category != _DC.PENDING_BILLS,
+                        ),
                     )
                     .scalar()
                     or 0
@@ -7256,12 +7284,18 @@ async def get_top_loans(limit: int = 10, db: Session = Depends(get_db)):
                 "source": "No national entity found — run seeder",
             }
 
-        # Query loans excluding pending bills, sorted by outstanding desc
+        # Query loans excluding pending bills, sorted by outstanding desc.
+        # NULL ``debt_category`` rows still count as debt (matches the
+        # ``_is_debt_loan`` predicate); a bare ``!=`` would silently
+        # drop them via SQL three-valued logic.
         loans = (
             db.query(DBLoan)
             .filter(
                 DBLoan.entity_id == national_entity.id,
-                DBLoan.debt_category != DebtCategory.PENDING_BILLS,
+                or_(
+                    DBLoan.debt_category.is_(None),
+                    DBLoan.debt_category != DebtCategory.PENDING_BILLS,
+                ),
             )
             .order_by(DBLoan.outstanding.desc())
             .all()
@@ -7367,12 +7401,18 @@ async def get_national_loans(db: Session = Depends(get_db)):
                 "last_updated": "",
             }
 
-        # Query all national loans (excluding pending bills)
+        # Query all national loans (excluding pending bills). NULL
+        # ``debt_category`` rows still count as debt — see the
+        # ``_is_debt_loan`` predicate; a bare ``!=`` would silently
+        # drop them via SQL three-valued logic.
         loans = (
             db.query(DBLoan)
             .filter(
                 DBLoan.entity_id == national_entity.id,
-                DBLoan.debt_category != DebtCategory.PENDING_BILLS,
+                or_(
+                    DBLoan.debt_category.is_(None),
+                    DBLoan.debt_category != DebtCategory.PENDING_BILLS,
+                ),
             )
             .order_by(DBLoan.outstanding.desc())
             .all()
