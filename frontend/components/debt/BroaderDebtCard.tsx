@@ -101,11 +101,11 @@ export default function BroaderDebtCard({ cbkTotalKes, cbkAsOf }: Props) {
             <div>
               Source:{' '}
               <a
-                href='https://www.centralbank.go.ke/public-debt/'
+                href='https://www.centralbank.go.ke/releases/statistical-bulletin/'
                 target='_blank'
                 rel='noopener noreferrer'
                 className='text-gov-forest hover:underline inline-flex items-center gap-0.5'>
-                CBK Public Debt Bulletin (line-by-line)
+                CBK Statistical Bulletin
                 <ArrowUpRight size={11} />
               </a>
             </div>

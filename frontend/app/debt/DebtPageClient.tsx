@@ -737,8 +737,8 @@ export default function NationalDebtPage() {
                   Audit trail
                 </span>
                 <span className='text-sm text-gov-dark/85 truncate'>
-                  Our {fmtT(d.reconciliation.primary_value_kes)} figure comes
-                  from CBK&apos;s loan-by-loan Public Debt Bulletin. The
+                  Our {fmtT(d.reconciliation.primary_value_kes)} figure is the
+                  loan-level sum from CBK&apos;s Statistical Bulletin. The
                   CBK/Treasury annual aggregate reports{' '}
                   {fmtT(d.reconciliation.secondary_value_kes)} — a{' '}
                   {(d.reconciliation.percent_diff ?? 0).toFixed(1)}% gap typical
