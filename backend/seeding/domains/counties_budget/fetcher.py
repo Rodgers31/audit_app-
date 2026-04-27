@@ -318,8 +318,17 @@ def _discover_latest_county_birr_via_wp_api(
         )
         return source_url
 
-    logger.warning(
-        "COB WP REST API: %d scored candidates but none passed HEAD probe",
+    # All scored candidates failed HEAD probes — this is the
+    # expected state since COB migrated BIRR distribution to the
+    # WordPress Download Manager plugin (~Q4 2025), which doesn't
+    # surface in /wp/v2/media. The endpoint now returns ~4 unrelated
+    # stale image PDFs that score above the threshold but 404 on
+    # fetch. The HTML fallback handles this correctly, so demote to
+    # INFO — operators only need a real warning if both strategies
+    # fail (the orchestrator logs that case at the caller level).
+    logger.info(
+        "COB WP REST API: %d scored candidates but none passed HEAD "
+        "probe (expected post-WPDM-migration; HTML fallback in use)",
         len(scored),
     )
     return None
