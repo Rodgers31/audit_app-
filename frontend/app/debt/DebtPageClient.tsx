@@ -736,13 +736,26 @@ export default function NationalDebtPage() {
                 <span className='text-[10px] uppercase tracking-widest font-semibold text-neutral-muted shrink-0'>
                   Audit trail
                 </span>
+                {/* Data vintage note: CBK publishes the Statistical
+                    Bulletin biannually (June + December issues, ~6-month
+                    publication lag). Surfacing the issue date in this
+                    one-liner tells citizens our headline isn't stale per
+                    se — it's the latest CBK has published — which is the
+                    question they actually asked when they saw the number
+                    move. The "June 2025 issue" string is currently
+                    static; it'll need updating when the December 2025
+                    issue ships (typically ~July 2026). TODO: plumb the
+                    measurement_date the cbk_bulletin parser already
+                    captures (in the loan record's ``notes`` field)
+                    through the /debt/national API so this can be
+                    rendered dynamically. */}
                 <span className='text-sm text-gov-dark/85 truncate'>
                   Our {fmtT(d.reconciliation.primary_value_kes)} figure is the
-                  loan-level sum from CBK&apos;s Statistical Bulletin. The
-                  CBK/Treasury annual aggregate reports{' '}
-                  {fmtT(d.reconciliation.secondary_value_kes)} — a{' '}
-                  {(d.reconciliation.percent_diff ?? 0).toFixed(1)}% gap typical
-                  for line-level vs. roll-up data. Click for details.
+                  loan-level sum from CBK&apos;s Statistical Bulletin (June 2025
+                  issue, the most recent published). The CBK/Treasury annual
+                  aggregate reports {fmtT(d.reconciliation.secondary_value_kes)}{' '}
+                  — a {(d.reconciliation.percent_diff ?? 0).toFixed(1)}% gap
+                  typical for line-level vs. roll-up data. Click for details.
                 </span>
               </div>
               <ChevronDown
