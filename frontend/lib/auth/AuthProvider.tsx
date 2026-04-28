@@ -200,7 +200,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updatePassword = useCallback(async (newPassword: string) => {
+    // DIAGNOSTIC (PR #94 — temporary): the user reports two PUT
+    // /auth/v1/user calls per submit despite the form-level
+    // ref-gate (PR #93) and the 60s lockAcquireTimeout (PR #92).
+    // If the page-level guard is actually blocking double-submit
+    // and the SDK isn't doing steal-recovery, then we must be
+    // seeing a single ``updateUser`` call result in two PUTs from
+    // SDK internals. These three console lines pin down which
+    // hypothesis is right when the user reproduces locally:
+    //   * ONE log line + TWO network PUTs → SDK doing it
+    //   * TWO log lines → something is calling updatePassword twice
+    //   * ONE log line + ONE network PUT → bug already fixed; old
+    //     bundle cached
+    // Remove this block once root cause is confirmed.
+    // eslint-disable-next-line no-console
+    console.log(
+      '[diag] updatePassword called',
+      new Date().toISOString(),
+      new Error('stack').stack,
+    );
+    // eslint-disable-next-line no-console
+    console.log('[diag] updatePassword → calling supabase.auth.updateUser');
     const { error } = await supabase.auth.updateUser({ password: newPassword });
+    // eslint-disable-next-line no-console
+    console.log(
+      '[diag] updatePassword ← supabase.auth.updateUser returned',
+      { hasError: !!error, errorCode: error?.code, errorMsg: error?.message },
+    );
     if (error) throw error;
   }, []);
 
