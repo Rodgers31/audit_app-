@@ -60,7 +60,6 @@ function build(): SupabaseClient {
       // runtime passes auth options straight through.
       auth: {
         lockAcquireTimeout: 60_000, // 60s (default 5s)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any,
     }
   );
