@@ -1,58 +1,79 @@
 /**
- * Supabase browser client (singleton).
+ * Supabase browser client — true cross-HMR singleton.
  *
- * Use this in Client Components (`'use client'`).
- * It reads the public env vars set in `.env.local`.
+ * Use this in Client Components (`'use client'`). Reads public env
+ * vars from `.env.local`.
  *
- * Why we override ``lockAcquireTimeout``
- * --------------------------------------
- * GoTrueClient defaults to 5s for the auth-lock acquisition timeout.
- * On every auth call (``updateUser``, ``getSession``, ``refreshSession``
- * …) the SDK acquires a navigator-LockManager lock. If that timeout
- * fires while another holder is still in flight, the SDK assumes an
- * orphaned lock (e.g. from React Strict Mode's double-mount) and
- * recovers via ``navigator.locks.request(name, { steal: true })``,
- * which forcefully releases the existing lock and runs the operation
- * AGAIN on the new lock holder. See ``locks.js:163-206`` in
- * @supabase/auth-js and supabase/supabase#42505.
+ * Why this is a globalThis-backed singleton
+ * -----------------------------------------
+ * ``@supabase/ssr``'s own ``createBrowserClient`` already returns a
+ * cached instance — but the cache lives in a module-scoped ``let``
+ * that gets reset every time the module is re-evaluated. In Next.js
+ * dev mode that happens on every HMR cycle, and the previous
+ * GoTrueClient instances ARE NOT garbage-collected because their
+ * ``setInterval``-based auto-refresh tick keeps a strong reference
+ * to them. After a few file saves you accumulate 5-6 live
+ * GoTrueClient instances all running ``_autoRefreshTokenTick``
+ * concurrently, all competing for the same
+ * ``lock:gotrue.<storageKey>`` Web Lock.
  *
- * On real-world password resets the call regularly takes longer than
- * 5s (token rotation + database round-trip + cold-start backend), so
- * the steal-recovery kicks in mid-call and re-fires ``updateUser``.
- * The first attempt actually succeeded — the password is changed —
- * but the duplicate hits the API with the same body, gets back
- * ``code: same_password`` ``message: New password should be
- * different from the old password``, and the user sees a misleading
- * error after their password actually changed. The original lock
- * holder also surfaces "Lock broken by another request with the
- * 'steal' option" in the console.
+ * That queue contention is the actual cause of the duplicate
+ * ``PUT /auth/v1/user`` we'd been chasing on /reset-password —
+ * confirmed by a diagnostic that captured 6 simultaneous
+ * ``navigator.locks.request`` invocations at one timestamp, all
+ * from ``_autoRefreshTokenTick`` (PR #93 → PR #94 thread).
+ * When ``updateUser`` queues behind enough of those, its 60s
+ * ``lockAcquireTimeout`` eventually fires and the SDK
+ * "steal-recovers" by re-running the PUT. First call succeeds
+ * (password actually changes), second hits the API with the same
+ * body and returns ``code: same_password``, user sees a misleading
+ * "Lock broken… should be different" error after their password
+ * already updated.
  *
- * Bump the timeout to 60s so a normal call has plenty of budget. The
- * steal recovery is still in place if a lock is genuinely orphaned
- * (it just won't fire on healthy slow calls). 60s also stays well
- * under any reasonable user-perceived "this is hung, refresh"
- * threshold.
+ * Stashing the client on ``globalThis`` survives module
+ * re-evaluation, so HMR no longer multiplies instances. In
+ * production this is a no-op (HMR isn't running), so the only
+ * cost is one extra property on the global object.
+ *
+ * The 60s lockAcquireTimeout (PR #92) stays as defence-in-depth in
+ * case a future code path genuinely takes long enough to need
+ * recovery — but with one instance the queue will be empty and the
+ * timeout shouldn't fire.
  */
 import { createBrowserClient } from '@supabase/ssr';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-export function createClient() {
+declare global {
+  // eslint-disable-next-line no-var
+  var __KPM_SUPABASE_BROWSER_CLIENT__: SupabaseClient | undefined;
+}
+
+function build(): SupabaseClient {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      // ``lockAcquireTimeout`` is a documented option on the
-      // underlying GoTrueClient (see
-      // node_modules/@supabase/auth-js/dist/module/lib/types.d.ts:119)
-      // but ``SupabaseClientOptions['auth']`` in supabase-js re-exports
-      // only a subset of those fields and omits this one. The runtime
-      // passes auth options straight through to GoTrueClient so the
-      // option works fine at runtime; we cast to satisfy the
-      // narrower public type. Tracking issue:
-      // https://github.com/supabase/supabase-js/issues — Supabase
-      // hasn't surfaced this in the public type yet.
+      // ``lockAcquireTimeout`` is documented on GoTrueClient (see
+      // node_modules/@supabase/auth-js/dist/module/lib/types.d.ts)
+      // but ``SupabaseClientOptions['auth']`` only re-exports a
+      // subset; cast satisfies the narrower public type. The
+      // runtime passes auth options straight through.
       auth: {
-        lockAcquireTimeout: 60_000, // 60 seconds (default 5s)
+        lockAcquireTimeout: 60_000, // 60s (default 5s)
       } as any,
     }
   );
+}
+
+export function createClient(): SupabaseClient {
+  if (typeof window === 'undefined') {
+    // Server-side rendering: never cache; this path is only hit
+    // during SSR of Client Components, and each request needs a
+    // fresh request-scoped client anyway.
+    return build();
+  }
+  if (!globalThis.__KPM_SUPABASE_BROWSER_CLIENT__) {
+    globalThis.__KPM_SUPABASE_BROWSER_CLIENT__ = build();
+  }
+  return globalThis.__KPM_SUPABASE_BROWSER_CLIENT__;
 }
