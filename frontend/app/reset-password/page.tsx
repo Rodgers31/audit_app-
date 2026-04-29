@@ -28,7 +28,7 @@ function getPasswordStrength(pw: string) {
 }
 
 function ResetPasswordForm() {
-  const { updatePassword, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { updatePassword, logout, isAuthenticated, isLoading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const linkError = searchParams.get('error');
 
@@ -93,6 +93,37 @@ function ResetPasswordForm() {
       try {
         await updatePassword(password);
         setSuccess(true);
+        // Sign the user out as soon as the password is updated.
+        //
+        // Why: Supabase's PKCE recovery link auto-logs the user in
+        // (see /auth/callback/route.ts → exchangeCodeForSession),
+        // because the SDK needs an active session to call
+        // ``updateUser({password})``. Once the password change is
+        // committed we no longer need that session — and keeping it
+        // means:
+        //
+        //   1. UX surprise: clicking a "reset password" email
+        //      silently logs the user into the app, which the user
+        //      flagged as confusing/wrong.
+        //   2. Background lock contention: the SDK's
+        //      ``_autoRefreshTokenTick`` keeps running on a 30s
+        //      interval as long as the session is active, fighting
+        //      for the same gotrue Web Lock that ``updateUser``
+        //      uses. Under HMR or prior contamination this is what
+        //      was producing the duplicate ``PUT /auth/v1/user``
+        //      → ``code: same_password`` error.
+        //
+        // Signing out here cancels the auto-refresh tick and
+        // forces an explicit re-login with the new password. We
+        // don't ``await`` it: the success UI is the user's signal
+        // that the password change worked, and the sign-out is a
+        // cleanup step; surfacing a sign-out error here would just
+        // confuse the user mid-celebration. If sign-out fails the
+        // session simply expires on its own.
+        logout().catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn('[reset-password] post-update sign-out failed', err);
+        });
       } catch (err: any) {
         // Surface the Supabase error verbatim when present — e.g.
         // "New password should be different from the old password."
@@ -110,7 +141,7 @@ function ResetPasswordForm() {
         setIsSubmitting(false);
       }
     },
-    [password, confirmPassword, allMet, passwordsMatch, updatePassword]
+    [password, confirmPassword, allMet, passwordsMatch, updatePassword, logout]
   );
 
   // If auth is still loading, show spinner
@@ -141,7 +172,7 @@ function ResetPasswordForm() {
             </h1>
             <p className='text-white/60 text-sm mt-2'>
               {success
-                ? 'Your password has been reset successfully.'
+                ? "You've been signed out. Sign in with your new password to continue."
                 : 'Enter your new password below. Make it strong and unique.'}
             </p>
           </div>
@@ -155,12 +186,13 @@ function ResetPasswordForm() {
                 className='text-center'>
                 <CheckCircle2 className='w-16 h-16 mx-auto text-gov-sage mb-4' />
                 <p className='text-gov-forest/70 text-sm mb-6'>
-                  You can now sign in with your new password. Your account is secure.
+                  Your password has been changed and you&apos;ve been signed out for security. Head
+                  back to the homepage and sign in with your new password.
                 </p>
                 <Link
                   href='/'
                   className='inline-flex items-center gap-2 px-6 py-3 bg-gov-sage text-white font-semibold rounded-xl hover:bg-gov-sage/90 transition-colors shadow-md'>
-                  Go to Homepage
+                  Sign in with new password
                   <ArrowRight className='w-4 h-4' />
                 </Link>
               </motion.div>
