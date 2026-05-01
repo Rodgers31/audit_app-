@@ -31,13 +31,18 @@ function ResetPasswordForm() {
   const { logout, isAuthenticated, isLoading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const linkError = searchParams.get('error');
-  // PKCE recovery code, forwarded by /auth/callback without being
-  // exchanged. Submitting the form POSTs this to
-  // /api/auth/reset-password where the exchange + password update +
-  // sign-out all happen server-side without ever creating a client
-  // session. See app/auth/callback/route.ts and the API route file
-  // for the full reasoning.
-  const recoveryCode = searchParams.get('code');
+  // PKCE recovery code, forwarded by /auth/callback under the query
+  // parameter name ``recovery`` (not ``code``) — this is critical:
+  // the browser Supabase SDK auto-detects ``?code=`` on page load
+  // and would exchange it itself, creating a session behind our
+  // back. Forwarding under ``recovery`` keeps the SDK's
+  // ``_isPKCECallback`` check returning false. See
+  // /auth/callback/route.ts for the full reasoning. The form-submit
+  // handler then POSTs this value as ``code`` to
+  // /api/auth/reset-password, which runs on the server with
+  // ``detectSessionInUrl: false`` and is the only place the
+  // exchange actually happens.
+  const recoveryCode = searchParams.get('recovery');
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
