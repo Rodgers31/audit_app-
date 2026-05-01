@@ -28,9 +28,21 @@ function getPasswordStrength(pw: string) {
 }
 
 function ResetPasswordForm() {
-  const { updatePassword, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { logout, isAuthenticated, isLoading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const linkError = searchParams.get('error');
+  // PKCE recovery code, forwarded by /auth/callback under the query
+  // parameter name ``recovery`` (not ``code``) — this is critical:
+  // the browser Supabase SDK auto-detects ``?code=`` on page load
+  // and would exchange it itself, creating a session behind our
+  // back. Forwarding under ``recovery`` keeps the SDK's
+  // ``_isPKCECallback`` check returning false. See
+  // /auth/callback/route.ts for the full reasoning. The form-submit
+  // handler then POSTs this value as ``code`` to
+  // /api/auth/reset-password, which runs on the server with
+  // ``detectSessionInUrl: false`` and is the only place the
+  // exchange actually happens.
+  const recoveryCode = searchParams.get('recovery');
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -88,19 +100,61 @@ function ResetPasswordForm() {
         return;
       }
 
+      if (!recoveryCode) {
+        setError('Reset link is missing its verification code. Please request a new one.');
+        return;
+      }
+
       submittingRef.current = true;
       setIsSubmitting(true);
       try {
-        await updatePassword(password);
+        // Server-side endpoint exchanges the PKCE code, updates the
+        // password, and signs out — all in one request, with a
+        // read-only cookie adapter so no auth cookies ever reach
+        // the browser. See app/api/auth/reset-password/route.ts.
+        // This replaces the previous client-side
+        // ``supabase.auth.updateUser({ password })`` flow, which
+        // unavoidably ran the GoTrueClient's auto-refresh tick
+        // alongside the update and produced the duplicate
+        // ``PUT /auth/v1/user`` → ``same_password`` error chain.
+        const res = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: recoveryCode, password }),
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(
+            body.error ||
+              'Failed to update password. The link may have expired — please request a new one.'
+          );
+        }
+
         setSuccess(true);
+
+        // If the user happened to already be signed in (e.g. they
+        // reset their own password while still in a logged-in
+        // tab, or they're signed in as a different account), the
+        // server only invalidated *that user's* session in the
+        // recovery flow — the existing browser cookies are
+        // untouched. Sign out client-side to guarantee a clean
+        // "log back in with your new password" experience. This
+        // is best-effort; we don't surface failures because the
+        // password change itself already succeeded.
+        logout().catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn('[reset-password] post-reset client logout failed', err);
+        });
       } catch (err: any) {
-        // Surface the Supabase error verbatim when present — e.g.
-        // "New password should be different from the old password."
-        // for the same_password code. Console-log the full object so
-        // a future "spinner stuck, no message" report is debuggable
-        // from DevTools without round-tripping back to this fix.
+        // Surface the server error verbatim when present —
+        // typically "New password should be different from the old
+        // password." for the same_password code. Console-log the
+        // full object so a future "spinner stuck, no message"
+        // report is debuggable from DevTools without round-tripping
+        // back to this fix.
         // eslint-disable-next-line no-console
-        console.error('[reset-password] updatePassword failed', err);
+        console.error('[reset-password] reset failed', err);
         setError(
           err?.message ||
             'Failed to update password. The link may have expired — please request a new one.'
@@ -110,7 +164,7 @@ function ResetPasswordForm() {
         setIsSubmitting(false);
       }
     },
-    [password, confirmPassword, allMet, passwordsMatch, updatePassword]
+    [password, confirmPassword, allMet, passwordsMatch, recoveryCode, logout]
   );
 
   // If auth is still loading, show spinner
@@ -141,7 +195,7 @@ function ResetPasswordForm() {
             </h1>
             <p className='text-white/60 text-sm mt-2'>
               {success
-                ? 'Your password has been reset successfully.'
+                ? 'Sign in with your new password to continue.'
                 : 'Enter your new password below. Make it strong and unique.'}
             </p>
           </div>
@@ -155,12 +209,13 @@ function ResetPasswordForm() {
                 className='text-center'>
                 <CheckCircle2 className='w-16 h-16 mx-auto text-gov-sage mb-4' />
                 <p className='text-gov-forest/70 text-sm mb-6'>
-                  You can now sign in with your new password. Your account is secure.
+                  Your password has been changed. Head back to the homepage and sign in with your
+                  new password to continue.
                 </p>
                 <Link
                   href='/'
                   className='inline-flex items-center gap-2 px-6 py-3 bg-gov-sage text-white font-semibold rounded-xl hover:bg-gov-sage/90 transition-colors shadow-md'>
-                  Go to Homepage
+                  Sign in with new password
                   <ArrowRight className='w-4 h-4' />
                 </Link>
               </motion.div>
