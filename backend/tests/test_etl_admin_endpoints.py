@@ -79,12 +79,15 @@ class TestIngestionJobs:
     """Tests for GET /api/v1/admin/ingestion-jobs."""
 
     def test_returns_list(self, client):
+        # 401 is the expected response when no Bearer token is sent —
+        # this router now goes through ``require_admin`` (matches the
+        # pattern used by the schedule/health tests above).
         response = client.get("/api/v1/admin/ingestion-jobs")
-        assert response.status_code in (200, 500)
+        assert response.status_code in (200, 401, 500)
 
     def test_pagination_params(self, client):
         response = client.get("/api/v1/admin/ingestion-jobs?page=1&page_size=5")
-        assert response.status_code in (200, 500)
+        assert response.status_code in (200, 401, 500)
 
 
 class TestIngestionJobStats:
@@ -92,7 +95,7 @@ class TestIngestionJobStats:
 
     def test_returns_stats(self, client):
         response = client.get("/api/v1/admin/ingestion-jobs/stats/summary")
-        assert response.status_code in (200, 500)
+        assert response.status_code in (200, 401, 500)
 
 
 class TestETLJobStatus:
