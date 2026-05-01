@@ -13,7 +13,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useRef, useState } from 'react';
 
 /* ── Minimum password requirements ── */
@@ -28,7 +28,8 @@ function getPasswordStrength(pw: string) {
 }
 
 function ResetPasswordForm() {
-  const { logout, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { refreshUser, isAuthenticated, isLoading: authLoading } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const linkError = searchParams.get('error');
   // PKCE recovery code, forwarded by /auth/callback under the query
@@ -133,19 +134,23 @@ function ResetPasswordForm() {
 
         setSuccess(true);
 
-        // If the user happened to already be signed in (e.g. they
-        // reset their own password while still in a logged-in
-        // tab, or they're signed in as a different account), the
-        // server only invalidated *that user's* session in the
-        // recovery flow — the existing browser cookies are
-        // untouched. Sign out client-side to guarantee a clean
-        // "log back in with your new password" experience. This
-        // is best-effort; we don't surface failures because the
-        // password change itself already succeeded.
-        logout().catch((err) => {
+        // The /api/auth/reset-password response set fresh
+        // ``sb-<ref>-auth-token`` cookies — the user is now
+        // logged in with their new password. Refresh the
+        // AuthProvider so authUser/profile pick up the new
+        // session, then redirect to the homepage. We brief-pause
+        // before navigating so the success state is visible long
+        // enough to register; this is purely cosmetic — by the
+        // time the timer fires, refreshUser has already settled.
+        try {
+          await refreshUser();
+        } catch (err) {
           // eslint-disable-next-line no-console
-          console.warn('[reset-password] post-reset client logout failed', err);
-        });
+          console.warn('[reset-password] refreshUser after reset failed', err);
+        }
+        setTimeout(() => {
+          router.replace('/');
+        }, 1200);
       } catch (err: any) {
         // Surface the server error verbatim when present —
         // typically "New password should be different from the old
@@ -164,7 +169,7 @@ function ResetPasswordForm() {
         setIsSubmitting(false);
       }
     },
-    [password, confirmPassword, allMet, passwordsMatch, recoveryCode, logout]
+    [password, confirmPassword, allMet, passwordsMatch, recoveryCode, refreshUser, router]
   );
 
   // If auth is still loading, show spinner
@@ -195,7 +200,7 @@ function ResetPasswordForm() {
             </h1>
             <p className='text-white/60 text-sm mt-2'>
               {success
-                ? 'Sign in with your new password to continue.'
+                ? 'Signing you in with your new password…'
                 : 'Enter your new password below. Make it strong and unique.'}
             </p>
           </div>
@@ -208,16 +213,14 @@ function ResetPasswordForm() {
                 animate={{ opacity: 1, y: 0 }}
                 className='text-center'>
                 <CheckCircle2 className='w-16 h-16 mx-auto text-gov-sage mb-4' />
-                <p className='text-gov-forest/70 text-sm mb-6'>
-                  Your password has been changed. Head back to the homepage and sign in with your
-                  new password to continue.
+                <p className='text-gov-forest/70 text-sm mb-2'>
+                  Your password has been updated and you&apos;re signed in. Taking you to the
+                  homepage…
                 </p>
-                <Link
-                  href='/'
-                  className='inline-flex items-center gap-2 px-6 py-3 bg-gov-sage text-white font-semibold rounded-xl hover:bg-gov-sage/90 transition-colors shadow-md'>
-                  Sign in with new password
-                  <ArrowRight className='w-4 h-4' />
-                </Link>
+                <div className='flex items-center justify-center gap-2 text-gov-forest/50 text-xs mt-4'>
+                  <Loader2 className='w-3.5 h-3.5 animate-spin' />
+                  Redirecting
+                </div>
               </motion.div>
             ) : linkError && !isAuthenticated ? (
               /* ── Link-error state (expired/invalid token) ── */
