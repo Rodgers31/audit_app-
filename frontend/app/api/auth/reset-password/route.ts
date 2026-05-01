@@ -64,6 +64,18 @@ export async function POST(request: Request) {
 
   const cookieStore = await cookies();
 
+  // Diagnostic: log cookie names received so a future
+  // ``AuthPKCECodeVerifierMissingError`` is debuggable from the dev
+  // server log without re-instrumenting. Values are deliberately not
+  // logged (verifier is sensitive). Names alone tell us whether the
+  // browser sent the verifier cookie with this request.
+  const cookieNames = cookieStore.getAll().map((c) => c.name);
+  // eslint-disable-next-line no-console
+  console.log(
+    `[api/auth/reset-password] received ${cookieNames.length} cookie(s)`,
+    cookieNames.filter((n) => n.startsWith('sb-'))
+  );
+
   // Read-only cookie adapter. ``getAll`` lets the SDK read the
   // ``sb-...-code-verifier`` cookie it needs to validate the PKCE
   // code; ``setAll`` is intentionally a no-op so any session cookies

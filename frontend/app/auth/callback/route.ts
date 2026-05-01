@@ -24,22 +24,45 @@
  *      login on this device — e.g. they logged in last week, never
  *      signed out, and now click a reset link. ``getSession()`` in
  *      AuthProvider would happily restore that session from cookies
- *      and the page would render as if they're signed in. We fix
- *      this by calling ``signOut()`` here, which clears the auth-token
- *      cookie via the SSR client. The PKCE ``code-verifier`` cookie is
- *      preserved (it's needed by the form-submit exchange), and the
- *      cleared cookies are explicitly attached to the redirect response
- *      so the Set-Cookie headers actually reach the browser.
+ *      and the page would render as if they're signed in.
+ *
+ * Why we clear cookies manually instead of calling ``signOut()``
+ * --------------------------------------------------------------
+ * An earlier version of this handler called ``supabase.auth.signOut()``
+ * to clear (1)'s session. In theory the SDK's ``signOut`` only removes
+ * the ``sb-<ref>-auth-token`` cookie via its ``-auth-token`` storage
+ * key, leaving the ``-code-verifier`` cookie alone. In practice users
+ * reported ``AuthPKCECodeVerifierMissingError`` on the next form
+ * submit — somehow the verifier was being lost between this handler
+ * and /api/auth/reset-password.
+ *
+ * Rather than chase that side effect through the SSR/auth-js cookie
+ * abstraction, we now clear cookies directly with a regex tight
+ * enough to match ONLY the session cookies:
+ *
+ *     /-auth-token(\.\d+)?$/
+ *
+ * This matches ``sb-<ref>-auth-token`` and any chunked variants like
+ * ``sb-<ref>-auth-token.0``, ``sb-<ref>-auth-token.1``, … but does
+ * NOT match ``sb-<ref>-auth-token-code-verifier`` (which ends in
+ * ``-code-verifier``, not ``-auth-token`` or ``-auth-token.<n>``).
+ * The verifier survives, the form-submit exchange can find it, and
+ * the user lands on the page unauthenticated.
  *
  * Other flows (email confirmation, magic-link sign-in) keep the
  * existing exchange-and-redirect behaviour because they DO want a
  * session to be established.
  */
-import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
 import { createClient } from '@/lib/supabase/server';
+
+// Matches ``sb-<anything>-auth-token`` and chunked variants
+// ``sb-<anything>-auth-token.0`` / ``.1`` / ... but explicitly NOT
+// ``sb-<anything>-auth-token-code-verifier``. See the file-level
+// comment for why this distinction matters.
+const SESSION_COOKIE_TAIL = /-auth-token(\.\d+)?$/;
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -58,47 +81,36 @@ export async function GET(request: Request) {
 
   if (code) {
     // Recovery flow: forward the code without creating a new session,
-    // AND clear any pre-existing session so the user lands on the
-    // form unauthenticated.
+    // AND clear any pre-existing session-cookie chunks so AuthProvider
+    // doesn't restore a stale session on /reset-password mount. The
+    // code-verifier cookie is intentionally left alone — the
+    // form-submit exchange in /api/auth/reset-password needs it.
     if (next === '/reset-password') {
-      // Build a redirect response up-front so we can mutate its
-      // cookies directly. We do this via the SSR client's ``setAll``
-      // adapter, which writes to ``response.cookies`` instead of
-      // request-scoped ``cookies()`` — that's the reliable way to
-      // get Set-Cookie headers attached to a NextResponse.redirect.
       const response = NextResponse.redirect(
         `${origin}/reset-password?code=${encodeURIComponent(code)}`
       );
 
       const cookieStore = await cookies();
-      const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            getAll: () => cookieStore.getAll(),
-            setAll: (cookiesToSet) => {
-              cookiesToSet.forEach(({ name, value, options }) => {
-                response.cookies.set(name, value, options);
-              });
-            },
-          },
+      const cleared: string[] = [];
+      cookieStore.getAll().forEach(({ name }) => {
+        if (name.startsWith('sb-') && SESSION_COOKIE_TAIL.test(name)) {
+          // Set with empty value + maxAge 0 to delete. Path must
+          // match the path the cookie was originally set with
+          // (DEFAULT_COOKIE_OPTIONS in @supabase/ssr uses '/').
+          response.cookies.set(name, '', {
+            maxAge: 0,
+            path: '/',
+            sameSite: 'lax',
+          });
+          cleared.push(name);
         }
-      );
-
-      // Best-effort: signOut hits Supabase's ``DELETE /logout`` to
-      // invalidate the session server-side, and clears the
-      // auth-token cookie via setAll above. If the user has no
-      // active session, this errors silently — that's fine, we
-      // just want the cleared-cookie side effect.
-      await supabase.auth.signOut().catch((err) => {
-        // eslint-disable-next-line no-console
-        console.warn('[auth/callback] recovery signOut failed', err);
       });
 
       // eslint-disable-next-line no-console
       console.log(
-        '[auth/callback] recovery flow: cleared session, forwarding code to /reset-password'
+        `[auth/callback] recovery flow: forwarding code, cleared ${cleared.length} session cookie(s)${
+          cleared.length ? ' [' + cleared.join(', ') + ']' : ''
+        }`
       );
       return response;
     }
