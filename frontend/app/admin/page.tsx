@@ -17,10 +17,12 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock,
+  History,
   Loader2,
   ListChecks,
   PlayCircle,
   TrendingUp,
+  Users,
   XCircle,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -54,6 +56,32 @@ interface EtlHealth {
   schedule_summary: unknown;
 }
 
+interface UserStats {
+  total_users: number;
+  admin_users: number;
+  new_last_7_days: number;
+  new_last_30_days: number;
+}
+
+interface AuditEntry {
+  id: number;
+  actor_id: string;
+  actor_email: string | null;
+  action: string;
+  target_type: string | null;
+  target_id: string | null;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+interface AuditList {
+  entries: AuditEntry[];
+  total: number;
+  page: number;
+  page_size: number;
+  has_more: boolean;
+}
+
 export default function AdminOverviewPage() {
   // Each query is independent — failing one doesn't blank the others.
   const ingestion = useQuery<IngestionStats>({
@@ -75,6 +103,19 @@ export default function AdminOverviewPage() {
     staleTime: 60_000,
   });
 
+  const userStats = useQuery<UserStats>({
+    queryKey: ['admin', 'user-stats'],
+    queryFn: async () => (await api.get('/admin/users/stats')).data,
+    staleTime: 60_000,
+  });
+
+  const recentActions = useQuery<AuditList>({
+    queryKey: ['admin', 'audit-log', { recent: true }],
+    queryFn: async () =>
+      (await api.get('/admin/audit-log', { params: { page_size: 5, days: 30 } })).data,
+    staleTime: 30_000,
+  });
+
   return (
     <div className='max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6'>
       <header>
@@ -85,7 +126,7 @@ export default function AdminOverviewPage() {
       </header>
 
       {/* ── Top stat grid ── */}
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+      <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
         <StatCard
           title='Ingestion (last 7 days)'
           icon={ListChecks}
@@ -160,6 +201,25 @@ export default function AdminOverviewPage() {
             );
           }}
         />
+
+        <StatCard
+          title='Users'
+          icon={Users}
+          query={userStats}
+          href='/admin/users'
+          renderValue={(d) => (
+            <>
+              <div className='flex items-baseline gap-2'>
+                <span className='text-3xl font-bold text-gov-dark'>{d.total_users}</span>
+                <span className='text-xs text-gov-forest/60'>total</span>
+              </div>
+              <div className='flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs'>
+                <SubStat label='admins' value={d.admin_users} tone='info' />
+                <SubStat label='new this week' value={d.new_last_7_days} tone='ok' />
+              </div>
+            </>
+          )}
+        />
       </div>
 
       {/* ── Ingestion: items processed widget ── */}
@@ -198,6 +258,50 @@ export default function AdminOverviewPage() {
               </div>
             </>
           )}
+        </section>
+      )}
+
+      {/* ── Recent admin actions ── */}
+      {recentActions.data && recentActions.data.entries.length > 0 && (
+        <section className='bg-white border border-gov-sage/20 rounded-xl p-5 shadow-sm'>
+          <div className='flex items-center justify-between mb-3'>
+            <div className='flex items-center gap-2'>
+              <History className='w-4 h-4 text-gov-sage' />
+              <h2 className='text-sm font-semibold text-gov-dark'>Recent admin actions</h2>
+            </div>
+            <Link
+              href='/admin/audit-log'
+              className='text-xs text-gov-sage hover:text-gov-forest inline-flex items-center gap-1'>
+              View all
+              <ArrowRight className='w-3 h-3' />
+            </Link>
+          </div>
+          <ul className='space-y-2'>
+            {recentActions.data.entries.map((entry) => (
+              <li
+                key={entry.id}
+                className='flex items-center gap-3 px-3 py-2 rounded-lg bg-gov-cream text-sm'>
+                <span className='inline-flex items-center px-2 py-0.5 rounded-full text-xs font-mono font-medium bg-white text-gov-forest border border-gov-sage/20'>
+                  {entry.action}
+                </span>
+                {entry.target_type && (
+                  <span className='text-xs text-gov-forest/70 truncate'>
+                    on <span className='font-mono'>{entry.target_type}</span>
+                    {entry.target_id && (
+                      <>
+                        {' / '}
+                        <span className='font-mono text-gov-dark'>{entry.target_id}</span>
+                      </>
+                    )}
+                  </span>
+                )}
+                <span className='text-xs text-gov-forest/60 ml-auto whitespace-nowrap'>
+                  {entry.actor_email ?? entry.actor_id.slice(0, 8) + '…'} ·{' '}
+                  {timeAgo(entry.created_at)}
+                </span>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

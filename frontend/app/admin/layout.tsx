@@ -13,13 +13,24 @@
 'use client';
 
 import { AdminGuard } from '@/lib/auth/admin';
-import { Activity, BarChart3, Database, ListChecks } from 'lucide-react';
+import {
+  Activity,
+  BarChart3,
+  Database,
+  History,
+  ListChecks,
+  PlayCircle,
+  Users,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const NAV_ITEMS = [
   { href: '/admin', label: 'Overview', icon: BarChart3, exact: true },
+  { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/ingestion', label: 'Ingestion Jobs', icon: ListChecks },
+  { href: '/admin/etl', label: 'ETL Schedule', icon: PlayCircle },
+  { href: '/admin/audit-log', label: 'Audit Log', icon: History },
   { href: '/status', label: 'Pipeline Status', icon: Activity },
 ];
 

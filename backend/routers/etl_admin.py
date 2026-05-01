@@ -46,18 +46,12 @@ except Exception as e:
             }
 
 
-try:
-    from auth import require_roles
-
-    _admin_dep = [Depends(require_roles(["admin"]))]
-except Exception:
-    # Fallback: no-op dependency in environments without auth
-    _admin_dep = []
+from supabase_auth import AdminUser, require_admin
 
 router = APIRouter(
     prefix="/api/v1/admin/etl",
     tags=["ETL Administration"],
-    dependencies=_admin_dep,
+    dependencies=[Depends(require_admin)],
 )
 
 
@@ -269,15 +263,81 @@ async def get_etl_health():
     }
 
 
-# Future endpoints (Week 5-6):
-# @router.post("/trigger/{source}", summary="Manually Trigger ETL Run")
-# async def trigger_etl_run(source: str):
-#     """Manually trigger ETL run for a specific source."""
-#     # Implementation in Week 5
-#     pass
-#
-# @router.get("/history", summary="Get ETL Run History")
-# async def get_etl_history(limit: int = 20):
-#     """Get history of ETL runs with results."""
-#     # Implementation in Week 5
-#     pass
+VALID_SOURCES = ["treasury", "cob", "oag", "knbs", "opendata", "cra"]
+
+
+class TriggerBody(BaseModel):
+    """Body for the manual-trigger endpoint."""
+
+    dry_run: bool = False
+
+
+@router.post("/trigger/{source}", response_model=Dict, summary="Manually trigger ETL run")
+async def trigger_etl_run(
+    source: str,
+    body: TriggerBody | None = None,
+    actor: AdminUser = Depends(require_admin),
+):
+    """
+    Queue a manual ETL run for ``source``.
+
+    This writes an ``ingestion_jobs`` row with ``status=PENDING`` and
+    ``metadata.manual_trigger=true``. The existing scheduler/seeder
+    process is what actually picks up pending jobs and runs them —
+    we don't shell out to the pipeline here, both because it would
+    block the request for minutes and because the ETL machinery
+    already lives in a long-running worker that owns the per-source
+    locks. The returned ``job_id`` lets the operator follow the run
+    on /admin/ingestion.
+
+    Records an entry in ``admin_audit_log`` so the trigger is
+    attributable.
+    """
+    # Imports kept local to avoid a hard dependency on the etl/db
+    # modules at router import time (they pull in heavy seeder code).
+    from database import get_db
+    from models import IngestionJob, IngestionStatus
+    from utils.audit import record_admin_action
+
+    if source not in VALID_SOURCES:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown source '{source}'. Valid sources: {', '.join(VALID_SOURCES)}",
+        )
+
+    payload = body or TriggerBody()
+    db = next(get_db())
+    try:
+        job = IngestionJob(
+            domain=source,
+            status=IngestionStatus.PENDING,
+            dry_run=payload.dry_run,
+            meta={
+                "manual_trigger": True,
+                "requested_by": actor.id,
+                "requested_by_email": actor.email,
+            },
+        )
+        db.add(job)
+        db.commit()
+        db.refresh(job)
+
+        record_admin_action(
+            db,
+            actor=actor,
+            action="etl.trigger",
+            target_type="etl_source",
+            target_id=source,
+            payload={"job_id": job.id, "dry_run": payload.dry_run},
+        )
+
+        return {
+            "ok": True,
+            "job_id": job.id,
+            "source": source,
+            "status": job.status.value,
+            "dry_run": job.dry_run,
+            "note": "Job queued. The seeder picks up pending jobs on its next cycle.",
+        }
+    finally:
+        db.close()

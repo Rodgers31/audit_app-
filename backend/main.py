@@ -1155,6 +1155,22 @@ try:
 except Exception as e:
     logger.warning(f"Could not register admin router: {e}")
 
+try:
+    from routers.admin_users import router as admin_users_router
+
+    app.include_router(admin_users_router)
+    logger.info("Admin users router registered at /api/v1/admin/users")
+except Exception as e:
+    logger.warning(f"Could not register admin users router: {e}")
+
+try:
+    from routers.admin_audit_log import router as admin_audit_log_router
+
+    app.include_router(admin_audit_log_router)
+    logger.info("Admin audit-log router registered at /api/v1/admin/audit-log")
+except Exception as e:
+    logger.warning(f"Could not register admin audit-log router: {e}")
+
 # Newsletter endpoints (welcome email, token-verified unsubscribe) are active.
 # Auth & watchlist are still handled by Supabase (frontend → Supabase direct).
 try:
