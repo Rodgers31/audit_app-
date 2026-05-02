@@ -23,7 +23,6 @@ from typing import List, Optional
 from database import get_db
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 import supabase_admin
@@ -98,15 +97,23 @@ def _parse_iso(value) -> Optional[datetime]:
         return None
 
 
-def _profile_map(db: Session, user_ids: List[str]) -> dict:
-    """Bulk-load profiles for a list of user IDs. Returns id → row dict."""
+def _profile_map(user_ids: List[str]) -> dict:
+    """Bulk-load profiles via the Supabase REST API. Returns id → row dict.
+
+    Profiles live in the auth Supabase project, which may not be the
+    same project as the FastAPI backend's SQLAlchemy DB — REST keeps
+    this project-agnostic.
+    """
     if not user_ids:
         return {}
-    rows = db.execute(
-        text("SELECT id, display_name, roles FROM profiles WHERE id = ANY(:ids)"),
-        {"ids": user_ids},
-    ).fetchall()
-    return {str(r.id): {"display_name": r.display_name, "roles": list(r.roles or [])} for r in rows}
+    rows = supabase_admin.get_profiles(user_ids)
+    return {
+        str(r.get("id")): {
+            "display_name": r.get("display_name"),
+            "roles": list(r.get("roles") or []),
+        }
+        for r in rows
+    }
 
 
 def _to_summary(auth_user: dict, profile: Optional[dict]) -> AdminUserSummary:
@@ -130,7 +137,6 @@ async def list_users(
     q: Optional[str] = Query(None, description="Case-insensitive substring match on email"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_db),
 ):
     """
     List all users with pagination.
@@ -148,7 +154,7 @@ async def list_users(
         needle = q.lower().strip()
         raw = [u for u in raw if needle in (u.get("email") or "").lower()]
 
-    profiles = _profile_map(db, [u["id"] for u in raw])
+    profiles = _profile_map([u["id"] for u in raw])
     users = [_to_summary(u, profiles.get(u["id"])) for u in raw]
 
     # Supabase's list endpoint doesn't include a total — derive a usable
@@ -167,51 +173,45 @@ async def list_users(
 
 
 @router.get("/stats", response_model=AdminUserStats, summary="User stats summary")
-async def user_stats(db: Session = Depends(get_db)):
+async def user_stats():
     """
-    Aggregate counts for the admin overview card. Comes entirely from
-    the ``profiles`` table; we count rows with ``'admin'`` in the
-    ``roles`` array, and rows by ``created_at`` window.
+    Aggregate counts for the admin overview card.
+
+    Counts come from the ``profiles`` table in the auth Supabase
+    project — queried via REST so we don't need a SQLAlchemy session
+    bound to that project's DB. PostgREST returns the count via the
+    ``Content-Range`` header when ``Prefer: count=exact`` is set.
     """
     now = datetime.now(timezone.utc)
-    cutoff_7 = now - timedelta(days=7)
-    cutoff_30 = now - timedelta(days=30)
+    # PostgREST timestamp filters use ISO-8601 with the value
+    # URL-encoded; httpx handles that for us via params/string.
+    cutoff_7 = (now - timedelta(days=7)).isoformat()
+    cutoff_30 = (now - timedelta(days=30)).isoformat()
 
-    total = db.execute(text("SELECT count(*) FROM profiles")).scalar() or 0
-    admins = (
-        db.execute(text("SELECT count(*) FROM profiles WHERE 'admin' = ANY(roles)")).scalar() or 0
-    )
-    new_7 = (
-        db.execute(
-            text("SELECT count(*) FROM profiles WHERE created_at >= :c"),
-            {"c": cutoff_7},
-        ).scalar()
-        or 0
-    )
-    new_30 = (
-        db.execute(
-            text("SELECT count(*) FROM profiles WHERE created_at >= :c"),
-            {"c": cutoff_30},
-        ).scalar()
-        or 0
-    )
+    try:
+        total = supabase_admin.count_profiles()
+        admins = supabase_admin.count_profiles("roles=cs.{admin}")
+        new_7 = supabase_admin.count_profiles(f"created_at=gte.{cutoff_7}")
+        new_30 = supabase_admin.count_profiles(f"created_at=gte.{cutoff_30}")
+    except supabase_admin.SupabaseAdminError as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e.body))
 
     return AdminUserStats(
-        total_users=int(total),
-        admin_users=int(admins),
-        new_last_7_days=int(new_7),
-        new_last_30_days=int(new_30),
+        total_users=total,
+        admin_users=admins,
+        new_last_7_days=new_7,
+        new_last_30_days=new_30,
     )
 
 
 @router.get("/{user_id}", response_model=AdminUserDetail, summary="Get user details")
-async def get_user(user_id: str, db: Session = Depends(get_db)):
+async def get_user(user_id: str):
     try:
         auth_user = supabase_admin.get_user(user_id)
     except supabase_admin.SupabaseAdminError as e:
         raise HTTPException(status_code=e.status_code, detail=str(e.body))
 
-    profiles = _profile_map(db, [user_id])
+    profiles = _profile_map([user_id])
     summary = _to_summary(auth_user, profiles.get(user_id))
 
     return AdminUserDetail(
@@ -248,19 +248,15 @@ async def update_user_roles(
             detail="You cannot remove the admin role from yourself.",
         )
 
-    old_row = db.execute(
-        text("SELECT roles FROM profiles WHERE id = :id"),
-        {"id": user_id},
-    ).fetchone()
-    if old_row is None:
+    old_profile = supabase_admin.get_profile(user_id)
+    if old_profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
-    old_roles = list(old_row.roles or [])
+    old_roles = list(old_profile.get("roles") or [])
 
-    db.execute(
-        text("UPDATE profiles SET roles = :roles WHERE id = :id"),
-        {"roles": new_roles, "id": user_id},
-    )
-    db.commit()
+    try:
+        supabase_admin.update_profile_roles(user_id, new_roles)
+    except supabase_admin.SupabaseAdminError as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e.body))
 
     record_admin_action(
         db,
@@ -271,7 +267,7 @@ async def update_user_roles(
         payload={"old": old_roles, "new": new_roles},
     )
 
-    return await get_user(user_id, db=db)
+    return await get_user(user_id)
 
 
 @router.delete("/{user_id}", summary="Delete a user")

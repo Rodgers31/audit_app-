@@ -44,12 +44,11 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 import httpx
-from database import get_db
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from sqlalchemy import text
-from sqlalchemy.orm import Session
+
+import supabase_admin
 
 _security = HTTPBearer(auto_error=True)
 
@@ -185,33 +184,33 @@ def _decode_supabase_jwt(token: str) -> dict:
         )
 
 
-def _fetch_roles(db: Session, user_id: str) -> tuple[Optional[str], List[str]]:
+def _fetch_roles(user_id: str) -> tuple[Optional[str], List[str]]:
     """
     Look up the caller's email + roles array from ``profiles``.
 
-    The profiles table lives in the public schema of the same Postgres
-    database the FastAPI backend connects to (Supabase pooler). Using
-    a raw SQL query rather than an SQLAlchemy model because we don't
-    own the schema — Supabase migrations create it.
+    ``profiles`` lives in the auth Supabase project — which may be a
+    different project from the one the FastAPI backend's SQLAlchemy
+    session connects to. To stay project-agnostic we fetch via the
+    Supabase REST API using the service-role key, rather than a
+    direct DB query.
     """
-    row = db.execute(
-        text("SELECT email, roles FROM profiles WHERE id = :id"),
-        {"id": user_id},
-    ).fetchone()
-    if row is None:
+    try:
+        row = supabase_admin.get_profile(user_id)
+    except supabase_admin.SupabaseAdminError:
         return None, []
-    email, roles = row
-    return email, list(roles or [])
+    if not row:
+        return None, []
+    return row.get("email"), list(row.get("roles") or [])
 
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(_security),
-    db: Session = Depends(get_db),
 ) -> AdminUser:
     """
     Resolve the calling user from the Bearer token. Raises 401 if the
-    token is missing/invalid; raises 403 if the user has no profile
-    row (which would be unusual but means we can't authorise them).
+    token is missing/invalid; the role lookup is best-effort and
+    returns an empty roles list if the profile can't be fetched
+    (which ``require_admin`` will then reject as 403).
     """
     claims = _decode_supabase_jwt(credentials.credentials)
     user_id = claims.get("sub")
@@ -221,7 +220,7 @@ def get_current_user(
             detail="Token has no subject",
         )
 
-    email, roles = _fetch_roles(db, user_id)
+    email, roles = _fetch_roles(user_id)
     return AdminUser(id=user_id, email=email or claims.get("email"), roles=roles)
 
 

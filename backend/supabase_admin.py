@@ -63,10 +63,25 @@ def _admin_url(path: str) -> str:
     return f"{base}/auth/v1/admin{path}"
 
 
+def _rest_url(path: str) -> str:
+    base, _ = _config()
+    return f"{base}/rest/v1{path}"
+
+
 def _request(method: str, path: str, **kwargs) -> dict:
-    """Make an authenticated request and unwrap the JSON or raise."""
+    """Make an authenticated request to /auth/v1/admin and unwrap the JSON."""
+    return _raw_request(method, _admin_url(path), **kwargs)
+
+
+def _raw_request(method: str, url: str, **kwargs):
+    """Make an authenticated request to an arbitrary URL and unwrap.
+
+    Returns the parsed JSON body, or ``{}`` for empty/204 responses.
+    Lists come through as lists. Raises ``SupabaseAdminError`` on
+    any 4xx/5xx.
+    """
     with httpx.Client(timeout=15.0) as client:
-        resp = client.request(method, _admin_url(path), headers=_headers(), **kwargs)
+        resp = client.request(method, url, headers=_headers(), **kwargs)
         if resp.status_code >= 400:
             try:
                 body = resp.json()
@@ -123,3 +138,74 @@ def generate_recovery_link(email: str, redirect_to: Optional[str] = None) -> dic
     if redirect_to:
         body["redirect_to"] = redirect_to
     return _request("POST", "/generate_link", json=body)
+
+
+# ── Profiles (REST against /rest/v1) ────────────────────────────────────
+#
+# ``profiles`` lives in the same Supabase project as auth.users, NOT in
+# the FastAPI data DB. Querying via REST + service role keeps things on
+# the right side of the project boundary.
+
+
+def get_profile(user_id: str) -> Optional[dict]:
+    """Fetch a single profile row by id, or return None."""
+    rows = _raw_request(
+        "GET",
+        _rest_url(f"/profiles?select=id,email,display_name,roles,created_at&id=eq.{user_id}"),
+    )
+    if isinstance(rows, list) and rows:
+        return rows[0]
+    return None
+
+
+def get_profiles(user_ids: List[str]) -> List[dict]:
+    """Bulk-fetch profile rows for a list of user IDs."""
+    if not user_ids:
+        return []
+    # Supabase PostgREST ``in`` syntax: id=in.(uuid1,uuid2,...)
+    joined = ",".join(user_ids)
+    rows = _raw_request(
+        "GET",
+        _rest_url(f"/profiles?select=id,email,display_name,roles,created_at&id=in.({joined})"),
+    )
+    return rows if isinstance(rows, list) else []
+
+
+def update_profile_roles(user_id: str, roles: List[str]) -> dict:
+    """Set ``profiles.roles`` for ``user_id``. Returns the updated row."""
+    rows = _raw_request(
+        "PATCH",
+        _rest_url(f"/profiles?id=eq.{user_id}"),
+        json={"roles": roles},
+        # ``return=representation`` makes Supabase echo back the row
+        # so we can reuse it to build the API response.
+        headers={**_headers(), "Prefer": "return=representation"},
+    )
+    if isinstance(rows, list) and rows:
+        return rows[0]
+    raise SupabaseAdminError(404, f"No profile with id={user_id}")
+
+
+def count_profiles(filter_clause: Optional[str] = None) -> int:
+    """Count rows in ``profiles`` matching an optional PostgREST filter."""
+    base, _ = _config()
+    url = _rest_url("/profiles?select=id")
+    if filter_clause:
+        url += f"&{filter_clause}"
+    headers = {**_headers(), "Prefer": "count=exact", "Range-Unit": "items"}
+    with httpx.Client(timeout=15.0) as client:
+        resp = client.head(url, headers=headers)
+        if resp.status_code >= 400:
+            try:
+                body = resp.json()
+            except Exception:
+                body = resp.text
+            raise SupabaseAdminError(resp.status_code, body)
+        # PostgREST returns the count in ``Content-Range: 0-9/123``
+        cr = resp.headers.get("content-range") or ""
+        if "/" in cr:
+            try:
+                return int(cr.split("/", 1)[1])
+            except ValueError:
+                pass
+        return 0
