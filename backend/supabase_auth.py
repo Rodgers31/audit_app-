@@ -9,12 +9,22 @@ admin routers had via ``ADMIN_API_AUTH_REQUIRED``).
 
 How it works
 ------------
-Supabase signs access tokens with HS256 against the project's
-``SUPABASE_JWT_SECRET`` (visible in the dashboard under Settings →
-API). We verify the token, pull the user's ``sub`` claim (their UUID),
-then query the ``profiles`` table for their ``roles`` array to
-authorise. The frontend's ``AuthProvider`` reads roles from the same
-column, so the two stay in sync.
+Modern Supabase projects sign access tokens with an asymmetric key
+(ECC P-256 / ES256 by default in 2025+). The private key never leaves
+Supabase; the public key is published at
+``<SUPABASE_URL>/auth/v1/.well-known/jwks.json`` and we verify
+against that — fetched once, cached for an hour, refreshed on a
+``kid`` cache miss.
+
+A pre-2024 project that still uses the legacy symmetric secret
+(HS256, ``SUPABASE_JWT_SECRET``) is supported as a fallback: if the
+token's header carries ``alg=HS256`` and the env var is set, we
+verify symmetrically. New ECC-signed tokens take the JWKS path.
+
+After verifying the signature we pull the user's ``sub`` claim
+(their UUID) and query the ``profiles`` table for their ``roles``
+array to authorise. The frontend's ``AuthProvider`` reads roles
+from the same column, so the two stay in sync.
 
 Why we don't trust roles in the JWT itself
 ------------------------------------------
@@ -29,9 +39,11 @@ source of truth is simpler.
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import dataclass
 from typing import List, Optional
 
+import httpx
 from database import get_db
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -41,17 +53,47 @@ from sqlalchemy.orm import Session
 
 _security = HTTPBearer(auto_error=True)
 
+# JWKS cache (process-local). The endpoint changes very rarely — when
+# a new signing key is rotated in — so 1h is a safe TTL.
+_jwks_cache: Optional[dict] = None
+_jwks_cache_ts: float = 0.0
+_JWKS_TTL_SECONDS = 3600.0
 
-def _supabase_jwt_secret() -> str:
-    secret = os.getenv("SUPABASE_JWT_SECRET")
-    if not secret:
-        # Configuration error, surfaced as 500 — never want to silently
-        # fall back to an unauthenticated path on admin endpoints.
+
+def _supabase_url() -> str:
+    url = os.getenv("SUPABASE_URL")
+    if not url:
         raise HTTPException(
             status_code=500,
-            detail="SUPABASE_JWT_SECRET is not configured on the server",
+            detail="SUPABASE_URL is not configured on the server",
         )
-    return secret
+    return url.rstrip("/")
+
+
+def _fetch_jwks(force_refresh: bool = False) -> dict:
+    """Return the project's JWKS, fetching + caching as needed."""
+    global _jwks_cache, _jwks_cache_ts
+    now = time.time()
+    if (
+        not force_refresh
+        and _jwks_cache is not None
+        and (now - _jwks_cache_ts) < _JWKS_TTL_SECONDS
+    ):
+        return _jwks_cache
+    try:
+        resp = httpx.get(
+            f"{_supabase_url()}/auth/v1/.well-known/jwks.json",
+            timeout=5.0,
+        )
+        resp.raise_for_status()
+    except httpx.HTTPError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch Supabase JWKS: {e}",
+        )
+    _jwks_cache = resp.json()
+    _jwks_cache_ts = now
+    return _jwks_cache
 
 
 @dataclass
@@ -66,13 +108,73 @@ class AdminUser:
 def _decode_supabase_jwt(token: str) -> dict:
     """Verify the Supabase JWT and return its claims, or raise 401."""
     try:
+        unverified_header = jwt.get_unverified_header(token)
+    except JWTError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid token header: {e}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    alg = unverified_header.get("alg")
+    kid = unverified_header.get("kid")
+
+    # Legacy HS256 path: pre-asymmetric-keys projects, or projects
+    # mid-migration that still issue HS256 tokens. Only taken when
+    # the env var is explicitly set; otherwise we fall through to
+    # JWKS which is the modern path.
+    if alg == "HS256":
+        legacy_secret = os.getenv("SUPABASE_JWT_SECRET")
+        if not legacy_secret:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=(
+                    "Token uses legacy HS256 signing but SUPABASE_JWT_SECRET "
+                    "is not configured on the server."
+                ),
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        try:
+            return jwt.decode(
+                token,
+                legacy_secret,
+                algorithms=["HS256"],
+                audience="authenticated",
+            )
+        except JWTError as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid or expired token: {e}",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+    # Asymmetric path (ES256 / RS256). Look up the signing key by
+    # ``kid`` in the JWKS, with a one-shot refresh if the cache
+    # doesn't know about it yet — covers the case of a key rotation
+    # happening during the cache lifetime.
+    jwks = _fetch_jwks()
+    key = next((k for k in jwks.get("keys", []) if k.get("kid") == kid), None)
+    if key is None:
+        jwks = _fetch_jwks(force_refresh=True)
+        key = next((k for k in jwks.get("keys", []) if k.get("kid") == kid), None)
+    if key is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"No matching JWK for kid={kid}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    try:
         return jwt.decode(
             token,
-            _supabase_jwt_secret(),
-            algorithms=["HS256"],
-            # Supabase issues tokens with ``aud=authenticated``; verifying
-            # the audience guards against a token from a different
-            # Supabase project being accepted.
+            key,
+            # Honour the JWK's declared alg if present, otherwise fall
+            # back to the token header. Defending against a token
+            # specifying a weaker alg than the key was minted for.
+            algorithms=[key.get("alg") or alg],
+            # Supabase issues tokens with ``aud=authenticated``;
+            # verifying the audience guards against a token from a
+            # different Supabase project being accepted.
             audience="authenticated",
         )
     except JWTError as e:
