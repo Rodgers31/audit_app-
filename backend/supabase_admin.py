@@ -21,7 +21,7 @@ on first use and cached in a module-level variable.
 from __future__ import annotations
 
 import os
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 import httpx
 
