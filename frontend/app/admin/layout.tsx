@@ -1,14 +1,12 @@
 /**
  * /admin – shared shell for the admin section.
  *
- * Wraps every admin route in <AdminGuard>, which redirects non-admins
- * to "/" client-side. Server-side enforcement still lives in the
- * Next.js middleware (matches /admin/* and rejects via the same role
- * check), and the backend endpoints all carry require_roles(["admin"])
- * — so this guard is the third layer rather than the only one.
- *
- * Renders a sticky nav bar with the section links so navigating between
- * Overview / Ingestion / Status doesn't require a full page reload.
+ * Wraps every admin route in <AdminGuard> (third defence layer behind
+ * Next.js middleware and backend ``require_admin``) and renders a
+ * sticky pill-style sub-nav that floats just below the main app
+ * navigation. Pages themselves provide their own dark hero band via
+ * <PageShell> so the typography and animation match the rest of the
+ * public site (about, debt, budget, etc.).
  */
 'use client';
 
@@ -16,7 +14,6 @@ import { AdminGuard } from '@/lib/auth/admin';
 import {
   Activity,
   BarChart3,
-  Database,
   History,
   ListChecks,
   PlayCircle,
@@ -28,7 +25,7 @@ import { usePathname } from 'next/navigation';
 const NAV_ITEMS = [
   { href: '/admin', label: 'Overview', icon: BarChart3, exact: true },
   { href: '/admin/users', label: 'Users', icon: Users },
-  { href: '/admin/ingestion', label: 'Ingestion Jobs', icon: ListChecks },
+  { href: '/admin/ingestion', label: 'Ingestion', icon: ListChecks },
   { href: '/admin/etl', label: 'ETL Schedule', icon: PlayCircle },
   { href: '/admin/audit-log', label: 'Audit Log', icon: History },
   { href: '/status', label: 'Pipeline Status', icon: Activity },
@@ -37,10 +34,8 @@ const NAV_ITEMS = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <AdminGuard>
-      <div className='min-h-screen bg-gov-cream'>
-        <AdminNav />
-        {children}
-      </div>
+      <AdminNav />
+      {children}
     </AdminGuard>
   );
 }
@@ -52,31 +47,27 @@ function AdminNav() {
     exact ? pathname === href : pathname.startsWith(href);
 
   return (
-    <nav className='sticky top-0 z-30 bg-gov-dark border-b border-gov-forest/40 shadow-md'>
-      <div className='max-w-6xl mx-auto px-4 sm:px-6'>
-        <div className='flex items-center gap-1 sm:gap-2 overflow-x-auto'>
-          <div className='flex items-center gap-2 py-3 pr-4 border-r border-gov-forest/40 mr-2 shrink-0'>
-            <Database className='w-4 h-4 text-gov-gold' />
-            <span className='text-sm font-semibold text-white whitespace-nowrap'>Admin</span>
-          </div>
+    <div className='sticky top-[72px] z-30 bg-gov-dark/95 backdrop-blur-md border-b border-gov-forest/40 shadow-md'>
+      <div className='max-w-[1340px] mx-auto px-5 lg:px-8'>
+        <div className='flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-2.5 scrollbar-hide'>
           {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
             const active = isActive(href, exact);
             return (
               <Link
                 key={href}
                 href={href}
-                className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors whitespace-nowrap ${
+                className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[12.5px] font-semibold transition-all whitespace-nowrap ${
                   active
-                    ? 'bg-gov-gold/20 text-gov-gold font-medium'
-                    : 'text-gov-sage/70 hover:text-white hover:bg-gov-forest/40'
+                    ? 'bg-gov-gold/20 text-gov-gold ring-1 ring-inset ring-gov-gold/40 shadow-sm'
+                    : 'text-white/70 hover:text-white hover:bg-white/10 ring-1 ring-inset ring-transparent'
                 }`}>
-                <Icon className='w-4 h-4' />
+                <Icon className='w-3.5 h-3.5' />
                 {label}
               </Link>
             );
           })}
         </div>
       </div>
-    </nav>
+    </div>
   );
 }

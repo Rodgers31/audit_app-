@@ -1,22 +1,19 @@
 /**
  * /admin/etl — ETL schedule + manual trigger.
  *
- * Reads the existing /admin/etl/schedule and /admin/etl/health
- * endpoints to show what the smart scheduler is doing today, then
- * exposes a per-source "trigger now" button that POSTs to
- * /admin/etl/trigger/{source}. The trigger queues a row in
- * ingestion_jobs with status=pending — the long-running seeder
- * picks pending jobs up on its next cycle, so the operator can
- * follow the run on /admin/ingestion.
+ * Reads /admin/etl/schedule + /admin/etl/health to show what the
+ * smart scheduler is doing today, and exposes per-source "trigger
+ * now" buttons that POST to /admin/etl/trigger/{source}.
  */
 'use client';
 
+import PageShell from '@/components/layout/PageShell';
 import api from '@/lib/api/axios';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import {
   Activity,
   AlertTriangle,
-  ArrowLeft,
   CheckCircle2,
   Clock,
   Loader2,
@@ -65,6 +62,15 @@ interface TriggerResponse {
   note: string;
 }
 
+const fadeUp = {
+  hidden: { opacity: 0, y: 12 },
+  show: (i: number = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] },
+  }),
+};
+
 export default function AdminEtlPage() {
   const qc = useQueryClient();
 
@@ -84,8 +90,6 @@ export default function AdminEtlPage() {
     mutationFn: async ({ source, dryRun }) =>
       (await api.post(`/admin/etl/trigger/${source}`, { dry_run: dryRun })).data,
     onSuccess: () => {
-      // Refresh the schedule view + bust the ingestion list cache
-      // so the operator sees the new job appear immediately.
       qc.invalidateQueries({ queryKey: ['admin', 'etl-schedule'] });
       qc.invalidateQueries({ queryKey: ['admin', 'ingestion-jobs'] });
       qc.invalidateQueries({ queryKey: ['admin', 'ingestion-stats'] });
@@ -93,132 +97,171 @@ export default function AdminEtlPage() {
   });
 
   return (
-    <div className='max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6'>
-      <div className='flex flex-wrap items-start justify-between gap-3'>
-        <div>
-          <Link
-            href='/admin'
-            className='inline-flex items-center gap-1 text-xs text-gov-sage hover:text-gov-forest mb-1'>
-            <ArrowLeft className='w-3 h-3' />
-            Back to overview
-          </Link>
-          <h1 className='text-2xl sm:text-3xl font-bold text-gov-dark'>ETL Schedule</h1>
-          <p className='text-gov-forest/60 text-sm mt-1'>
-            Smart-scheduler decisions for today, plus manual trigger controls per source.
-          </p>
+    <PageShell
+      title='ETL Schedule'
+      subtitle='Smart-scheduler decisions for today, plus manual trigger controls per source.'
+      back={{ href: '/admin', label: 'Back to overview' }}>
+      <div className='space-y-5'>
+        <div className='flex items-center justify-end'>
+          <button
+            onClick={() => {
+              schedule.refetch();
+              health.refetch();
+            }}
+            className='inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-neutral-border hover:border-gov-sage/40 text-neutral-text rounded-lg text-sm transition-all shadow-surface'>
+            <RefreshCcw
+              className={`w-4 h-4 ${
+                schedule.isFetching || health.isFetching ? 'animate-spin' : ''
+              }`}
+            />
+            Refresh
+          </button>
         </div>
-        <button
-          onClick={() => {
-            schedule.refetch();
-            health.refetch();
-          }}
-          className='inline-flex items-center gap-2 px-3 py-2 bg-white border border-gov-sage/30 hover:border-gov-sage text-gov-forest rounded-lg text-sm transition-colors'>
-          <RefreshCcw
-            className={`w-4 h-4 ${schedule.isFetching || health.isFetching ? 'animate-spin' : ''}`}
+
+        {/* ── Summary cards ── */}
+        <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+          <SummaryCard
+            order={0}
+            icon={PlayCircle}
+            label='Running today'
+            value={
+              schedule.data
+                ? `${schedule.data.summary.sources_running_today}/${schedule.data.summary.total_sources}`
+                : '…'
+            }
           />
-          Refresh
-        </button>
-      </div>
-
-      {/* ── Summary stats ── */}
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-        <Card icon={PlayCircle} label='Running today'>
-          <p className='text-2xl font-bold text-gov-dark'>
-            {schedule.data
-              ? `${schedule.data.summary.sources_running_today}/${schedule.data.summary.total_sources}`
-              : '…'}
-          </p>
-        </Card>
-        <Card icon={Activity} label='Scheduler health'>
-          <p className='text-2xl font-bold text-gov-dark capitalize'>
-            {health.data ? health.data.scheduler_status.split(':')[0] : '…'}
-          </p>
-        </Card>
-        <Card icon={Zap} label='Efficiency vs fixed schedule'>
-          <p className='text-sm font-medium text-gov-forest mt-2'>
-            {schedule.data?.summary.efficiency_vs_fixed_schedule ?? '—'}
-          </p>
-        </Card>
-      </div>
-
-      {/* ── Trigger feedback ── */}
-      {trigger.isSuccess && trigger.data && (
-        <div className='bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-start gap-2 text-sm'>
-          <CheckCircle2 className='w-4 h-4 text-emerald-600 mt-0.5 shrink-0' />
-          <div>
-            <p className='font-medium text-emerald-900'>
-              Queued <span className='font-mono'>{trigger.data.source}</span> · job #
-              <Link
-                href={`/admin/ingestion/${trigger.data.job_id}`}
-                className='underline underline-offset-2 hover:text-emerald-700'>
-                {trigger.data.job_id}
-              </Link>
-              {trigger.data.dry_run && ' (dry-run)'}
-            </p>
-            <p className='text-emerald-800/80 text-xs mt-0.5'>{trigger.data.note}</p>
-          </div>
+          <SummaryCard
+            order={1}
+            icon={Activity}
+            label='Scheduler health'
+            value={health.data ? health.data.scheduler_status.split(':')[0] : '…'}
+            valueClassName='capitalize'
+          />
+          <SummaryCard
+            order={2}
+            icon={Zap}
+            label='Efficiency vs fixed'
+            value={schedule.data?.summary.efficiency_vs_fixed_schedule ?? '—'}
+            small
+          />
         </div>
-      )}
-      {trigger.isError && (
-        <div className='bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-2 text-sm'>
-          <XCircle className='w-4 h-4 text-red-600 mt-0.5 shrink-0' />
-          <p className='text-red-900'>
-            Failed to queue trigger:{' '}
-            {(trigger.error as { response?: { data?: { detail?: string } } })?.response?.data
-              ?.detail || 'unknown error'}
-          </p>
-        </div>
-      )}
 
-      {/* ── Per-source table ── */}
-      <section className='bg-white border border-gov-sage/20 rounded-xl overflow-hidden shadow-sm'>
-        <header className='px-5 py-3 border-b border-gov-sage/20 bg-gov-cream'>
-          <h2 className='text-sm font-semibold text-gov-dark'>Sources</h2>
-        </header>
-        {schedule.isLoading ? (
-          <div className='py-16 flex justify-center'>
-            <Loader2 className='w-5 h-5 text-gov-sage animate-spin' />
-          </div>
-        ) : !schedule.data ? (
-          <div className='py-12 px-6 text-center text-red-600 text-sm'>
-            <AlertTriangle className='w-6 h-6 mx-auto mb-2' />
-            Could not load schedule.
-          </div>
-        ) : (
-          <ul className='divide-y divide-gov-sage/10'>
-            {Object.entries(schedule.data.sources).map(([source, decision]) => (
-              <SourceRow
-                key={source}
-                source={source}
-                decision={decision}
-                pending={trigger.isPending && trigger.variables?.source === source}
-                onTrigger={(dryRun) => trigger.mutate({ source, dryRun })}
-              />
-            ))}
-          </ul>
+        {/* ── Trigger feedback ── */}
+        {trigger.isSuccess && trigger.data && (
+          <motion.div
+            variants={fadeUp}
+            initial='hidden'
+            animate='show'
+            className='bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 flex items-start gap-2.5 text-sm shadow-surface'>
+            <CheckCircle2 className='w-5 h-5 text-emerald-600 mt-0.5 shrink-0' />
+            <div>
+              <p className='font-semibold text-emerald-900'>
+                Queued <span className='font-mono'>{trigger.data.source}</span> · job #
+                <Link
+                  href={`/admin/ingestion/${trigger.data.job_id}`}
+                  className='underline underline-offset-2 hover:text-emerald-700'>
+                  {trigger.data.job_id}
+                </Link>
+                {trigger.data.dry_run && ' (dry-run)'}
+              </p>
+              <p className='text-emerald-800/80 text-xs mt-0.5'>{trigger.data.note}</p>
+            </div>
+          </motion.div>
         )}
-      </section>
-    </div>
+        {trigger.isError && (
+          <motion.div
+            variants={fadeUp}
+            initial='hidden'
+            animate='show'
+            className='bg-gov-copper/10 border border-gov-copper/30 rounded-2xl px-4 py-3 flex items-start gap-2.5 text-sm shadow-surface'>
+            <XCircle className='w-5 h-5 text-gov-copper mt-0.5 shrink-0' />
+            <p className='text-gov-copper'>
+              Failed to queue trigger:{' '}
+              {(trigger.error as { response?: { data?: { detail?: string } } })?.response?.data
+                ?.detail || 'unknown error'}
+            </p>
+          </motion.div>
+        )}
+
+        {/* ── Per-source list ── */}
+        <motion.section
+          variants={fadeUp}
+          initial='hidden'
+          animate='show'
+          custom={3}
+          className='bg-white border border-neutral-border rounded-2xl overflow-hidden shadow-surface'>
+          <header className='px-5 py-3.5 border-b border-neutral-border bg-gov-cream'>
+            <div className='flex items-center gap-2'>
+              <PlayCircle className='w-4 h-4 text-gov-sage' />
+              <h2 className='font-display text-lg text-neutral-text'>Sources</h2>
+            </div>
+          </header>
+          {schedule.isLoading ? (
+            <div className='py-16 flex justify-center'>
+              <Loader2 className='w-5 h-5 text-gov-sage animate-spin' />
+            </div>
+          ) : !schedule.data ? (
+            <div className='py-12 px-6 text-center text-gov-copper text-sm'>
+              <AlertTriangle className='w-6 h-6 mx-auto mb-2' />
+              Could not load schedule.
+            </div>
+          ) : (
+            <ul className='divide-y divide-neutral-border/60'>
+              {Object.entries(schedule.data.sources).map(([source, decision], i) => (
+                <SourceRow
+                  key={source}
+                  index={i}
+                  source={source}
+                  decision={decision}
+                  pending={trigger.isPending && trigger.variables?.source === source}
+                  onTrigger={(dryRun) => trigger.mutate({ source, dryRun })}
+                />
+              ))}
+            </ul>
+          )}
+        </motion.section>
+      </div>
+    </PageShell>
   );
 }
 
-function Card({
+function SummaryCard({
   icon: Icon,
   label,
-  children,
+  value,
+  valueClassName = '',
+  small = false,
+  order = 0,
 }: {
   icon: React.ElementType;
   label: string;
-  children: React.ReactNode;
+  value: string;
+  valueClassName?: string;
+  small?: boolean;
+  order?: number;
 }) {
   return (
-    <div className='bg-white border border-gov-sage/20 rounded-xl p-5 shadow-sm'>
+    <motion.div
+      variants={fadeUp}
+      initial='hidden'
+      animate='show'
+      custom={order}
+      className='bg-white border border-neutral-border rounded-2xl p-5 shadow-surface'>
       <div className='flex items-center gap-2 mb-2'>
-        <Icon className='w-4 h-4 text-gov-sage' />
-        <p className='text-xs uppercase tracking-wide text-gov-forest/60 font-semibold'>{label}</p>
+        <div className='w-7 h-7 rounded-lg bg-gov-sage/15 border border-gov-sage/20 flex items-center justify-center'>
+          <Icon className='w-3.5 h-3.5 text-gov-sage' />
+        </div>
+        <p className='text-[10px] uppercase tracking-wider text-neutral-muted font-semibold'>
+          {label}
+        </p>
       </div>
-      {children}
-    </div>
+      <p
+        className={`${
+          small ? 'text-sm font-medium text-neutral-text mt-2' : 'text-2xl font-bold text-neutral-text font-display'
+        } ${valueClassName}`}>
+        {value}
+      </p>
+    </motion.div>
   );
 }
 
@@ -227,38 +270,45 @@ function SourceRow({
   decision,
   pending,
   onTrigger,
+  index,
 }: {
   source: string;
   decision: ScheduleSourceDecision;
   pending: boolean;
   onTrigger: (dryRun: boolean) => void;
+  index: number;
 }) {
   const [confirming, setConfirming] = useState<null | 'real' | 'dry'>(null);
   const Icon = decision.should_run ? CheckCircle2 : Clock;
-  const colour = decision.should_run ? 'text-emerald-600' : 'text-gov-forest/40';
+  const colour = decision.should_run ? 'text-emerald-600' : 'text-neutral-muted/40';
 
   return (
-    <li className='px-5 py-4 flex flex-wrap items-center gap-4'>
+    <motion.li
+      variants={fadeUp}
+      initial='hidden'
+      animate='show'
+      custom={index}
+      className='px-5 py-4 flex flex-wrap items-center gap-4 hover:bg-gov-cream/40 transition-colors'>
       <div className='flex items-center gap-3 min-w-[12rem]'>
         <Icon className={`w-5 h-5 ${colour}`} />
         <div>
-          <p className='font-mono text-sm font-semibold text-gov-dark'>{source}</p>
+          <p className='font-mono text-sm font-semibold text-neutral-text'>{source}</p>
           {decision.current_period && (
-            <p className='text-[10px] uppercase tracking-wide text-gov-forest/50 mt-0.5'>
+            <p className='text-[10px] uppercase tracking-wider text-neutral-muted mt-0.5'>
               {decision.current_period}
             </p>
           )}
         </div>
       </div>
 
-      <div className='flex-1 min-w-[16rem] text-xs text-gov-forest/70'>
+      <div className='flex-1 min-w-[16rem] text-xs text-neutral-muted'>
         <p>
-          <span className='text-gov-forest/50 mr-1'>Reason:</span>
+          <span className='text-neutral-muted/70 mr-1'>Reason:</span>
           {decision.reason}
         </p>
         {decision.next_run && (
           <p className='mt-0.5'>
-            <span className='text-gov-forest/50 mr-1'>Next run:</span>
+            <span className='text-neutral-muted/70 mr-1'>Next run:</span>
             {new Date(decision.next_run).toLocaleString()}
             {decision.next_reason ? ` · ${decision.next_reason}` : ''}
           </p>
@@ -268,7 +318,7 @@ function SourceRow({
       <div className='flex items-center gap-2 ml-auto'>
         {confirming ? (
           <div className='flex items-center gap-2'>
-            <span className='text-xs text-gov-forest/60'>
+            <span className='text-xs text-neutral-muted'>
               Run {source} {confirming === 'dry' ? '(dry-run)' : 'now'}?
             </span>
             <button
@@ -277,12 +327,12 @@ function SourceRow({
                 onTrigger(confirming === 'dry');
                 setConfirming(null);
               }}
-              className='px-2 py-1 bg-gov-sage text-white text-xs rounded-md hover:bg-gov-sage/90 disabled:opacity-50'>
+              className='px-3 py-1.5 bg-gov-sage text-white text-xs font-semibold rounded-full hover:bg-gov-sage/90 disabled:opacity-50 shadow-surface'>
               {pending ? <Loader2 className='w-3 h-3 animate-spin' /> : 'Confirm'}
             </button>
             <button
               onClick={() => setConfirming(null)}
-              className='px-2 py-1 text-xs text-gov-forest/60 hover:text-gov-forest'>
+              className='px-2 py-1 text-xs text-neutral-muted hover:text-neutral-text'>
               Cancel
             </button>
           </div>
@@ -290,18 +340,18 @@ function SourceRow({
           <>
             <button
               onClick={() => setConfirming('dry')}
-              className='inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-md border border-gov-sage/30 hover:border-gov-sage text-gov-forest transition-colors'>
+              className='inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-full bg-white border border-neutral-border hover:border-gov-sage/40 text-neutral-text transition-all shadow-surface'>
               Dry-run
             </button>
             <button
               onClick={() => setConfirming('real')}
-              className='inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-md bg-gov-forest text-white hover:bg-gov-dark transition-colors'>
+              className='inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-full bg-gov-forest text-white hover:bg-gov-dark transition-colors shadow-surface'>
               <PlayCircle className='w-3 h-3' />
               Trigger
             </button>
           </>
         )}
       </div>
-    </li>
+    </motion.li>
   );
 }

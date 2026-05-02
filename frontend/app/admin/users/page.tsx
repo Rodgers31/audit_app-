@@ -7,8 +7,10 @@
  */
 'use client';
 
+import PageShell from '@/components/layout/PageShell';
 import api from '@/lib/api/axios';
 import { useQuery } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import {
   ArrowLeft,
   ArrowRight,
@@ -46,9 +48,25 @@ interface UserList {
 
 const PAGE_SIZE = 20;
 
+const fadeUp = {
+  hidden: { opacity: 0, y: 12 },
+  show: (i: number = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] },
+  }),
+};
+
 export default function UsersListPage() {
   return (
-    <Suspense fallback={<PageLoader />}>
+    <Suspense
+      fallback={
+        <PageShell title='Users' subtitle='Loading…'>
+          <div className='py-16 flex justify-center'>
+            <Loader2 className='w-6 h-6 text-gov-sage animate-spin' />
+          </div>
+        </PageShell>
+      }>
       <UsersListInner />
     </Suspense>
   );
@@ -62,7 +80,6 @@ function UsersListInner() {
   const page = Number(searchParams.get('page') ?? '1');
 
   const [searchInput, setSearchInput] = useState(q);
-  // Debounce: only sync the URL after the user pauses typing for 300ms.
   useEffect(() => {
     const t = setTimeout(() => {
       if (searchInput !== q) {
@@ -97,117 +114,130 @@ function UsersListInner() {
   });
 
   return (
-    <div className='max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-5'>
-      <div className='flex flex-wrap items-center justify-between gap-3'>
-        <div>
-          <Link
-            href='/admin'
-            className='inline-flex items-center gap-1 text-xs text-gov-sage hover:text-gov-forest mb-1'>
-            <ArrowLeft className='w-3 h-3' />
-            Back to overview
-          </Link>
-          <h1 className='text-2xl sm:text-3xl font-bold text-gov-dark'>Users</h1>
-          <p className='text-gov-forest/60 text-sm mt-1'>
-            Manage roles, send password resets, and remove users.
-          </p>
+    <PageShell
+      title='Users'
+      subtitle='Manage roles, send password resets, and remove accounts.'
+      back={{ href: '/admin', label: 'Back to overview' }}>
+      <div className='space-y-5'>
+        {/* Search + refresh */}
+        <div className='flex flex-wrap items-center gap-3'>
+          <div className='relative flex-1 min-w-[16rem]'>
+            <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-muted/60' />
+            <input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder='Search by email…'
+              className='w-full pl-10 pr-3 py-2.5 text-sm rounded-xl border border-neutral-border bg-white focus:outline-none focus:ring-2 focus:ring-gov-sage/40 focus:border-gov-sage/40 transition-all shadow-surface'
+            />
+          </div>
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className='inline-flex items-center gap-2 px-3.5 py-2.5 bg-white border border-neutral-border hover:border-gov-sage/40 text-neutral-text rounded-xl text-sm transition-all shadow-surface disabled:opacity-50'>
+            <RefreshCcw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
         </div>
-        <button
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className='inline-flex items-center gap-2 px-3 py-2 bg-white border border-gov-sage/30 hover:border-gov-sage text-gov-forest rounded-lg text-sm transition-colors disabled:opacity-50'>
-          <RefreshCcw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
-      </div>
 
-      {/* Search */}
-      <div className='bg-white border border-gov-sage/20 rounded-xl p-4 shadow-sm'>
-        <div className='relative'>
-          <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gov-forest/40' />
-          <input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder='Search by email…'
-            className='w-full pl-10 pr-3 py-2 text-sm rounded-lg border border-gov-sage/30 focus:outline-none focus:ring-2 focus:ring-gov-sage/40 bg-gov-cream/30'
-          />
-        </div>
-      </div>
+        <p className='text-xs text-neutral-muted -mt-2'>
+          {data
+            ? `${data.users.length} on this page · ~${data.total.toLocaleString()} total matching`
+            : ''}
+        </p>
 
-      {/* Body */}
-      {isLoading ? (
-        <BodyState>
-          <Loader2 className='w-6 h-6 text-gov-sage animate-spin' />
-          <p className='text-gov-forest/60 text-sm'>Loading users…</p>
-        </BodyState>
-      ) : error ? (
-        <BodyState>
-          <XCircle className='w-8 h-8 text-red-500' />
-          <p className='text-red-600 text-sm'>Could not load users.</p>
-        </BodyState>
-      ) : !data || data.users.length === 0 ? (
-        <BodyState>
-          <Pause className='w-8 h-8 text-gov-forest/30' />
-          <p className='text-gov-forest/60 text-sm'>No users match.</p>
-        </BodyState>
-      ) : (
-        <>
-          <ul className='bg-white border border-gov-sage/20 rounded-xl divide-y divide-gov-sage/10 shadow-sm overflow-hidden'>
-            {data.users.map((u) => (
-              <li key={u.id}>
-                <Link
-                  href={`/admin/users/${u.id}`}
-                  className='flex items-center gap-4 px-5 py-4 hover:bg-gov-cream/50 transition-colors'>
-                  <div className='w-10 h-10 rounded-full bg-gov-sage/15 flex items-center justify-center shrink-0'>
-                    {u.roles.includes('admin') ? (
-                      <Shield className='w-5 h-5 text-gov-sage' />
-                    ) : (
-                      <User className='w-5 h-5 text-gov-forest/50' />
-                    )}
-                  </div>
-                  <div className='flex-1 min-w-0'>
-                    <div className='flex items-center gap-2 flex-wrap'>
-                      <span className='font-medium text-gov-dark text-sm truncate'>
-                        {u.display_name ?? u.email ?? u.id.slice(0, 8) + '…'}
-                      </span>
-                      {u.roles.map((role) => (
-                        <span
-                          key={role}
-                          className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] uppercase tracking-wide font-semibold ${
-                            role === 'admin'
-                              ? 'bg-gov-sage/20 text-gov-forest'
-                              : 'bg-gov-cream text-gov-forest/60'
-                          }`}>
-                          {role}
-                        </span>
-                      ))}
-                      {u.banned_until && (
-                        <span className='inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] uppercase tracking-wide font-semibold bg-red-100 text-red-800'>
-                          banned
-                        </span>
+        {isLoading ? (
+          <BodyState>
+            <Loader2 className='w-6 h-6 text-gov-sage animate-spin' />
+            <p className='text-neutral-muted text-sm'>Loading users…</p>
+          </BodyState>
+        ) : error ? (
+          <BodyState>
+            <XCircle className='w-8 h-8 text-gov-copper' />
+            <p className='text-gov-copper text-sm'>Could not load users.</p>
+          </BodyState>
+        ) : !data || data.users.length === 0 ? (
+          <BodyState>
+            <Pause className='w-8 h-8 text-neutral-muted/40' />
+            <p className='text-neutral-muted text-sm'>No users match.</p>
+          </BodyState>
+        ) : (
+          <>
+            <ul className='bg-white border border-neutral-border rounded-2xl divide-y divide-neutral-border/60 shadow-surface overflow-hidden'>
+              {data.users.map((u, i) => (
+                <motion.li
+                  key={u.id}
+                  variants={fadeUp}
+                  initial='hidden'
+                  animate='show'
+                  custom={i}>
+                  <Link
+                    href={`/admin/users/${u.id}`}
+                    className='flex items-center gap-4 px-5 py-4 hover:bg-gov-cream/60 transition-colors group'>
+                    <div
+                      className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border ${
+                        u.roles.includes('admin')
+                          ? 'bg-gov-gold/15 border-gov-gold/30'
+                          : 'bg-gov-sage/10 border-gov-sage/20'
+                      }`}>
+                      {u.roles.includes('admin') ? (
+                        <Shield className='w-5 h-5 text-gov-gold' />
+                      ) : (
+                        <User className='w-5 h-5 text-gov-sage' />
                       )}
                     </div>
-                    <p className='text-xs text-gov-forest/60 truncate mt-0.5'>{u.email ?? '—'}</p>
-                  </div>
-                  <div className='hidden sm:block text-right text-xs text-gov-forest/60'>
-                    <p>Created {formatShort(u.created_at)}</p>
-                    <p className='mt-0.5'>Last sign-in {formatShort(u.last_sign_in_at)}</p>
-                  </div>
-                  <ChevronRight className='w-4 h-4 text-gov-forest/30 shrink-0' />
-                </Link>
-              </li>
-            ))}
-          </ul>
+                    <div className='flex-1 min-w-0'>
+                      <div className='flex items-center gap-2 flex-wrap'>
+                        <span className='font-semibold text-neutral-text text-sm truncate'>
+                          {u.display_name ?? u.email ?? u.id.slice(0, 8) + '…'}
+                        </span>
+                        {u.roles.map((role) => (
+                          <RolePill key={role} role={role} />
+                        ))}
+                        {u.banned_until && (
+                          <span className='inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-gov-copper/15 text-gov-copper border border-gov-copper/20'>
+                            banned
+                          </span>
+                        )}
+                      </div>
+                      <p className='text-xs text-neutral-muted truncate mt-0.5'>
+                        {u.email ?? '—'}
+                      </p>
+                    </div>
+                    <div className='hidden sm:block text-right text-xs text-neutral-muted'>
+                      <p>Created {formatShort(u.created_at)}</p>
+                      <p className='mt-0.5'>Last sign-in {formatShort(u.last_sign_in_at)}</p>
+                    </div>
+                    <ChevronRight className='w-4 h-4 text-neutral-muted/40 shrink-0 group-hover:text-gov-sage group-hover:translate-x-0.5 transition-all' />
+                  </Link>
+                </motion.li>
+              ))}
+            </ul>
 
-          <Pagination
-            page={page}
-            pageSize={PAGE_SIZE}
-            total={data.total}
-            hasMore={data.has_more}
-            onChange={setPage}
-          />
-        </>
-      )}
-    </div>
+            <Pagination
+              page={page}
+              pageSize={PAGE_SIZE}
+              total={data.total}
+              hasMore={data.has_more}
+              onChange={setPage}
+            />
+          </>
+        )}
+      </div>
+    </PageShell>
+  );
+}
+
+function RolePill({ role }: { role: string }) {
+  const isAdmin = role === 'admin';
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold ${
+        isAdmin
+          ? 'bg-gov-gold/20 text-gov-forest ring-1 ring-inset ring-gov-gold/40'
+          : 'bg-gov-cream text-neutral-muted ring-1 ring-inset ring-neutral-border'
+      }`}>
+      {role}
+    </span>
   );
 }
 
@@ -227,25 +257,25 @@ function Pagination({
   const start = (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, total);
   return (
-    <div className='flex items-center justify-between text-sm'>
-      <span className='text-gov-forest/60'>
-        Showing <span className='font-medium text-gov-dark'>{start.toLocaleString()}</span>–
-        <span className='font-medium text-gov-dark'>{end.toLocaleString()}</span> of{' '}
-        <span className='font-medium text-gov-dark'>~{total.toLocaleString()}</span>
+    <div className='flex items-center justify-between text-sm flex-wrap gap-3 pt-2'>
+      <span className='text-neutral-muted'>
+        Showing <span className='font-medium text-neutral-text'>{start.toLocaleString()}</span>–
+        <span className='font-medium text-neutral-text'>{end.toLocaleString()}</span> of{' '}
+        <span className='font-medium text-neutral-text'>~{total.toLocaleString()}</span>
       </span>
       <div className='flex items-center gap-2'>
         <button
           onClick={() => onChange(Math.max(1, page - 1))}
           disabled={page <= 1}
-          className='inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gov-sage/30 hover:border-gov-sage text-gov-forest disabled:opacity-40 disabled:hover:border-gov-sage/30'>
+          className='inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-neutral-border hover:border-gov-sage/40 text-neutral-text disabled:opacity-40 transition-all shadow-surface'>
           <ArrowLeft className='w-3.5 h-3.5' />
           Prev
         </button>
-        <span className='text-gov-forest/60'>Page {page}</span>
+        <span className='text-neutral-muted text-xs'>Page {page}</span>
         <button
           onClick={() => onChange(page + 1)}
           disabled={!hasMore}
-          className='inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gov-sage/30 hover:border-gov-sage text-gov-forest disabled:opacity-40 disabled:hover:border-gov-sage/30'>
+          className='inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-neutral-border hover:border-gov-sage/40 text-neutral-text disabled:opacity-40 transition-all shadow-surface'>
           Next
           <ArrowRight className='w-3.5 h-3.5' />
         </button>
@@ -256,16 +286,8 @@ function Pagination({
 
 function BodyState({ children }: { children: React.ReactNode }) {
   return (
-    <div className='bg-white border border-gov-sage/20 rounded-xl py-16 flex flex-col items-center justify-center gap-3 shadow-sm'>
+    <div className='bg-white border border-neutral-border rounded-2xl py-16 flex flex-col items-center justify-center gap-3 shadow-surface'>
       {children}
-    </div>
-  );
-}
-
-function PageLoader() {
-  return (
-    <div className='max-w-6xl mx-auto py-32 flex justify-center'>
-      <Loader2 className='w-6 h-6 text-gov-sage animate-spin' />
     </div>
   );
 }

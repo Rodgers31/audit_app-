@@ -3,14 +3,18 @@
  *
  * Top-level landing page for admins. Aggregates a few "what's the
  * system doing right now?" widgets pulled from the existing backend
- * admin endpoints — ingestion jobs, ETL schedule, and ETL health.
- * Kept intentionally lean: each card answers a single question and
- * links to the sub-page where the operator can drill in.
+ * admin endpoints — ingestion jobs, ETL schedule, ETL health, user
+ * counts, and recent admin actions. Each card answers a single
+ * question and links to the sub-page where the operator can drill
+ * in. Wrapped in <PageShell> for the dark hero band that matches
+ * the rest of the public site's chrome.
  */
 'use client';
 
+import PageShell from '@/components/layout/PageShell';
 import api from '@/lib/api/axios';
 import { useQuery } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import {
   Activity,
   AlertTriangle,
@@ -27,7 +31,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-/* ── API response shapes (mirroring backend/routers/admin.py + etl_admin.py) ── */
+/* ── API response shapes ── */
 interface IngestionStats {
   total_jobs: number;
   completed: number;
@@ -82,8 +86,16 @@ interface AuditList {
   has_more: boolean;
 }
 
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  show: (i: number = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, delay: i * 0.06, ease: [0.22, 1, 0.36, 1] },
+  }),
+};
+
 export default function AdminOverviewPage() {
-  // Each query is independent — failing one doesn't blank the others.
   const ingestion = useQuery<IngestionStats>({
     queryKey: ['admin', 'ingestion-stats', 7],
     queryFn: async () =>
@@ -117,217 +129,240 @@ export default function AdminOverviewPage() {
   });
 
   return (
-    <div className='max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6'>
-      <header>
-        <h1 className='text-2xl sm:text-3xl font-bold text-gov-dark'>Admin Overview</h1>
-        <p className='text-gov-forest/60 text-sm mt-1'>
-          Monitor ingestion pipelines, ETL schedule, and system health at a glance.
-        </p>
-      </header>
-
-      {/* ── Top stat grid ── */}
-      <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
-        <StatCard
-          title='Ingestion (last 7 days)'
-          icon={ListChecks}
-          query={ingestion}
-          href='/admin/ingestion'
-          renderValue={(d) => (
-            <>
-              <div className='flex items-baseline gap-2'>
-                <span className='text-3xl font-bold text-gov-dark'>{d.total_jobs}</span>
-                <span className='text-xs text-gov-forest/60'>jobs</span>
-              </div>
-              <div className='flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs'>
-                <SubStat label='Completed' value={d.completed} tone='ok' />
-                {d.completed_with_errors > 0 && (
-                  <SubStat
-                    label='Completed w/ errors'
-                    value={d.completed_with_errors}
-                    tone='warn'
-                  />
-                )}
-                <SubStat label='Failed' value={d.failed} tone={d.failed > 0 ? 'bad' : 'muted'} />
-                {d.running > 0 && <SubStat label='Running' value={d.running} tone='info' />}
-              </div>
-            </>
-          )}
-        />
-
-        <StatCard
-          title='ETL schedule today'
-          icon={PlayCircle}
-          query={schedule}
-          href='/status'
-          renderValue={(d) => (
-            <>
-              <div className='flex items-baseline gap-2'>
-                <span className='text-3xl font-bold text-gov-dark'>
-                  {d.running_today}
-                  <span className='text-base text-gov-forest/50'>/{d.total_sources}</span>
-                </span>
-                <span className='text-xs text-gov-forest/60'>sources running</span>
-              </div>
-              <p className='text-xs text-gov-forest/60 mt-3 line-clamp-1'>
-                {d.efficiency.vs_fixed_schedule}
-              </p>
-            </>
-          )}
-        />
-
-        <StatCard
-          title='ETL system health'
-          icon={Activity}
-          query={health}
-          href='/status'
-          renderValue={(d) => {
-            const ok = d.scheduler_status === 'healthy';
-            return (
-              <>
-                <div className='flex items-center gap-2'>
-                  {ok ? (
-                    <CheckCircle2 className='w-6 h-6 text-emerald-500' />
-                  ) : (
-                    <XCircle className='w-6 h-6 text-red-500' />
-                  )}
-                  <span className='text-2xl font-bold text-gov-dark capitalize'>
-                    {d.scheduler_status.split(':')[0]}
-                  </span>
-                </div>
-                <p className='text-xs text-gov-forest/60 mt-3'>
-                  Updated {timeAgo(d.timestamp)}
-                </p>
-              </>
-            );
-          }}
-        />
-
-        <StatCard
-          title='Users'
-          icon={Users}
-          query={userStats}
-          href='/admin/users'
-          renderValue={(d) => (
-            <>
-              <div className='flex items-baseline gap-2'>
-                <span className='text-3xl font-bold text-gov-dark'>{d.total_users}</span>
-                <span className='text-xs text-gov-forest/60'>total</span>
-              </div>
-              <div className='flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs'>
-                <SubStat label='admins' value={d.admin_users} tone='info' />
-                <SubStat label='new this week' value={d.new_last_7_days} tone='ok' />
-              </div>
-            </>
-          )}
-        />
-      </div>
-
-      {/* ── Ingestion: items processed widget ── */}
-      {ingestion.data && (
-        <section className='bg-white border border-gov-sage/20 rounded-xl p-5 shadow-sm'>
-          <div className='flex items-center gap-2 mb-3'>
-            <TrendingUp className='w-4 h-4 text-gov-sage' />
-            <h2 className='text-sm font-semibold text-gov-dark'>
-              Ingestion volume (last 7 days)
-            </h2>
-          </div>
-          <div className='grid grid-cols-3 gap-4'>
-            <Metric label='Items processed' value={ingestion.data.total_items_processed} />
-            <Metric label='Created' value={ingestion.data.total_items_created} tone='ok' />
-            <Metric label='Updated' value={ingestion.data.total_items_updated} tone='info' />
-          </div>
-
-          {Object.keys(ingestion.data.domains).length > 0 && (
-            <>
-              <p className='text-xs text-gov-forest/60 mt-5 mb-2 uppercase tracking-wide font-medium'>
-                Jobs by domain
-              </p>
-              <div className='flex flex-wrap gap-2'>
-                {Object.entries(ingestion.data.domains)
-                  .sort(([, a], [, b]) => b - a)
-                  .map(([domain, count]) => (
-                    <Link
-                      key={domain}
-                      href={`/admin/ingestion?domain=${encodeURIComponent(domain)}`}
-                      className='inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gov-sage/10 hover:bg-gov-sage/20 text-xs text-gov-forest font-medium transition-colors'>
-                      <span className='font-mono'>{domain}</span>
-                      <span className='text-gov-forest/50'>·</span>
-                      <span className='text-gov-sage font-semibold'>{count}</span>
-                    </Link>
-                  ))}
-              </div>
-            </>
-          )}
-        </section>
-      )}
-
-      {/* ── Recent admin actions ── */}
-      {recentActions.data && recentActions.data.entries.length > 0 && (
-        <section className='bg-white border border-gov-sage/20 rounded-xl p-5 shadow-sm'>
-          <div className='flex items-center justify-between mb-3'>
-            <div className='flex items-center gap-2'>
-              <History className='w-4 h-4 text-gov-sage' />
-              <h2 className='text-sm font-semibold text-gov-dark'>Recent admin actions</h2>
-            </div>
-            <Link
-              href='/admin/audit-log'
-              className='text-xs text-gov-sage hover:text-gov-forest inline-flex items-center gap-1'>
-              View all
-              <ArrowRight className='w-3 h-3' />
-            </Link>
-          </div>
-          <ul className='space-y-2'>
-            {recentActions.data.entries.map((entry) => (
-              <li
-                key={entry.id}
-                className='flex items-center gap-3 px-3 py-2 rounded-lg bg-gov-cream text-sm'>
-                <span className='inline-flex items-center px-2 py-0.5 rounded-full text-xs font-mono font-medium bg-white text-gov-forest border border-gov-sage/20'>
-                  {entry.action}
-                </span>
-                {entry.target_type && (
-                  <span className='text-xs text-gov-forest/70 truncate'>
-                    on <span className='font-mono'>{entry.target_type}</span>
-                    {entry.target_id && (
-                      <>
-                        {' / '}
-                        <span className='font-mono text-gov-dark'>{entry.target_id}</span>
-                      </>
+    <PageShell
+      title='Admin Overview'
+      subtitle='Monitor users, ingestion, ETL schedule and system health at a glance.'>
+      <div className='space-y-8'>
+        {/* ── Top stat grid ── */}
+        <section>
+          <SectionHeader icon={TrendingUp} title='At a glance' />
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
+            <StatCard
+              order={0}
+              title='Ingestion (last 7 days)'
+              icon={ListChecks}
+              query={ingestion}
+              href='/admin/ingestion'
+              renderValue={(d) => (
+                <>
+                  <BigNumber value={d.total_jobs} label='jobs' />
+                  <SubStatRow>
+                    <SubStat label='completed' value={d.completed} tone='ok' />
+                    {d.completed_with_errors > 0 && (
+                      <SubStat
+                        label='w/ errors'
+                        value={d.completed_with_errors}
+                        tone='warn'
+                      />
                     )}
-                  </span>
-                )}
-                <span className='text-xs text-gov-forest/60 ml-auto whitespace-nowrap'>
-                  {entry.actor_email ?? entry.actor_id.slice(0, 8) + '…'} ·{' '}
-                  {timeAgo(entry.created_at)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+                    <SubStat
+                      label='failed'
+                      value={d.failed}
+                      tone={d.failed > 0 ? 'bad' : 'muted'}
+                    />
+                    {d.running > 0 && (
+                      <SubStat label='running' value={d.running} tone='info' />
+                    )}
+                  </SubStatRow>
+                </>
+              )}
+            />
 
-      {/* ── ETL sources to run today ── */}
-      {schedule.data && schedule.data.sources_to_run.length > 0 && (
-        <section className='bg-white border border-gov-sage/20 rounded-xl p-5 shadow-sm'>
-          <div className='flex items-center gap-2 mb-3'>
-            <Clock className='w-4 h-4 text-gov-sage' />
-            <h2 className='text-sm font-semibold text-gov-dark'>Sources scheduled today</h2>
+            <StatCard
+              order={1}
+              title='ETL today'
+              icon={PlayCircle}
+              query={schedule}
+              href='/admin/etl'
+              renderValue={(d) => (
+                <>
+                  <BigNumber
+                    value={`${d.running_today}/${d.total_sources}`}
+                    label='sources running'
+                  />
+                  <p className='text-[11px] text-neutral-muted mt-3 line-clamp-1'>
+                    {d.efficiency.vs_fixed_schedule}
+                  </p>
+                </>
+              )}
+            />
+
+            <StatCard
+              order={2}
+              title='ETL system health'
+              icon={Activity}
+              query={health}
+              href='/status'
+              renderValue={(d) => {
+                const ok = d.scheduler_status === 'healthy';
+                return (
+                  <>
+                    <div className='flex items-center gap-2'>
+                      {ok ? (
+                        <CheckCircle2 className='w-7 h-7 text-emerald-500' />
+                      ) : (
+                        <XCircle className='w-7 h-7 text-gov-copper' />
+                      )}
+                      <span className='text-2xl font-bold text-neutral-text capitalize'>
+                        {d.scheduler_status.split(':')[0]}
+                      </span>
+                    </div>
+                    <p className='text-[11px] text-neutral-muted mt-3'>
+                      Updated {timeAgo(d.timestamp)}
+                    </p>
+                  </>
+                );
+              }}
+            />
+
+            <StatCard
+              order={3}
+              title='Users'
+              icon={Users}
+              query={userStats}
+              href='/admin/users'
+              renderValue={(d) => (
+                <>
+                  <BigNumber value={d.total_users} label='total' />
+                  <SubStatRow>
+                    <SubStat label='admins' value={d.admin_users} tone='info' />
+                    <SubStat label='new this week' value={d.new_last_7_days} tone='ok' />
+                  </SubStatRow>
+                </>
+              )}
+            />
           </div>
-          <ul className='space-y-2'>
-            {schedule.data.sources_to_run.map(({ source, reason }) => (
-              <li
-                key={source}
-                className='flex items-start justify-between gap-3 px-3 py-2 rounded-lg bg-gov-cream'>
-                <div>
-                  <span className='text-sm font-mono font-semibold text-gov-dark'>{source}</span>
-                  <p className='text-xs text-gov-forest/60 mt-0.5'>{reason}</p>
-                </div>
-                <PlayCircle className='w-4 h-4 text-gov-sage shrink-0 mt-0.5' />
-              </li>
-            ))}
-          </ul>
         </section>
-      )}
-    </div>
+
+        {/* ── Ingestion volume + by-domain ── */}
+        {ingestion.data && (
+          <motion.section
+            variants={fadeUp}
+            initial='hidden'
+            animate='show'
+            custom={4}
+            className='bg-white rounded-2xl p-5 sm:p-6 border border-neutral-border shadow-surface'>
+            <SectionHeader
+              icon={TrendingUp}
+              title='Ingestion volume'
+              subtitle='Items processed by the seeder over the last 7 days.'
+              padded
+            />
+            <div className='grid grid-cols-3 gap-4'>
+              <Metric label='Items processed' value={ingestion.data.total_items_processed} />
+              <Metric
+                label='Created'
+                value={ingestion.data.total_items_created}
+                tone='ok'
+              />
+              <Metric
+                label='Updated'
+                value={ingestion.data.total_items_updated}
+                tone='info'
+              />
+            </div>
+
+            {Object.keys(ingestion.data.domains).length > 0 && (
+              <>
+                <p className='text-[10px] text-neutral-muted mt-6 mb-2 uppercase tracking-wider font-semibold'>
+                  Jobs by domain
+                </p>
+                <div className='flex flex-wrap gap-2'>
+                  {Object.entries(ingestion.data.domains)
+                    .sort(([, a], [, b]) => b - a)
+                    .map(([domain, count]) => (
+                      <Link
+                        key={domain}
+                        href={`/admin/ingestion?domain=${encodeURIComponent(domain)}`}
+                        className='inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gov-sage/10 hover:bg-gov-sage/20 ring-1 ring-inset ring-gov-sage/20 text-xs font-medium text-gov-forest transition-colors'>
+                        <span className='font-mono'>{domain}</span>
+                        <span className='text-neutral-muted'>·</span>
+                        <span className='text-gov-sage font-semibold'>{count}</span>
+                      </Link>
+                    ))}
+                </div>
+              </>
+            )}
+          </motion.section>
+        )}
+
+        {/* ── Two-column: recent actions + sources scheduled ── */}
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-5'>
+          {/* Recent admin actions */}
+          {recentActions.data && recentActions.data.entries.length > 0 && (
+            <motion.section
+              variants={fadeUp}
+              initial='hidden'
+              animate='show'
+              custom={5}
+              className='bg-white rounded-2xl p-5 sm:p-6 border border-neutral-border shadow-surface'>
+              <div className='flex items-center justify-between mb-4'>
+                <SectionHeader icon={History} title='Recent admin actions' inline />
+                <Link
+                  href='/admin/audit-log'
+                  className='text-xs text-gov-sage hover:text-gov-forest inline-flex items-center gap-1 font-medium'>
+                  View all
+                  <ArrowRight className='w-3 h-3' />
+                </Link>
+              </div>
+              <ul className='space-y-2'>
+                {recentActions.data.entries.map((entry) => (
+                  <li
+                    key={entry.id}
+                    className='flex items-center gap-3 px-3 py-2 rounded-lg bg-gov-cream text-sm'>
+                    <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-white text-gov-forest border border-gov-sage/20'>
+                      {entry.action}
+                    </span>
+                    {entry.target_type && (
+                      <span className='text-xs text-neutral-muted truncate hidden sm:inline'>
+                        on <span className='font-mono'>{entry.target_type}</span>
+                      </span>
+                    )}
+                    <span className='text-xs text-neutral-muted ml-auto whitespace-nowrap'>
+                      {entry.actor_email
+                        ? entry.actor_email.split('@')[0]
+                        : entry.actor_id.slice(0, 8) + '…'}{' '}
+                      · {timeAgo(entry.created_at)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </motion.section>
+          )}
+
+          {/* Sources scheduled today */}
+          {schedule.data && schedule.data.sources_to_run.length > 0 && (
+            <motion.section
+              variants={fadeUp}
+              initial='hidden'
+              animate='show'
+              custom={6}
+              className='bg-white rounded-2xl p-5 sm:p-6 border border-neutral-border shadow-surface'>
+              <SectionHeader
+                icon={Clock}
+                title='Sources scheduled today'
+                subtitle='Smart-scheduler decisions for the next ETL cycle.'
+              />
+              <ul className='space-y-2 mt-4'>
+                {schedule.data.sources_to_run.map(({ source, reason }) => (
+                  <li
+                    key={source}
+                    className='flex items-start justify-between gap-3 px-3 py-2 rounded-lg bg-gov-cream'>
+                    <div>
+                      <span className='text-sm font-mono font-semibold text-neutral-text'>
+                        {source}
+                      </span>
+                      <p className='text-xs text-neutral-muted mt-0.5'>{reason}</p>
+                    </div>
+                    <PlayCircle className='w-4 h-4 text-gov-sage shrink-0 mt-0.5' />
+                  </li>
+                ))}
+              </ul>
+            </motion.section>
+          )}
+        </div>
+      </div>
+    </PageShell>
   );
 }
 
@@ -345,42 +380,65 @@ function StatCard<T>({
   query,
   href,
   renderValue,
+  order = 0,
 }: {
   title: string;
   icon: React.ElementType;
   query: QueryLike<T>;
   href: string;
   renderValue: (data: T) => React.ReactNode;
+  order?: number;
 }) {
   return (
-    <Link
-      href={href}
-      className='group bg-white border border-gov-sage/20 rounded-xl p-5 shadow-sm hover:shadow-md hover:border-gov-sage/40 transition-all'>
-      <div className='flex items-center justify-between mb-3'>
-        <div className='flex items-center gap-2'>
-          <Icon className='w-4 h-4 text-gov-sage' />
-          <h3 className='text-xs font-semibold uppercase tracking-wide text-gov-forest/60'>
-            {title}
-          </h3>
+    <motion.div
+      variants={fadeUp}
+      initial='hidden'
+      animate='show'
+      custom={order}>
+      <Link
+        href={href}
+        className='group block bg-white rounded-2xl p-5 border border-neutral-border shadow-surface hover:shadow-elevated hover:border-gov-sage/40 transition-all h-full'>
+        <div className='flex items-center justify-between mb-3'>
+          <div className='flex items-center gap-2.5'>
+            <div className='w-8 h-8 rounded-lg bg-gov-sage/15 flex items-center justify-center border border-gov-sage/20'>
+              <Icon className='w-4 h-4 text-gov-sage' />
+            </div>
+            <h3 className='text-[11px] font-semibold uppercase tracking-wider text-neutral-muted'>
+              {title}
+            </h3>
+          </div>
+          <ArrowRight className='w-4 h-4 text-neutral-muted/40 group-hover:text-gov-sage group-hover:translate-x-0.5 transition-all' />
         </div>
-        <ArrowRight className='w-4 h-4 text-gov-forest/30 group-hover:text-gov-sage transition-colors' />
-      </div>
 
-      {query.isLoading ? (
-        <div className='flex items-center gap-2 text-gov-forest/50 text-sm h-16'>
-          <Loader2 className='w-4 h-4 animate-spin' />
-          Loading…
-        </div>
-      ) : query.error || !query.data ? (
-        <div className='flex items-center gap-2 text-amber-600 text-sm h-16'>
-          <AlertTriangle className='w-4 h-4' />
-          Could not load
-        </div>
-      ) : (
-        renderValue(query.data)
-      )}
-    </Link>
+        {query.isLoading ? (
+          <div className='flex items-center gap-2 text-neutral-muted text-sm h-16'>
+            <Loader2 className='w-4 h-4 animate-spin' />
+            Loading…
+          </div>
+        ) : query.error || !query.data ? (
+          <div className='flex items-center gap-2 text-gov-warning text-sm h-16'>
+            <AlertTriangle className='w-4 h-4' />
+            Could not load
+          </div>
+        ) : (
+          renderValue(query.data)
+        )}
+      </Link>
+    </motion.div>
   );
+}
+
+function BigNumber({ value, label }: { value: string | number; label: string }) {
+  return (
+    <div className='flex items-baseline gap-2'>
+      <span className='text-3xl font-bold text-neutral-text font-display'>{value}</span>
+      <span className='text-xs text-neutral-muted'>{label}</span>
+    </div>
+  );
+}
+
+function SubStatRow({ children }: { children: React.ReactNode }) {
+  return <div className='flex flex-wrap gap-x-3 gap-y-1 mt-3 text-[11px]'>{children}</div>;
 }
 
 function SubStat({
@@ -394,15 +452,15 @@ function SubStat({
 }) {
   const colour = {
     ok: 'text-emerald-600',
-    bad: 'text-red-600',
-    warn: 'text-amber-600',
+    bad: 'text-gov-copper',
+    warn: 'text-gov-warning',
     info: 'text-blue-600',
-    muted: 'text-gov-forest/50',
+    muted: 'text-neutral-muted',
   }[tone];
   return (
-    <span className={`${colour}`}>
+    <span className={colour}>
       <span className='font-semibold'>{value}</span>{' '}
-      <span className='text-gov-forest/60'>{label}</span>
+      <span className='text-neutral-muted'>{label}</span>
     </span>
   );
 }
@@ -419,12 +477,40 @@ function Metric({
   const colour = {
     ok: 'text-emerald-600',
     info: 'text-blue-600',
-    default: 'text-gov-dark',
+    default: 'text-neutral-text',
   }[tone];
   return (
     <div>
-      <p className='text-xs text-gov-forest/60 font-medium'>{label}</p>
-      <p className={`text-2xl font-bold ${colour}`}>{value.toLocaleString()}</p>
+      <p className='text-[10px] uppercase tracking-wider text-neutral-muted font-semibold'>
+        {label}
+      </p>
+      <p className={`text-2xl font-bold mt-1 font-display ${colour}`}>
+        {value.toLocaleString()}
+      </p>
+    </div>
+  );
+}
+
+function SectionHeader({
+  icon: Icon,
+  title,
+  subtitle,
+  inline = false,
+  padded = false,
+}: {
+  icon: React.ElementType;
+  title: string;
+  subtitle?: string;
+  inline?: boolean;
+  padded?: boolean;
+}) {
+  return (
+    <div className={padded ? 'mb-4' : inline ? '' : 'mb-3'}>
+      <div className='flex items-center gap-2'>
+        <Icon className='w-4 h-4 text-gov-sage' />
+        <h2 className='font-display text-lg text-neutral-text'>{title}</h2>
+      </div>
+      {subtitle && <p className='text-xs text-neutral-muted mt-0.5 ml-6'>{subtitle}</p>}
     </div>
   );
 }
