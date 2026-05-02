@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import os
 from typing import Any, List, Optional
+from urllib.parse import quote
 
 import httpx
 
@@ -186,22 +187,48 @@ def update_profile_roles(user_id: str, roles: List[str]) -> dict:
     raise SupabaseAdminError(404, f"No profile with id={user_id}")
 
 
-def count_profiles(filter_clause: Optional[str] = None) -> int:
-    """Count rows in ``profiles`` matching an optional PostgREST filter."""
+def count_profiles(
+    column: Optional[str] = None,
+    op: Optional[str] = None,
+    value: Optional[str] = None,
+) -> int:
+    """
+    Count rows in ``profiles``, optionally filtered.
+
+    To filter, pass ``column``/``op``/``value`` (e.g.
+    ``column="roles", op="cs", value="{admin}"`` for "rows whose roles
+    array contains admin", or ``column="created_at", op="gte",
+    value="2026-04-25"``). The value is URL-encoded — callers must
+    NOT pre-encode. Without those args, returns the unfiltered count.
+
+    The count comes back via PostgREST's ``Content-Range`` header
+    when ``Prefer: count=exact`` is set. We use GET with
+    ``Range: 0-0`` rather than HEAD because (a) some Supabase
+    deployments don't propagate the count headers correctly on HEAD
+    responses, and (b) ``Range: 0-0`` keeps the body to a single
+    row so the bandwidth cost is negligible.
+    """
     base, _ = _config()
     url = _rest_url("/profiles?select=id")
-    if filter_clause:
-        url += f"&{filter_clause}"
-    headers = {**_headers(), "Prefer": "count=exact", "Range-Unit": "items"}
+    if column and op and value is not None:
+        # Encode the value but leave the operator and column alone —
+        # those have no special chars in practice and PostgREST is
+        # picky about the ``op.value`` format.
+        url += f"&{column}={op}.{quote(value, safe='')}"
+
+    request_headers = {
+        **_headers(),
+        "Prefer": "count=exact",
+        "Range": "0-0",
+    }
     with httpx.Client(timeout=15.0) as client:
-        resp = client.head(url, headers=headers)
+        resp = client.get(url, headers=request_headers)
         if resp.status_code >= 400:
             try:
                 body = resp.json()
             except Exception:
                 body = resp.text
             raise SupabaseAdminError(resp.status_code, body)
-        # PostgREST returns the count in ``Content-Range: 0-9/123``
         cr = resp.headers.get("content-range") or ""
         if "/" in cr:
             try:

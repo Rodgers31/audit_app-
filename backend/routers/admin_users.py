@@ -182,17 +182,25 @@ async def user_stats():
     bound to that project's DB. PostgREST returns the count via the
     ``Content-Range`` header when ``Prefer: count=exact`` is set.
     """
-    now = datetime.now(timezone.utc)
-    # PostgREST timestamp filters use ISO-8601 with the value
-    # URL-encoded; httpx handles that for us via params/string.
-    cutoff_7 = (now - timedelta(days=7)).isoformat()
-    cutoff_30 = (now - timedelta(days=30)).isoformat()
+    today = datetime.now(timezone.utc).date()
+    # Date-only cutoffs (no ``T``, no ``:``, no ``+``) keep the
+    # PostgREST URL clean. Supabase compares timestamps against the
+    # date as ``YYYY-MM-DD 00:00:00 UTC``, which is the right
+    # granularity for "users created in the last N days".
+    cutoff_7 = (today - timedelta(days=7)).isoformat()
+    cutoff_30 = (today - timedelta(days=30)).isoformat()
 
     try:
         total = supabase_admin.count_profiles()
-        admins = supabase_admin.count_profiles("roles=cs.{admin}")
-        new_7 = supabase_admin.count_profiles(f"created_at=gte.{cutoff_7}")
-        new_30 = supabase_admin.count_profiles(f"created_at=gte.{cutoff_30}")
+        admins = supabase_admin.count_profiles(
+            column="roles", op="cs", value="{admin}"
+        )
+        new_7 = supabase_admin.count_profiles(
+            column="created_at", op="gte", value=cutoff_7
+        )
+        new_30 = supabase_admin.count_profiles(
+            column="created_at", op="gte", value=cutoff_30
+        )
     except supabase_admin.SupabaseAdminError as e:
         raise HTTPException(status_code=e.status_code, detail=str(e.body))
 
