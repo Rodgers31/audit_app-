@@ -6,10 +6,14 @@ module.exports = {
     './app/**/*.{js,ts,jsx,tsx,mdx}',
     './src/**/*.{js,ts,jsx,tsx,mdx}',
   ],
-  // Follow the OS / browser ``prefers-color-scheme`` media query —
-  // no manual toggle. ``dark:`` variants in markup activate when the
-  // viewer's system is set to dark, matching the user request.
-  darkMode: 'media',
+  // Class strategy: ``dark:`` variants activate when ``<html>``
+  // carries the ``dark`` class. The boot script in app/layout.tsx
+  // sets that class on first paint based on either an explicit
+  // user choice (localStorage ``theme = 'dark'`` / ``'light'``)
+  // or — when no choice has been made — the OS
+  // ``prefers-color-scheme`` setting. ThemeToggle in the top nav
+  // lets the user override OS at any time.
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {

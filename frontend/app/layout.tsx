@@ -67,6 +67,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang='en' suppressHydrationWarning>
       <head>
+        {/* No-flash dark-mode bootstrap.
+            Runs synchronously BEFORE the body paints so the right
+            ``dark`` class is on <html> from the very first frame —
+            otherwise dark-mode users would see a flash of light
+            chrome before React hydrates ThemeToggle and applies the
+            class. Reads localStorage["theme"] for an explicit
+            choice; otherwise follows ``prefers-color-scheme``.
+            Wrapped in try/catch because localStorage can throw in
+            private-mode Safari. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem('theme');var sysDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var dark=s==='dark'||(s!=='light'&&sysDark);if(dark)document.documentElement.classList.add('dark');}catch(e){}})();`,
+          }}
+        />
         {apiOrigin && (
           <>
             <link rel='preconnect' href={apiOrigin} crossOrigin='anonymous' />

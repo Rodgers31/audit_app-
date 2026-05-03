@@ -23,13 +23,16 @@
   --c-neutral-muted: 107 114 128;
   --c-neutral-border: 226 221 213;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --page-bg-rgb: 10, 20, 16;
-    --c-neutral-text: 245 245 245;
-    --c-neutral-muted: 156 163 175;
-    --c-neutral-border: 55 70 60;
-  }
+
+/* Dark theme triggers when ``<html>`` carries the ``dark`` class
+   (set by the boot script in app/layout.tsx). Tailwind also
+   matches its ``dark:`` variants on this same class — see
+   tailwind.config.js ``darkMode: 'class'``. */
+:root.dark {
+  --page-bg-rgb: 10, 20, 16;
+  --c-neutral-text: 245 245 245;
+  --c-neutral-muted: 156 163 175;
+  --c-neutral-border: 55 70 60;
 }
 
 /* ── Base ── */
