@@ -135,7 +135,7 @@ export default function DataFreshnessBadge({
               </span>
             )}
           </div>
-          <div className="text-xs opacity-60 mt-0.5">
+          <div className="text-xs opacity-60 dark:opacity-90 mt-0.5">
             Source: {label || sources}
             {latestDate && (
               <>
