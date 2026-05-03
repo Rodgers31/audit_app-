@@ -229,7 +229,7 @@ export default function ArticleViewer({
             })}
 
             {article.explanation && (
-              <div className='mt-4 rounded-xl bg-gradient-to-br from-gov-gold/15 via-gov-sand to-gov-cream/80 p-4 ring-1 ring-gov-gold/30'>
+              <div className='mt-4 rounded-xl bg-gradient-to-br from-gov-gold/15 via-gov-sand to-gov-cream/80 dark:from-gov-gold/[0.12] dark:via-surface-base dark:to-surface-elevated p-4 ring-1 ring-gov-gold/30 dark:ring-gov-gold/40'>
                 <div className='mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gov-forest dark:text-emerald-100'>
                   <Lightbulb size={13} className='text-gov-gold' />
                   Why it matters
@@ -253,7 +253,7 @@ export default function ArticleViewer({
             )}
 
             {showNextChapter && (
-              <div className='mt-6 rounded-2xl border border-gov-forest/20 bg-gradient-to-br from-gov-forest/5 via-white to-gov-sage/15 p-4 sm:p-5'>
+              <div className='mt-6 rounded-2xl border border-gov-forest/20 dark:border-gov-forest/40 bg-gradient-to-br from-gov-forest/5 via-white to-gov-sage/15 dark:from-gov-forest/[0.15] dark:via-surface-base dark:to-surface-elevated p-4 sm:p-5'>
                 <div className='flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-gov-forest dark:text-emerald-100'>
                   <CheckCircle2 size={13} className='text-gov-sage' />
                   End of Chapter {chapter.number}
