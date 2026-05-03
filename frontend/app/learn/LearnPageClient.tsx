@@ -51,7 +51,8 @@ const KEEP_LEARNING: {
     description:
       'Short, playful questions that turn what you just read into recall you can use.',
     icon: Gamepad2,
-    accent: 'from-gov-forest/10 via-white to-gov-sage/20',
+    accent:
+      'from-gov-forest/10 via-white to-gov-sage/20 dark:from-gov-forest/[0.18] dark:via-surface-base dark:to-surface-elevated',
     iconTint: 'bg-gov-forest text-white',
   },
   {
@@ -61,7 +62,8 @@ const KEEP_LEARNING: {
     description:
       'Walk through the three arms of government and the commissions that keep them honest.',
     icon: Landmark,
-    accent: 'from-gov-gold/15 via-white to-gov-sand',
+    accent:
+      'from-gov-gold/15 via-white to-gov-sand dark:from-gov-gold/[0.18] dark:via-surface-base dark:to-surface-elevated',
     iconTint: 'bg-gov-gold text-gov-dark dark:text-white',
   },
   {
@@ -71,7 +73,8 @@ const KEEP_LEARNING: {
     description:
       'Every budget, audit and finance term, translated into language that actually makes sense.',
     icon: Library,
-    accent: 'from-gov-sage/15 via-white to-gov-cream',
+    accent:
+      'from-gov-sage/15 via-white to-gov-cream dark:from-gov-sage/[0.22] dark:via-surface-base dark:to-surface-elevated',
     iconTint: 'bg-gov-sage text-white',
   },
   {
@@ -81,7 +84,8 @@ const KEEP_LEARNING: {
     description:
       'The stories behind each clause — how constitutional rights touch your day-to-day.',
     icon: Heart,
-    accent: 'from-rose-100 via-white to-gov-cream',
+    accent:
+      'from-rose-100 via-white to-gov-cream dark:from-rose-500/20 dark:via-surface-base dark:to-surface-elevated',
     iconTint: 'bg-rose-500 text-white',
   },
 ];
@@ -216,7 +220,7 @@ export default function LearningHubPage() {
                 transition={{ duration: 0.4, delay: i * 0.06 }}>
                 <Link
                   href={card.href}
-                  className={`group relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/70 bg-gradient-to-br ${card.accent} p-5 shadow-surface transition-shadow hover:shadow-elevated`}>
+                  className={`group relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/70 dark:border-neutral-border bg-gradient-to-br ${card.accent} p-5 shadow-surface transition-shadow hover:shadow-elevated`}>
                   <span
                     className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${card.iconTint} shadow-surface`}>
                     <Icon size={18} />
