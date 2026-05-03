@@ -215,7 +215,7 @@ export default function AuditReportsSection() {
         ] as const).map((s) => (
           <div
             key={s.labelKey}
-            className={`rounded-xl border border-neutral-border/40 px-4 py-3 ${
+            className={`rounded-xl border border-neutral-border/40 px-4 py-3 dark:bg-surface-elevated/40 ${
               s.accent === 'text-gov-copper'
                 ? 'bg-gov-copper/[0.04]'
                 : s.accent === 'text-gov-gold'
@@ -238,7 +238,7 @@ export default function AuditReportsSection() {
       {/* ════════ TWO-COL: Findings + Ministries ════════ */}
       <div className='px-6 sm:px-8 pb-5 grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5'>
         {/* ── Left: Findings + Donut ── */}
-        <div className='rounded-xl bg-gov-sand/30 border border-neutral-border/20 p-4'>
+        <div className='rounded-xl bg-gov-sand/30 dark:bg-surface-elevated/40 border border-neutral-border/20 p-4'>
           <h3 className='font-display text-base text-gov-dark dark:text-white mb-4'>{t('home.audits.findings_overview')}</h3>
 
           <div className='flex gap-5 items-start'>
@@ -254,7 +254,7 @@ export default function AuditReportsSection() {
                     key={f.id}
                     onClick={() => setExpandedFinding(isOpen ? null : f.id)}
                     className='w-full text-left group'>
-                    <div className='flex items-start gap-2.5 px-3 py-2.5 rounded-lg hover:bg-gov-sand/50 transition-colors'>
+                    <div className='flex items-start gap-2.5 px-3 py-2.5 rounded-lg hover:bg-gov-sand/50 dark:hover:bg-surface-elevated transition-colors'>
                       <span
                         className='mt-1 w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0'
                         style={{ backgroundColor: `${cfg.ring}18` }}>
@@ -329,7 +329,7 @@ export default function AuditReportsSection() {
 
           {/* ── Emphasis of Matter ── */}
           {data.emphasis_of_matter?.[0] && (
-            <div className='mt-4 rounded-xl bg-gov-gold/[0.07] border border-gov-gold/15 px-4 py-3 flex items-start gap-2.5'>
+            <div className='mt-4 rounded-xl bg-gov-gold/[0.07] dark:bg-gov-gold/[0.12] border border-gov-gold/15 dark:border-gov-gold/30 px-4 py-3 flex items-start gap-2.5'>
               <AlertTriangle className='w-4 h-4 text-gov-gold flex-shrink-0 mt-0.5' />
               <div className='min-w-0'>
                 <p className='text-[11px] font-bold uppercase tracking-wider text-gov-gold mb-1'>
@@ -345,7 +345,7 @@ export default function AuditReportsSection() {
         </div>
 
         {/* ── Right: Top Ministries Flagged ── */}
-        <div className='rounded-xl border border-neutral-border/40 bg-gov-forest/[0.03] p-4'>
+        <div className='rounded-xl border border-neutral-border/40 bg-gov-forest/[0.03] dark:bg-surface-elevated/40 p-4'>
           <h4 className='font-display text-sm text-gov-dark dark:text-white mb-4'>{t('home.audits.top_ministries')}</h4>
           <div className='space-y-3'>
             {ministryBars.map((m) => (
