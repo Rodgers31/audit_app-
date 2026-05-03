@@ -111,7 +111,7 @@ export function SummaryStrip() {
           </span>
         </div>
         <span
-          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/60 border ${isHigh ? 'border-gov-copper/20 text-gov-copper' : 'border-gov-gold/20 text-gov-gold'} mb-0.5`}>
+          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/60 dark:bg-surface-elevated border ${isHigh ? 'border-gov-copper/20 text-gov-copper' : 'border-gov-gold/20 text-gov-gold'} mb-0.5`}>
           <span
             className={`w-1.5 h-1.5 rounded-full ${isHigh ? 'bg-gov-copper' : 'bg-gov-gold'} inline-block`}
           />
@@ -181,7 +181,7 @@ export function KenyanGovCard() {
       text: 'text-emerald-600',
       label: t('home.govcard.stable'),
     },
-    loading: { dot: 'bg-gray-400', ring: 'ring-gray-400/20', text: 'text-gray-400', label: '...' },
+    loading: { dot: 'bg-gray-400', ring: 'ring-gray-400/20', text: 'text-gray-400 dark:text-neutral-muted/80', label: '...' },
   };
   const tier = tierColors[healthTier];
 
@@ -234,14 +234,14 @@ export function KenyanGovCard() {
           <div className='flex-1 p-3 space-y-3'>
             <div className='grid grid-cols-2 gap-2'>
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className='rounded-lg border border-gray-100 px-2.5 py-2 space-y-1.5'>
+                <div key={i} className='rounded-lg border border-gray-100 dark:border-neutral-border px-2.5 py-2 space-y-1.5'>
                   <Skeleton className='h-2 w-12' />
                   <Skeleton className='h-4 w-16' />
                   <Skeleton className='h-2 w-10' />
                 </div>
               ))}
             </div>
-            <div className='rounded-lg border border-gray-100 px-2 py-3 space-y-2'>
+            <div className='rounded-lg border border-gray-100 dark:border-neutral-border px-2 py-3 space-y-2'>
               <Skeleton className='h-2 w-20' />
               <Skeleton className='h-2.5 w-full rounded-full' />
             </div>
@@ -286,9 +286,9 @@ export function KenyanGovCard() {
             </div>
 
             {/* Debt ceiling gauge — dramatic arc */}
-            <div className='mt-1 px-2 py-3 rounded-lg bg-white/50 border border-gray-100'>
+            <div className='mt-1 px-2 py-3 rounded-lg bg-white/50 dark:bg-surface-elevated border border-gray-100 dark:border-neutral-border'>
               <div className='flex items-center justify-between mb-2'>
-                <span className='text-[10px] uppercase tracking-wider text-gray-500 font-semibold'>
+                <span className='text-[10px] uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-semibold'>
                   {t('home.govcard.debt_ceiling')}
                 </span>
                 <span
@@ -297,7 +297,7 @@ export function KenyanGovCard() {
                 </span>
               </div>
               {/* Multi-segment bar */}
-              <div className='relative h-2.5 rounded-full bg-gray-100 overflow-hidden'>
+              <div className='relative h-2.5 rounded-full bg-gray-100 dark:bg-surface-elevated overflow-hidden'>
                 {/* Safe zone fill */}
                 <div
                   className='absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out'
@@ -325,9 +325,9 @@ export function KenyanGovCard() {
               </div>
               {/* Scale markers */}
               <div className='flex justify-between mt-1'>
-                <span className='text-[8px] text-gray-400'>0%</span>
-                <span className='text-[8px] text-gray-400'>50%</span>
-                <span className='text-[8px] text-gray-400 font-semibold'>100%</span>
+                <span className='text-[8px] text-gray-400 dark:text-neutral-muted/80'>0%</span>
+                <span className='text-[8px] text-gray-400 dark:text-neutral-muted/80'>50%</span>
+                <span className='text-[8px] text-gray-400 dark:text-neutral-muted/80 font-semibold'>100%</span>
               </div>
               {ceilingOver && (
                 <p
@@ -379,8 +379,8 @@ export function KenyanGovCard() {
               ];
 
               return (
-                <div className='px-2 py-2.5 rounded-lg bg-white/50 border border-gray-100'>
-                  <span className='text-[10px] uppercase tracking-wider text-gray-500 font-semibold block mb-2'>
+                <div className='px-2 py-2.5 rounded-lg bg-white/50 dark:bg-surface-elevated border border-gray-100 dark:border-neutral-border'>
+                  <span className='text-[10px] uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-semibold block mb-2'>
                     {t('home.govcard.where_money_goes')}
                   </span>
                   {/* Stacked horizontal bar */}
@@ -399,7 +399,7 @@ export function KenyanGovCard() {
                     {segments.map((seg) => (
                       <div key={seg.label} className='flex items-center gap-1.5 min-w-0'>
                         <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${seg.dot}`} />
-                        <span className='text-[9px] text-gray-500 truncate'>{seg.label}</span>
+                        <span className='text-[9px] text-gray-500 dark:text-neutral-muted/80 truncate'>{seg.label}</span>
                         <span className='text-[9px] font-semibold text-gov-dark dark:text-white tabular-nums ml-auto'>
                           {((seg.value / total) * 100).toFixed(0)}%
                         </span>
@@ -468,7 +468,7 @@ function StatMiniCard({
         suppressHydrationWarning>
         {icon}
       </span>
-      <span className='text-[9px] uppercase tracking-wider text-gray-500 font-medium leading-none'>
+      <span className='text-[9px] uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-medium leading-none'>
         {label}
       </span>
       <div className='flex items-baseline gap-1 mt-0.5'>
@@ -482,7 +482,7 @@ function StatMiniCard({
           {value}
         </span>
       </div>
-      <span className='text-[9px] text-gray-400 leading-none mt-0.5 block'>{sub}</span>
+      <span className='text-[9px] text-gray-400 dark:text-neutral-muted/80 leading-none mt-0.5 block'>{sub}</span>
     </div>
   );
 }

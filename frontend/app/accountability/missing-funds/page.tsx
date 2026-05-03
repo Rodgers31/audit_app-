@@ -70,9 +70,9 @@ const STATUS_STYLE: Record<
   unknown: {
     label: 'Unknown',
     icon: Clock,
-    bg: 'bg-gray-50',
-    text: 'text-gray-700',
-    border: 'border-gray-200',
+    bg: 'bg-gray-50 dark:bg-surface-elevated',
+    text: 'text-gray-700 dark:text-neutral-muted',
+    border: 'border-gray-200 dark:border-neutral-border',
   },
 };
 
@@ -123,36 +123,36 @@ export default function MissingFundsPage() {
       <div className='space-y-6'>
         {/* Top-line stats */}
         <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
-          <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
-            <div className='text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1'>
+          <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-5'>
+            <div className='text-xs uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-semibold mb-1'>
               Total flagged
             </div>
             <div className='text-3xl font-bold text-rose-700 tabular-nums'>
               {fmtKES(data?.total_amount || 0)}
             </div>
-            <div className='text-xs text-gray-500 mt-1'>
+            <div className='text-xs text-gray-500 dark:text-neutral-muted/80 mt-1'>
               Across {data?.total_cases || 0} documented cases
             </div>
           </div>
-          <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
-            <div className='text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1'>
+          <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-5'>
+            <div className='text-xs uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-semibold mb-1'>
               Counties affected
             </div>
-            <div className='text-3xl font-bold text-gray-900 tabular-nums'>
+            <div className='text-3xl font-bold text-gray-900 dark:text-neutral-text tabular-nums'>
               {data?.affected_counties || 0}
-              <span className='text-base text-gray-400 font-normal'> / 47</span>
+              <span className='text-base text-gray-400 dark:text-neutral-muted/80 font-normal'> / 47</span>
             </div>
-            <div className='text-xs text-gray-500 mt-1'>With at least one flagged case</div>
+            <div className='text-xs text-gray-500 dark:text-neutral-muted/80 mt-1'>With at least one flagged case</div>
           </div>
-          <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
-            <div className='text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1'>
+          <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-5'>
+            <div className='text-xs uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-semibold mb-1'>
               Recovery status
             </div>
             <div className='flex flex-wrap gap-2 mt-2'>
               {Object.entries(data?.by_status || {}).map(([status, amount]) => (
                 <div key={status} className='text-xs'>
                   <StatusBadge status={status} />
-                  <div className='text-sm font-bold text-gray-900 tabular-nums mt-1'>
+                  <div className='text-sm font-bold text-gray-900 dark:text-neutral-text tabular-nums mt-1'>
                     {fmtKES(amount)}
                   </div>
                 </div>
@@ -163,10 +163,10 @@ export default function MissingFundsPage() {
 
         {/* Top counties */}
         {data?.top_counties && data.top_counties.length > 0 && (
-          <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
+          <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-5'>
             <div className='flex items-center gap-2 mb-3'>
               <TrendingUp size={16} className='text-rose-600' />
-              <h2 className='text-sm font-semibold text-gray-800'>
+              <h2 className='text-sm font-semibold text-gray-800 dark:text-neutral-text'>
                 Counties with the largest flagged amounts
               </h2>
             </div>
@@ -175,22 +175,22 @@ export default function MissingFundsPage() {
                 const pct = (c.amount / (data.total_amount || 1)) * 100;
                 return (
                   <div key={c.county} className='flex items-center gap-3'>
-                    <div className='w-6 text-xs font-bold text-gray-400 tabular-nums'>
+                    <div className='w-6 text-xs font-bold text-gray-400 dark:text-neutral-muted/80 tabular-nums'>
                       #{i + 1}
                     </div>
-                    <div className='w-36 text-sm font-semibold text-gray-800 truncate'>
+                    <div className='w-36 text-sm font-semibold text-gray-800 dark:text-neutral-text truncate'>
                       {c.county}
                     </div>
-                    <div className='flex-1 h-2 bg-gray-100 rounded-full overflow-hidden'>
+                    <div className='flex-1 h-2 bg-gray-100 dark:bg-surface-elevated rounded-full overflow-hidden'>
                       <div
                         className='h-full bg-gradient-to-r from-rose-400 to-rose-600'
                         style={{ width: `${Math.min(pct, 100)}%` }}
                       />
                     </div>
-                    <div className='w-28 text-right text-sm font-bold text-gray-900 tabular-nums'>
+                    <div className='w-28 text-right text-sm font-bold text-gray-900 dark:text-neutral-text tabular-nums'>
                       {fmtKES(c.amount)}
                     </div>
-                    <div className='w-16 text-right text-xs text-gray-500'>
+                    <div className='w-16 text-right text-xs text-gray-500 dark:text-neutral-muted/80'>
                       {c.cases} case{c.cases === 1 ? '' : 's'}
                     </div>
                   </div>
@@ -201,24 +201,24 @@ export default function MissingFundsPage() {
         )}
 
         {/* Search + filters */}
-        <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-4 flex flex-wrap items-center gap-3'>
+        <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-4 flex flex-wrap items-center gap-3'>
           <div className='flex-1 min-w-[220px] relative'>
             <Search
               size={14}
-              className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'
+              className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-neutral-muted/80'
             />
             <input
               type='search'
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder='Search by county, description, or period…'
-              className='w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gov-forest/30'
+              className='w-full pl-9 pr-3 py-2 text-sm border border-gray-200 dark:border-neutral-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gov-forest/30'
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className='text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gov-forest/30'>
+            className='text-sm border border-gray-200 dark:border-neutral-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gov-forest/30'>
             <option value='all'>All statuses</option>
             {statuses.map((s) => (
               <option key={s} value={s}>
@@ -230,7 +230,7 @@ export default function MissingFundsPage() {
 
         {/* Case list */}
         {isLoading && (
-          <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-8 flex items-center justify-center gap-3 text-gray-500'>
+          <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-8 flex items-center justify-center gap-3 text-gray-500 dark:text-neutral-muted/80'>
             <Loader2 className='animate-spin' size={18} />
             <span>Loading cases…</span>
           </div>
@@ -241,30 +241,30 @@ export default function MissingFundsPage() {
           </div>
         )}
         {!isLoading && !error && (
-          <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 divide-y divide-gray-100'>
+          <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border divide-y divide-gray-100'>
             {filtered.length === 0 ? (
-              <div className='p-8 text-center text-sm text-gray-500'>
+              <div className='p-8 text-center text-sm text-gray-500 dark:text-neutral-muted/80'>
                 No cases match your filter.
               </div>
             ) : (
               filtered.map((c, i) => (
-                <div key={`${c.case_id || i}`} className='p-5 hover:bg-gray-50 transition-colors'>
+                <div key={`${c.case_id || i}`} className='p-5 hover:bg-gray-50 dark:bg-surface-elevated transition-colors'>
                   <div className='flex items-start justify-between gap-4 flex-wrap'>
                     <div className='min-w-0 flex-1'>
                       <div className='flex items-center gap-2 mb-1.5 flex-wrap'>
                         <Link
                           href={`/counties?search=${encodeURIComponent(c.county)}`}
-                          className='text-sm font-bold text-gray-900 hover:text-gov-forest dark:text-emerald-100 hover:underline'>
+                          className='text-sm font-bold text-gray-900 dark:text-neutral-text hover:text-gov-forest dark:text-emerald-100 hover:underline'>
                           {c.county}
                         </Link>
                         {c.period && (
-                          <span className='text-xs text-gray-500'>· {c.period}</span>
+                          <span className='text-xs text-gray-500 dark:text-neutral-muted/80'>· {c.period}</span>
                         )}
                         <StatusBadge status={c.status} />
                       </div>
-                      <p className='text-sm text-gray-700 leading-relaxed'>{c.description}</p>
+                      <p className='text-sm text-gray-700 dark:text-neutral-muted leading-relaxed'>{c.description}</p>
                       {c.case_id && (
-                        <div className='text-[10px] text-gray-400 mt-1.5 font-mono'>
+                        <div className='text-[10px] text-gray-400 dark:text-neutral-muted/80 mt-1.5 font-mono'>
                           Case ID: {c.case_id}
                         </div>
                       )}
@@ -285,8 +285,8 @@ export default function MissingFundsPage() {
         <div className='bg-amber-50/60 border border-amber-200 rounded-xl p-5'>
           <div className='flex items-start gap-3'>
             <AlertTriangle className='text-amber-700 mt-0.5 shrink-0' size={18} />
-            <div className='text-sm text-gray-700 leading-relaxed'>
-              <p className='font-semibold text-gray-900 mb-1'>What counts as &ldquo;missing&rdquo;</p>
+            <div className='text-sm text-gray-700 dark:text-neutral-muted leading-relaxed'>
+              <p className='font-semibold text-gray-900 dark:text-neutral-text mb-1'>What counts as &ldquo;missing&rdquo;</p>
               <p>
                 Only cases the Office of the Auditor-General has formally flagged as
                 unaccounted-for, ineligible expenditure, or unsupported payments are

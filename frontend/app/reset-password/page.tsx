@@ -189,7 +189,7 @@ function ResetPasswordForm() {
         transition={{ duration: 0.4 }}
         className='w-full max-w-md'>
         {/* Card */}
-        <div className='bg-white dark:bg-gov-dark/60 rounded-2xl shadow-xl border border-gov-sage/10 overflow-hidden'>
+        <div className='bg-white dark:bg-surface-base rounded-2xl shadow-xl border border-gov-sage/10 overflow-hidden'>
           {/* Header band */}
           <div className='bg-gradient-to-r from-gov-dark to-gov-forest px-6 py-8 text-center'>
             <div className='w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center mx-auto mb-4 border border-white/20'>
@@ -260,7 +260,7 @@ function ResetPasswordForm() {
                         setError('');
                       }}
                       placeholder='Enter new password'
-                      className='w-full pl-10 pr-12 py-3 rounded-xl bg-gov-cream/40 dark:bg-white/5 border border-gov-sage/20 text-gov-dark dark:text-white placeholder:text-gov-forest/30 dark:text-emerald-100/30 focus:outline-none focus:ring-2 focus:ring-gov-sage/40 focus:border-transparent transition-all'
+                      className='w-full pl-10 pr-12 py-3 rounded-xl bg-gov-cream/40 dark:bg-surface-sunken border border-gov-sage/20 text-gov-dark dark:text-white placeholder:text-gov-forest/30 dark:text-emerald-100/30 focus:outline-none focus:ring-2 focus:ring-gov-sage/40 focus:border-transparent transition-all'
                       autoComplete='new-password'
                     />
                     <button
@@ -313,7 +313,7 @@ function ResetPasswordForm() {
                         setError('');
                       }}
                       placeholder='Re-enter new password'
-                      className={`w-full pl-10 pr-12 py-3 rounded-xl bg-gov-cream/40 dark:bg-white/5 border text-gov-dark dark:text-white placeholder:text-gov-forest/30 dark:text-emerald-100/30 focus:outline-none focus:ring-2 focus:ring-gov-sage/40 focus:border-transparent transition-all ${
+                      className={`w-full pl-10 pr-12 py-3 rounded-xl bg-gov-cream/40 dark:bg-surface-sunken border text-gov-dark dark:text-white placeholder:text-gov-forest/30 dark:text-emerald-100/30 focus:outline-none focus:ring-2 focus:ring-gov-sage/40 focus:border-transparent transition-all ${
                         confirmPassword.length > 0 && !passwordsMatch
                           ? 'border-gov-copper/40'
                           : confirmPassword.length > 0 && passwordsMatch

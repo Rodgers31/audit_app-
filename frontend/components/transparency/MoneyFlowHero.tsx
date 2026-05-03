@@ -389,7 +389,7 @@ function StageGap({
 
 function EmptyHero({ fy, reason }: { fy: string; reason: string }) {
   return (
-    <div className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-neutral-border/40 shadow-surface p-8 text-center'>
+    <div className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 shadow-surface p-8 text-center'>
       <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/60 dark:text-emerald-100/60 mb-2'>
         Follow the Money · FY {fy}
       </div>

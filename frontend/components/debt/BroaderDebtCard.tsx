@@ -84,7 +84,7 @@ export default function BroaderDebtCard({ cbkTotalKes, cbkAsOf }: Props) {
 
       <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
         {/* CBK card (Treasury's number) */}
-        <div className='rounded-2xl border border-neutral-border/50 bg-white dark:bg-gov-dark/60 p-5 shadow-surface'>
+        <div className='rounded-2xl border border-neutral-border/50 bg-white dark:bg-surface-base p-5 shadow-surface'>
           <div className='flex items-center gap-2 text-[10px] uppercase tracking-widest text-gov-forest/70 dark:text-emerald-100/70 font-semibold'>
             <Landmark size={12} />
             Treasury / CBK
@@ -123,7 +123,7 @@ export default function BroaderDebtCard({ cbkTotalKes, cbkAsOf }: Props) {
             IMF general government
           </div>
           {isLoading ? (
-            <div className='mt-2 h-10 w-40 bg-gray-200 animate-pulse rounded' />
+            <div className='mt-2 h-10 w-40 bg-gray-200 dark:bg-surface-sunken animate-pulse rounded' />
           ) : (
             <div className='mt-2 flex items-baseline gap-2'>
               <span className='font-display text-3xl sm:text-4xl text-gov-dark dark:text-white tabular-nums'>

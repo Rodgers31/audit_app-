@@ -41,6 +41,17 @@ module.exports = {
           // Tailwind class.
           100: '#F4F2EE',
         },
+        // Surface tokens that switch between light + dark via the
+        // CSS vars in globals.css. In light mode all three are
+        // white-ish so cards look like the existing ``bg-white``;
+        // in dark mode they fan out into a layered slate-warm
+        // hierarchy (base → elevated → sunken) that gives proper
+        // depth instead of the flat green-on-green look.
+        surface: {
+          base: 'rgb(var(--c-surface-base) / <alpha-value>)',
+          elevated: 'rgb(var(--c-surface-elevated) / <alpha-value>)',
+          sunken: 'rgb(var(--c-surface-sunken) / <alpha-value>)',
+        },
         primary: {
           50: '#f0f9ff',
           100: '#e0f2fe',

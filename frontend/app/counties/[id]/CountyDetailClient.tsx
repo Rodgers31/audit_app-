@@ -248,7 +248,7 @@ function HealthScoreModal({
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
         onClick={(e) => e.stopPropagation()}
-        className='bg-white dark:bg-gov-dark/60 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto'>
+        className='bg-white dark:bg-surface-base rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto'>
         {/* Header */}
         <div className='bg-gradient-to-r from-gov-dark to-gov-forest px-6 py-5 rounded-t-2xl flex items-center justify-between'>
           <div>
@@ -267,27 +267,27 @@ function HealthScoreModal({
         <div className='px-6 py-5 space-y-6'>
           {/* Score display */}
           <div className='text-center'>
-            <div className='inline-flex items-center gap-3 bg-gray-50 rounded-xl px-6 py-4'>
+            <div className='inline-flex items-center gap-3 bg-gray-50 dark:bg-surface-elevated rounded-xl px-6 py-4'>
               <span
                 className={`text-4xl font-black ${activeThreshold.color} text-white w-14 h-14 rounded-xl flex items-center justify-center`}>
                 {grade}
               </span>
               <div className='text-left'>
-                <div className='text-2xl font-bold text-gray-900'>
+                <div className='text-2xl font-bold text-gray-900 dark:text-neutral-text'>
                   {healthScore.toFixed(1)}
-                  <span className='text-sm text-gray-500 font-normal'> / 100</span>
+                  <span className='text-sm text-gray-500 dark:text-neutral-muted/80 font-normal'> / 100</span>
                 </div>
-                <div className='text-sm text-gray-500'>{t(activeThreshold.labelKey)}</div>
+                <div className='text-sm text-gray-500 dark:text-neutral-muted/80'>{t(activeThreshold.labelKey)}</div>
               </div>
             </div>
           </div>
 
           {/* How it's calculated */}
           <div>
-            <h3 className='text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3'>
+            <h3 className='text-sm font-semibold text-gray-900 dark:text-neutral-text uppercase tracking-wide mb-3'>
               {t('county.healthmodal.how_calc')}
             </h3>
-            <div className='bg-gray-50 rounded-xl p-4 space-y-3 text-sm text-gray-700'>
+            <div className='bg-gray-50 dark:bg-surface-elevated rounded-xl p-4 space-y-3 text-sm text-gray-700 dark:text-neutral-muted'>
               <p>{t('county.healthmodal.derived_from')}</p>
               <div className='border-l-2 border-gov-sage pl-3 space-y-1'>
                 <p>
@@ -303,13 +303,13 @@ function HealthScoreModal({
                   {t('county.healthmodal.rule_3_body')}
                 </p>
               </div>
-              <p className='text-xs text-gray-500 italic'>{t('county.healthmodal.max_note')}</p>
+              <p className='text-xs text-gray-500 dark:text-neutral-muted/80 italic'>{t('county.healthmodal.max_note')}</p>
             </div>
           </div>
 
           {/* This county's breakdown */}
           <div>
-            <h3 className='text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3'>
+            <h3 className='text-sm font-semibold text-gray-900 dark:text-neutral-text uppercase tracking-wide mb-3'>
               {t('county.healthmodal.this_county_numbers')}
             </h3>
             <div className='space-y-2'>
@@ -344,10 +344,10 @@ function HealthScoreModal({
                 <div
                   key={row.label}
                   className={`flex justify-between items-center py-2 px-3 rounded-lg ${
-                    row.highlight ? 'bg-gov-sage/10 font-semibold' : 'even:bg-gray-50'
+                    row.highlight ? 'bg-gov-sage/10 font-semibold' : 'even:bg-gray-50 dark:bg-surface-elevated'
                   }`}>
-                  <span className='text-sm text-gray-600'>{row.label}</span>
-                  <span className='text-sm text-gray-900 font-medium'>{row.value}</span>
+                  <span className='text-sm text-gray-600 dark:text-neutral-muted'>{row.label}</span>
+                  <span className='text-sm text-gray-900 dark:text-neutral-text font-medium'>{row.value}</span>
                 </div>
               ))}
             </div>
@@ -355,7 +355,7 @@ function HealthScoreModal({
 
           {/* Grade scale */}
           <div>
-            <h3 className='text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3'>
+            <h3 className='text-sm font-semibold text-gray-900 dark:text-neutral-text uppercase tracking-wide mb-3'>
               {t('county.healthmodal.grade_scale')}
             </h3>
             <div className='space-y-1.5'>
@@ -363,14 +363,14 @@ function HealthScoreModal({
                 <div
                   key={th.grade}
                   className={`flex items-center gap-3 py-2 px-3 rounded-lg text-sm ${
-                    th.grade === grade ? 'bg-gray-100 ring-1 ring-gray-300 font-semibold' : ''
+                    th.grade === grade ? 'bg-gray-100 dark:bg-surface-elevated ring-1 ring-gray-300 font-semibold' : ''
                   }`}>
                   <span
                     className={`${th.color} text-white font-bold w-8 h-8 rounded-lg flex items-center justify-center text-xs`}>
                     {th.grade}
                   </span>
-                  <span className='text-gray-700 flex-1'>{t(th.labelKey)}</span>
-                  <span className='text-gray-400 text-xs'>
+                  <span className='text-gray-700 dark:text-neutral-muted flex-1'>{t(th.labelKey)}</span>
+                  <span className='text-gray-400 dark:text-neutral-muted/80 text-xs'>
                     {th.min > 0 ? `≥ ${th.min}` : `< 40`}
                   </span>
                   {th.grade === grade && (
@@ -384,7 +384,7 @@ function HealthScoreModal({
           </div>
 
           {/* Data source note */}
-          <p className='text-xs text-gray-400 text-center'>
+          <p className='text-xs text-gray-400 dark:text-neutral-muted/80 text-center'>
             {t('county.healthmodal.source_line')}
           </p>
         </div>
@@ -420,8 +420,8 @@ function SourcesFooter() {
   ];
 
   return (
-    <div className='flex flex-wrap items-center gap-x-4 gap-y-1 pt-3 border-t border-gray-100'>
-      <span className='text-[10px] text-gray-400 uppercase tracking-wider font-semibold'>
+    <div className='flex flex-wrap items-center gap-x-4 gap-y-1 pt-3 border-t border-gray-100 dark:border-neutral-border'>
+      <span className='text-[10px] text-gray-400 dark:text-neutral-muted/80 uppercase tracking-wider font-semibold'>
         {t('county.sources.prefix')}
       </span>
       {sources.map((s) => (
@@ -575,7 +575,7 @@ export default function CountyDetailClient() {
             </Link>
             <Link
               href='/counties'
-              className='inline-flex items-center gap-1.5 rounded-full border border-neutral-border/60 bg-white dark:bg-gov-dark/60 px-3 py-1.5 text-sm text-neutral-muted hover:text-gov-dark dark:text-white hover:border-neutral-border transition-colors'>
+              className='inline-flex items-center gap-1.5 rounded-full border border-neutral-border/60 bg-white dark:bg-surface-base px-3 py-1.5 text-sm text-neutral-muted hover:text-gov-dark dark:text-white hover:border-neutral-border transition-colors'>
               <Grid3x3 size={14} />
               {t('county.page.all_counties_short')}
             </Link>
@@ -721,7 +721,7 @@ export default function CountyDetailClient() {
         <div
           ref={tabBarRef}
           style={{ scrollMarginTop: '88px' }}
-          className='flex items-center gap-1 border-b border-gray-200 overflow-x-auto -mb-px'>
+          className='flex items-center gap-1 border-b border-gray-200 dark:border-neutral-border overflow-x-auto -mb-px'>
           {TABS.map((tabItem) => {
             const active = tab === tabItem.id;
             return (
@@ -729,11 +729,11 @@ export default function CountyDetailClient() {
                 key={tabItem.id}
                 onClick={() => handleTabChange(tabItem.id)}
                 className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap ${
-                  active ? 'text-gov-forest dark:text-emerald-100' : 'text-gray-500 hover:text-gray-800'
+                  active ? 'text-gov-forest dark:text-emerald-100' : 'text-gray-500 dark:text-neutral-muted/80 hover:text-gray-800 dark:text-neutral-text'
                 }`}>
                 <tabItem.icon
                   size={14}
-                  className={active ? 'text-gov-forest dark:text-emerald-100' : 'text-gray-400'}
+                  className={active ? 'text-gov-forest dark:text-emerald-100' : 'text-gray-400 dark:text-neutral-muted/80'}
                 />
                 {t(tabItem.labelKey)}
                 {active && (

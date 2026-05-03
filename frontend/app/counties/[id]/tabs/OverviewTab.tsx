@@ -57,7 +57,7 @@ function CircleProgress({
           className='transition-all duration-700'
         />
       </svg>
-      <span className='absolute text-sm font-bold text-gray-800'>{value.toFixed(0)}%</span>
+      <span className='absolute text-sm font-bold text-gray-800 dark:text-neutral-text'>{value.toFixed(0)}%</span>
     </div>
   );
 }
@@ -110,11 +110,11 @@ function OfficialsCard({
   ];
 
   return (
-    <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
+    <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-5'>
       <div className='flex items-center justify-between mb-3'>
         <div>
-          <h3 className='text-sm font-semibold text-gray-800'>{t('county.officials.card_title')}</h3>
-          <p className='text-xs text-gray-500 mt-0.5'>{t('county.officials.card_subtitle')}</p>
+          <h3 className='text-sm font-semibold text-gray-800 dark:text-neutral-text'>{t('county.officials.card_title')}</h3>
+          <p className='text-xs text-gray-500 dark:text-neutral-muted/80 mt-0.5'>{t('county.officials.card_subtitle')}</p>
         </div>
         {officials.website && (
           <a
@@ -132,20 +132,20 @@ function OfficialsCard({
           <div
             key={r.role}
             title={r.tip}
-            className='rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2.5 hover:border-gov-sage/50 transition-colors'>
-            <div className='text-[10px] uppercase tracking-wider text-gray-500 font-semibold'>
+            className='rounded-lg border border-gray-100 dark:border-neutral-border bg-gray-50/60 dark:bg-surface-elevated/70 px-3 py-2.5 hover:border-gov-sage/50 transition-colors'>
+            <div className='text-[10px] uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-semibold'>
               {r.title}
             </div>
             <div
-              className={`text-sm font-semibold mt-0.5 ${r.name ? 'text-gray-900' : 'text-gray-400 italic'}`}>
+              className={`text-sm font-semibold mt-0.5 ${r.name ? 'text-gray-900 dark:text-neutral-text' : 'text-gray-400 dark:text-neutral-muted/80 italic'}`}>
               {r.name || t('county.officials.not_published')}
             </div>
-            {r.meta && <div className='text-[10px] text-gray-500 mt-0.5'>{r.meta}</div>}
+            {r.meta && <div className='text-[10px] text-gray-500 dark:text-neutral-muted/80 mt-0.5'>{r.meta}</div>}
           </div>
         ))}
       </div>
       {!officials.governor && (
-        <p className='text-[11px] text-gray-400 mt-3 italic'>
+        <p className='text-[11px] text-gray-400 dark:text-neutral-muted/80 mt-3 italic'>
           {t('county.officials.directory_beta')}
         </p>
       )}
@@ -195,20 +195,20 @@ export default function OverviewTab({ data }: { data: CountyComprehensive }) {
       {/* Hero row: Budget execution as a magazine-style feature */}
       <div className='grid grid-cols-1 lg:grid-cols-5 gap-5'>
         {/* Budget execution — large, editorial */}
-        <div className='lg:col-span-3 rounded-2xl bg-gradient-to-br from-white via-white to-gov-sage/5 border border-gray-100 p-6 shadow-sm'>
+        <div className='lg:col-span-3 rounded-2xl bg-gradient-to-br from-white via-white to-gov-sage/5 border border-gray-100 dark:border-neutral-border p-6 shadow-sm'>
           <div className='flex items-start gap-6'>
             <CircleProgress value={budget.utilization_rate} />
             <div className='min-w-0 flex-1'>
-              <div className='text-[11px] uppercase tracking-widest font-semibold text-gray-400 mb-1'>
+              <div className='text-[11px] uppercase tracking-widest font-semibold text-gray-400 dark:text-neutral-muted/80 mb-1'>
                 {t('county.overview.budget_execution')}
               </div>
-              <div className='text-2xl font-bold text-gray-900 mb-2'>
+              <div className='text-2xl font-bold text-gray-900 dark:text-neutral-text mb-2'>
                 {pct(budget.utilization_rate)}
-                <span className='text-sm font-normal text-gray-500 ml-2'>
+                <span className='text-sm font-normal text-gray-500 dark:text-neutral-muted/80 ml-2'>
                   {t('county.overview.utilized_suffix')}
                 </span>
               </div>
-              <div className='text-sm text-gray-600 leading-relaxed'>
+              <div className='text-sm text-gray-600 dark:text-neutral-muted leading-relaxed'>
                 <span className='font-semibold tabular-nums'>
                   {fmtKES(budget.total_spent)}
                 </span>{' '}
@@ -219,7 +219,7 @@ export default function OverviewTab({ data }: { data: CountyComprehensive }) {
                 {t('county.overview.allocated_suffix')}
               </div>
               {budget.fiscal_year && (
-                <div className='mt-2 text-[11px] text-gray-400'>
+                <div className='mt-2 text-[11px] text-gray-400 dark:text-neutral-muted/80'>
                   {t('county.overview.source_cob')} · {budget.fiscal_year}
                 </div>
               )}
@@ -240,25 +240,25 @@ export default function OverviewTab({ data }: { data: CountyComprehensive }) {
             <sust.Icon size={18} className={sust.color} />
             <span className={`text-sm font-semibold ${sust.color}`}>{t(sust.textKey)}</span>
           </div>
-          <div className='text-[11px] uppercase tracking-widest font-semibold text-gray-400 mb-2'>
+          <div className='text-[11px] uppercase tracking-widest font-semibold text-gray-400 dark:text-neutral-muted/80 mb-2'>
             {t('county.overview.debt_position')}
           </div>
           <div className='space-y-1.5 text-sm'>
             <div className='flex justify-between'>
-              <span className='text-gray-500'>{t('county.overview.debt_total')}</span>
-              <span className='font-semibold text-gray-800 tabular-nums'>
+              <span className='text-gray-500 dark:text-neutral-muted/80'>{t('county.overview.debt_total')}</span>
+              <span className='font-semibold text-gray-800 dark:text-neutral-text tabular-nums'>
                 {fmtKES(debt.total_debt)}
               </span>
             </div>
             <div className='flex justify-between'>
-              <span className='text-gray-500'>{t('county.overview.debt_to_budget')}</span>
-              <span className='font-semibold text-gray-800 tabular-nums'>
+              <span className='text-gray-500 dark:text-neutral-muted/80'>{t('county.overview.debt_to_budget')}</span>
+              <span className='font-semibold text-gray-800 dark:text-neutral-text tabular-nums'>
                 {pct(debt.debt_to_budget_ratio)}
               </span>
             </div>
             <div className='flex justify-between'>
-              <span className='text-gray-500'>{t('county.overview.debt_pending')}</span>
-              <span className='font-semibold text-gray-800 tabular-nums'>
+              <span className='text-gray-500 dark:text-neutral-muted/80'>{t('county.overview.debt_pending')}</span>
+              <span className='font-semibold text-gray-800 dark:text-neutral-text tabular-nums'>
                 {fmtKES(debt.pending_bills)}
               </span>
             </div>
@@ -267,7 +267,7 @@ export default function OverviewTab({ data }: { data: CountyComprehensive }) {
       </div>
 
       {/* Audit snapshot — wide banner */}
-      <div className='relative rounded-2xl bg-white dark:bg-gov-dark/60 border border-gray-100 p-5 overflow-hidden'>
+      <div className='relative rounded-2xl bg-white dark:bg-surface-base border border-gray-100 dark:border-neutral-border p-5 overflow-hidden'>
         <div
           aria-hidden
           className={`absolute inset-y-0 left-0 w-1 ${
@@ -280,7 +280,7 @@ export default function OverviewTab({ data }: { data: CountyComprehensive }) {
         />
         <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3 pl-2'>
           <div>
-            <div className='text-[11px] uppercase tracking-widest font-semibold text-gray-400 mb-1'>
+            <div className='text-[11px] uppercase tracking-widest font-semibold text-gray-400 dark:text-neutral-muted/80 mb-1'>
               {t('county.overview.audit_snapshot')}
             </div>
             <div className='flex items-center gap-4 flex-wrap'>
@@ -290,7 +290,7 @@ export default function OverviewTab({ data }: { data: CountyComprehensive }) {
                 return (
                   <div key={sev} className='flex items-center gap-1.5'>
                     <div className={`w-2 h-2 rounded-full ${s.dot}`} />
-                    <span className='text-sm text-gray-700'>
+                    <span className='text-sm text-gray-700 dark:text-neutral-muted'>
                       <span className='font-semibold tabular-nums'>{count}</span>{' '}
                       {t(s.lowerKey)}
                     </span>
@@ -301,7 +301,7 @@ export default function OverviewTab({ data }: { data: CountyComprehensive }) {
           </div>
           {audit.total_amount_involved > 0 && (
             <div className='text-right'>
-              <div className='text-xs text-gray-500'>
+              <div className='text-xs text-gray-500 dark:text-neutral-muted/80'>
                 {t('county.overview.total_amount_involved')}
               </div>
               <div className='text-base font-bold text-rose-700 tabular-nums'>
@@ -330,8 +330,8 @@ export default function OverviewTab({ data }: { data: CountyComprehensive }) {
       )}
 
       {/* About this county */}
-      <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
-        <h3 className='text-sm font-semibold text-gray-800 mb-3'>{t('county.profile.title')}</h3>
+      <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-5'>
+        <h3 className='text-sm font-semibold text-gray-800 dark:text-neutral-text mb-3'>{t('county.profile.title')}</h3>
         <div className='grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-6'>
           <KPI
             label={t('county.profile.population')}
@@ -366,8 +366,8 @@ export default function OverviewTab({ data }: { data: CountyComprehensive }) {
         </div>
 
         {economic_profile.major_issues.length > 0 && (
-          <div className='mt-4 pt-4 border-t border-gray-100'>
-            <div className='text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2'>
+          <div className='mt-4 pt-4 border-t border-gray-100 dark:border-neutral-border'>
+            <div className='text-xs font-semibold text-gray-500 dark:text-neutral-muted/80 uppercase tracking-wider mb-2'>
               {t('county.overview.key_challenges')}
             </div>
             <div className='flex flex-wrap gap-2'>
@@ -388,17 +388,17 @@ export default function OverviewTab({ data }: { data: CountyComprehensive }) {
 
       {/* Stalled projects summary */}
       {stalled_projects.count > 0 && (
-        <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
+        <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-5'>
           <div className='flex items-center gap-2 mb-2'>
             <HardHat size={16} className='text-red-600' />
-            <h3 className='text-sm font-semibold text-gray-800'>
+            <h3 className='text-sm font-semibold text-gray-800 dark:text-neutral-text'>
               {stalled_projects.count}{' '}
               {stalled_projects.count !== 1
                 ? t('county.overview.stalled_n_plural')
                 : t('county.overview.stalled_n')}
             </h3>
           </div>
-          <div className='text-xs text-gray-500 mb-1'>
+          <div className='text-xs text-gray-500 dark:text-neutral-muted/80 mb-1'>
             {t('county.overview.contracted_total')}: {fmtKES(stalled_projects.total_contracted_value)}{' '}
             &middot; {t('county.overview.paid')}: {fmtKES(stalled_projects.total_amount_paid)} (
             {pct(
@@ -408,7 +408,7 @@ export default function OverviewTab({ data }: { data: CountyComprehensive }) {
             )}{' '}
             {t('county.overview.disbursed')})
           </div>
-          <p className='text-xs text-gray-400'>{t('county.overview.see_projects_tab')}</p>
+          <p className='text-xs text-gray-400 dark:text-neutral-muted/80'>{t('county.overview.see_projects_tab')}</p>
         </div>
       )}
     </div>

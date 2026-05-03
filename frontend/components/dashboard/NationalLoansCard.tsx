@@ -156,7 +156,7 @@ export default function NationalLoansCard() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: 0.05 * i }}
-                className='flex items-center gap-2 rounded-lg border border-neutral-border/25 bg-white/40 hover:bg-gov-sand/30 transition-colors px-3 py-2'>
+                className='flex items-center gap-2 rounded-lg border border-neutral-border/25 bg-white/40 dark:bg-surface-elevated hover:bg-gov-sand/30 transition-colors px-3 py-2'>
                 <span className='text-sm leading-none flex-shrink-0' suppressHydrationWarning>
                   {lenderEmoji(loan.lender)}
                 </span>
@@ -200,7 +200,7 @@ export default function NationalLoansCard() {
         {data.loans.length > VISIBLE && (
           <Link
             href='/debt'
-            className='group mt-auto pt-4 flex items-center justify-center gap-1.5 w-full rounded-lg bg-white/60 border border-neutral-border/40 hover:border-gov-copper/30 hover:bg-gov-copper/[0.03] px-4 py-2.5 transition-all text-xs font-medium text-gov-dark dark:text-white'>
+            className='group mt-auto pt-4 flex items-center justify-center gap-1.5 w-full rounded-lg bg-white/60 dark:bg-surface-elevated border border-neutral-border/40 hover:border-gov-copper/30 hover:bg-gov-copper/[0.03] px-4 py-2.5 transition-all text-xs font-medium text-gov-dark dark:text-white'>
             {t('home.loans.see_all_n').replace('{n}', String(data.loans.length))}
           </Link>
         )}

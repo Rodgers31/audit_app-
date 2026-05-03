@@ -88,7 +88,7 @@ export default function WatchButton({
       className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
         watching
           ? 'bg-gov-gold/15 text-gov-gold border-gov-gold/30 hover:bg-gov-gold/25'
-          : 'bg-white/80 text-gov-forest/70 dark:text-emerald-100/70 border-gov-sage/20 hover:bg-gov-sage/10 hover:text-gov-sage'
+          : 'bg-white/80 dark:bg-surface-elevated text-gov-forest/70 dark:text-emerald-100/70 border-gov-sage/20 hover:bg-gov-sage/10 hover:text-gov-sage'
       } disabled:opacity-50 shadow-sm ${className}`}>
       <AnimatePresence mode='wait'>
         {loading ? (

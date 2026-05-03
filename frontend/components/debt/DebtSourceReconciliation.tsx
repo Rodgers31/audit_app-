@@ -73,7 +73,7 @@ export default function DebtSourceReconciliation({ reconciliation, lastUpdated }
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.5 }}
-      className='rounded-2xl border border-neutral-border/40 bg-white/70 backdrop-blur-sm overflow-hidden'>
+      className='rounded-2xl border border-neutral-border/40 bg-white/70 dark:bg-surface-elevated backdrop-blur-sm overflow-hidden'>
       {/* Header */}
       <div className='border-b border-neutral-border/40 bg-gradient-to-r from-gov-sand/40 via-white to-transparent px-5 sm:px-7 py-4'>
         <div className='flex items-start gap-3'>
@@ -185,7 +185,7 @@ export default function DebtSourceReconciliation({ reconciliation, lastUpdated }
       {/* Gap explainer strip */}
       <div className='border-t border-neutral-border/40 bg-gov-sand/30 px-5 sm:px-7 py-4'>
         <div className='flex items-start gap-3'>
-          <div className='rounded-full bg-white dark:bg-gov-dark/60 border border-gov-gold/40 text-gov-gold p-1.5 mt-0.5 flex-shrink-0'>
+          <div className='rounded-full bg-white dark:bg-surface-base border border-gov-gold/40 text-gov-gold p-1.5 mt-0.5 flex-shrink-0'>
             <Info size={14} />
           </div>
           <div className='flex-1'>

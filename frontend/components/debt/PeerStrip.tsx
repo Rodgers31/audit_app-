@@ -108,7 +108,7 @@ function RingGauge({
 export default function PeerStrip({ peers, kenyaCountryName = 'Kenya' }: PeerStripProps) {
   if (!peers || peers.length === 0) {
     return (
-      <div className='rounded-xl bg-white/60 border border-white/60 p-6 text-center text-sm text-neutral-muted'>
+      <div className='rounded-xl bg-white/60 dark:bg-surface-elevated border border-white/60 p-6 text-center text-sm text-neutral-muted'>
         Peer comparison data unavailable.
       </div>
     );

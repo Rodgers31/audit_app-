@@ -80,7 +80,7 @@ export default function EconomicContextStrip({ ctx }: Props) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.5 }}
-      className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-neutral-border/40 shadow-surface p-5 sm:p-6'>
+      className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 shadow-surface p-5 sm:p-6'>
       <div className='flex items-baseline justify-between gap-3 mb-4'>
         <div>
           <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/80 dark:text-emerald-100/80'>
@@ -99,7 +99,7 @@ export default function EconomicContextStrip({ ctx }: Props) {
         {cards.map(({ icon: Icon, label, value, sub, accent }) => (
           <div
             key={label}
-            className='rounded-xl border border-neutral-border/30 bg-white dark:bg-gov-dark/60 p-4 flex items-start gap-3'>
+            className='rounded-xl border border-neutral-border/30 bg-white dark:bg-surface-base p-4 flex items-start gap-3'>
             <div
               className='w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0'
               style={{ backgroundColor: `${accent}14` }}>

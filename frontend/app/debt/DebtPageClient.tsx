@@ -730,7 +730,7 @@ export default function NationalDebtPage() {
       {d.reconciliation &&
         d.reconciliation.primary_value_kes != null &&
         d.reconciliation.secondary_value_kes != null && (
-          <details className='group rounded-xl border border-neutral-border/40 bg-white/60 overflow-hidden'>
+          <details className='group rounded-xl border border-neutral-border/40 bg-white/60 dark:bg-surface-elevated overflow-hidden'>
             <summary className='flex items-center justify-between gap-3 px-5 py-3.5 cursor-pointer list-none hover:bg-neutral-50/50 transition-colors'>
               <div className='flex items-center gap-2.5 min-w-0'>
                 <span className='text-[10px] uppercase tracking-widest font-semibold text-neutral-muted shrink-0'>
@@ -835,7 +835,7 @@ export default function NationalDebtPage() {
               Crossing them signals fiscal stress.
             </p>
           </div>
-          <div className='rounded-xl bg-white/70 border border-white/70 shadow-surface p-5 sm:p-6'>
+          <div className='rounded-xl bg-white/70 dark:bg-surface-elevated border border-white/70 shadow-surface p-5 sm:p-6'>
             <div className='grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6'>
               <RingGauge
                 value={debtSustainability.debt_to_gdp}
@@ -928,7 +928,7 @@ export default function NationalDebtPage() {
             </p>
           </div>
 
-          <div className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-neutral-border/40 shadow-surface overflow-hidden'>
+          <div className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 shadow-surface overflow-hidden'>
             {/* Headline row */}
             <div className='grid grid-cols-1 lg:grid-cols-[1.1fr_1.4fr]'>
               {/* Left: dramatic headline */}
@@ -978,7 +978,7 @@ export default function NationalDebtPage() {
                         whileInView={{ scale: 1, opacity: 1 }}
                         viewport={{ once: true }}
                         transition={{ delay: i * 0.04, duration: 0.3 }}
-                        className='relative w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-gov-copper/30 bg-gov-cream dark:bg-white/5 overflow-hidden flex items-center justify-center shadow-sm'>
+                        className='relative w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-gov-copper/30 bg-gov-cream dark:bg-surface-sunken overflow-hidden flex items-center justify-center shadow-sm'>
                         {/* Filled portion for debt service */}
                         <div
                           className='absolute inset-0 bg-gradient-to-br from-gov-copper to-[#8C2E2E]'
@@ -1138,7 +1138,7 @@ export default function NationalDebtPage() {
                   bills are a signal of cashflow distress.
                 </p>
               </div>
-              <div className='inline-flex rounded-lg bg-white dark:bg-gov-dark/60 border border-neutral-border/40 p-1 shadow-sm'>
+              <div className='inline-flex rounded-lg bg-white dark:bg-surface-base border border-neutral-border/40 p-1 shadow-sm'>
                 <button
                   onClick={() => setPbView('national')}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
@@ -1157,7 +1157,7 @@ export default function NationalDebtPage() {
             </div>
 
             {/* Unified hero card with total + split + entities */}
-            <div className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-neutral-border/40 shadow-surface overflow-hidden'>
+            <div className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 shadow-surface overflow-hidden'>
               <div className='grid grid-cols-1 lg:grid-cols-[1.1fr_1.5fr]'>
                 {/* Big total */}
                 <div className='relative p-6 sm:p-8 bg-gradient-to-br from-gov-copper/10 via-gov-copper/4 to-white border-b lg:border-b-0 lg:border-r border-neutral-border/40'>
@@ -1227,7 +1227,7 @@ export default function NationalDebtPage() {
             </div>
 
             {bucketsWithData.length > 0 && (
-              <div className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-neutral-border/40 shadow-surface p-5 sm:p-6'>
+              <div className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 shadow-surface p-5 sm:p-6'>
                 <div className='flex items-start justify-between gap-3 mb-4'>
                   <div>
                     <h3 className='text-sm font-semibold text-gov-dark dark:text-white'>
@@ -1301,7 +1301,7 @@ export default function NationalDebtPage() {
             )}
 
             {pbView === 'counties' && pendingBillsSummary?.top_counties_by_amount?.length > 0 && (
-              <div className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-neutral-border/40 shadow-surface p-5 sm:p-6'>
+              <div className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 shadow-surface p-5 sm:p-6'>
                 <h3 className='text-sm font-semibold text-gov-dark dark:text-white mb-4'>
                   Top counties by stalled payments
                 </h3>
@@ -1363,7 +1363,7 @@ export default function NationalDebtPage() {
               consumes.
             </p>
           </div>
-          <div className='rounded-xl bg-white/70 border border-white/70 shadow-surface p-5'>
+          <div className='rounded-xl bg-white/70 dark:bg-surface-elevated border border-white/70 shadow-surface p-5'>
             <ResponsiveContainer width='100%' height={260}>
               <ComposedChart
                 data={fiscal.years.map((y: any) => ({
@@ -1452,13 +1452,13 @@ export default function NationalDebtPage() {
                 Every active loan facility, sortable by what matters most to you.
               </p>
             </div>
-            <div className='inline-flex rounded-lg bg-white/70 border border-white/70 p-1 text-xs'>
+            <div className='inline-flex rounded-lg bg-white/70 dark:bg-surface-elevated border border-white/70 p-1 text-xs'>
               {(['outstanding', 'rate', 'service'] as const).map((key) => (
                 <button
                   key={key}
                   onClick={() => setLoanSort(key)}
                   className={`px-3 py-1.5 font-semibold rounded-md transition-colors ${
-                    loanSort === key ? 'bg-gov-dark text-white' : 'text-gov-dark dark:text-white hover:bg-white dark:bg-gov-dark/60'
+                    loanSort === key ? 'bg-gov-dark text-white' : 'text-gov-dark dark:text-white hover:bg-white dark:bg-surface-base'
                   }`}>
                   {key === 'outstanding'
                     ? 'Balance'
@@ -1470,7 +1470,7 @@ export default function NationalDebtPage() {
             </div>
           </div>
 
-          <div className='rounded-xl bg-white/70 border border-white/70 shadow-surface overflow-hidden'>
+          <div className='rounded-xl bg-white/70 dark:bg-surface-elevated border border-white/70 shadow-surface overflow-hidden'>
             {/* Desktop table */}
             <table className='w-full hidden md:table'>
               <thead className='bg-gov-dark/5 border-b border-neutral-border/40'>
@@ -1487,7 +1487,7 @@ export default function NationalDebtPage() {
                 {(showAllLoans ? loans : loans.slice(0, 10)).map((l, i) => (
                   <tr
                     key={`${l.lender}-${i}`}
-                    className='border-b border-neutral-border/20 hover:bg-white/40 transition-colors'>
+                    className='border-b border-neutral-border/20 hover:bg-white/40 dark:bg-surface-elevated transition-colors'>
                     <td className='px-4 py-3 text-sm font-medium text-gov-dark dark:text-white'>{l.lender}</td>
                     <td className='px-4 py-3 text-xs text-neutral-muted'>
                       {l.lender_type?.replace(/_/g, ' ')}
@@ -1548,7 +1548,7 @@ export default function NationalDebtPage() {
             {loans.length > 10 && (
               <button
                 onClick={() => setShowAllLoans((v) => !v)}
-                className='w-full py-3 text-xs font-semibold text-gov-forest dark:text-emerald-100 hover:bg-white/40 transition-colors border-t border-neutral-border/20'>
+                className='w-full py-3 text-xs font-semibold text-gov-forest dark:text-emerald-100 hover:bg-white/40 dark:bg-surface-elevated transition-colors border-t border-neutral-border/20'>
                 {showAllLoans
                   ? `Show top 10 only`
                   : `Show all ${loans.length} loans`}{' '}

@@ -96,7 +96,7 @@ export default function BudgetSourceReconciliation({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.5 }}
-      className='rounded-2xl border border-neutral-border/40 bg-white/70 backdrop-blur-sm overflow-hidden'>
+      className='rounded-2xl border border-neutral-border/40 bg-white/70 dark:bg-surface-elevated backdrop-blur-sm overflow-hidden'>
       <div className='border-b border-neutral-border/40 bg-gradient-to-r from-gov-sand/40 via-white to-transparent px-5 sm:px-7 py-4'>
         <div className='flex items-start gap-3'>
           <div className='rounded-lg bg-gov-forest/10 text-gov-forest dark:text-emerald-100 p-2 mt-0.5'>
@@ -195,7 +195,7 @@ export default function BudgetSourceReconciliation({
       </div>
 
       {/* APDMR per-FY source strip — makes the debt-service headline traceable */}
-      <div className='border-t border-neutral-border/40 bg-white/60 px-5 sm:px-7 py-4'>
+      <div className='border-t border-neutral-border/40 bg-white/60 dark:bg-surface-elevated px-5 sm:px-7 py-4'>
         <div className='flex items-start gap-3'>
           <div className='rounded-lg bg-gov-copper/10 text-gov-copper p-2 mt-0.5 flex-shrink-0'>
             <Landmark size={16} />
@@ -222,7 +222,7 @@ export default function BudgetSourceReconciliation({
                     href={r.url}
                     target='_blank'
                     rel='noopener noreferrer'
-                    className='group flex items-center justify-between gap-2 rounded-md border border-neutral-border/40 bg-white dark:bg-gov-dark/60 px-2.5 py-1.5 text-[11px] hover:border-gov-copper/50 hover:bg-gov-copper/5 transition-colors'>
+                    className='group flex items-center justify-between gap-2 rounded-md border border-neutral-border/40 bg-white dark:bg-surface-base px-2.5 py-1.5 text-[11px] hover:border-gov-copper/50 hover:bg-gov-copper/5 transition-colors'>
                     <span className='flex items-center gap-2 min-w-0'>
                       <span className='font-semibold text-gov-dark dark:text-white tabular-nums flex-shrink-0'>
                         {r.fy.replace('FY ', '')}
@@ -245,7 +245,7 @@ export default function BudgetSourceReconciliation({
       {(notes.length > 0 || meta?.scope_detail) && (
         <div className='border-t border-neutral-border/40 bg-gov-sand/30 px-5 sm:px-7 py-4'>
           <div className='flex items-start gap-3'>
-            <div className='rounded-full bg-white dark:bg-gov-dark/60 border border-gov-gold/40 text-gov-gold p-1.5 mt-0.5 flex-shrink-0'>
+            <div className='rounded-full bg-white dark:bg-surface-base border border-gov-gold/40 text-gov-gold p-1.5 mt-0.5 flex-shrink-0'>
               <Info size={14} />
             </div>
             <div className='flex-1'>

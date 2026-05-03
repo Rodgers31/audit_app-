@@ -389,7 +389,7 @@ export default function SpendDonut({ data }: Props) {
                     onMouseLeave={() => setHoverKey(null)}
                     className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 transition-all ${
                       isHover
-                        ? 'bg-white dark:bg-gov-dark/60 shadow-sm border border-neutral-border/40'
+                        ? 'bg-white dark:bg-surface-base shadow-sm border border-neutral-border/40'
                         : 'bg-transparent border border-transparent'
                     }`}>
                     <span
@@ -432,7 +432,7 @@ export default function SpendDonut({ data }: Props) {
                     onMouseEnter={() => setHoverKey(d.key)}
                     onMouseLeave={() => setHoverKey(null)}
                     className={`flex items-center gap-2 rounded-md px-2 py-1 transition-all ${
-                      isHover ? 'bg-white dark:bg-gov-dark/60 shadow-sm' : ''
+                      isHover ? 'bg-white dark:bg-surface-base shadow-sm' : ''
                     }`}>
                     <span
                       className='w-1.5 h-4 rounded-sm flex-shrink-0'

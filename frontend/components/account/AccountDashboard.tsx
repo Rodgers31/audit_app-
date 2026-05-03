@@ -192,7 +192,7 @@ export default function AccountDashboard() {
   return (
     <div className='max-w-4xl mx-auto px-4 py-8'>
       {/* Tab bar */}
-      <div className='flex gap-1 bg-white/60 backdrop-blur-md border border-gov-sage/20 p-1 rounded-2xl mb-8 shadow-sm'>
+      <div className='flex gap-1 bg-white/60 dark:bg-surface-elevated backdrop-blur-md border border-gov-sage/20 p-1 rounded-2xl mb-8 shadow-sm'>
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -224,7 +224,7 @@ export default function AccountDashboard() {
             exit={{ opacity: 0, y: -12 }}
             className='space-y-6'>
             {/* ── Identity card ── */}
-            <div className='bg-white/80 backdrop-blur-md border border-gov-sage/15 rounded-2xl p-6 shadow-sm'>
+            <div className='bg-white/80 dark:bg-surface-elevated backdrop-blur-md border border-gov-sage/15 rounded-2xl p-6 shadow-sm'>
               <div className='flex items-center gap-4 mb-8'>
                 <div className='w-16 h-16 rounded-2xl bg-gradient-to-br from-gov-sage to-gov-forest flex items-center justify-center text-white text-2xl font-bold shadow-lg'>
                   {(user?.display_name || user?.email || 'C')[0].toUpperCase()}
@@ -292,7 +292,7 @@ export default function AccountDashboard() {
             </div>
 
             {/* ── Change Email ── */}
-            <div className='bg-white/80 backdrop-blur-md border border-gov-sage/15 rounded-2xl p-6 shadow-sm'>
+            <div className='bg-white/80 dark:bg-surface-elevated backdrop-blur-md border border-gov-sage/15 rounded-2xl p-6 shadow-sm'>
               <div className='flex items-center gap-2 mb-4'>
                 <Mail className='w-5 h-5 text-gov-sage' />
                 <h3 className='font-bold text-gov-dark dark:text-white'>Change Email</h3>
@@ -339,7 +339,7 @@ export default function AccountDashboard() {
             </div>
 
             {/* ── Reset Password ── */}
-            <div className='bg-white/80 backdrop-blur-md border border-gov-sage/15 rounded-2xl p-6 shadow-sm'>
+            <div className='bg-white/80 dark:bg-surface-elevated backdrop-blur-md border border-gov-sage/15 rounded-2xl p-6 shadow-sm'>
               <div className='flex items-center gap-2 mb-4'>
                 <KeyRound className='w-5 h-5 text-gov-sage' />
                 <h3 className='font-bold text-gov-dark dark:text-white'>Reset Password</h3>
@@ -378,7 +378,7 @@ export default function AccountDashboard() {
             </div>
 
             {/* ── Danger Zone: Delete Account ── */}
-            <div className='bg-white/80 backdrop-blur-md border border-gov-copper/20 rounded-2xl p-6 shadow-sm'>
+            <div className='bg-white/80 dark:bg-surface-elevated backdrop-blur-md border border-gov-copper/20 rounded-2xl p-6 shadow-sm'>
               <div className='flex items-center gap-2 mb-4'>
                 <UserX className='w-5 h-5 text-gov-copper' />
                 <h3 className='font-bold text-gov-copper'>Delete Account</h3>
@@ -417,7 +417,7 @@ export default function AccountDashboard() {
                     value={deleteTyped}
                     onChange={(e) => setDeleteTyped(e.target.value)}
                     placeholder='Type DELETE to confirm'
-                    className='w-full px-4 py-3 rounded-xl bg-white dark:bg-gov-dark/60 border border-red-300 text-gov-dark dark:text-white placeholder:text-gov-forest/30 dark:text-emerald-100/30 focus:outline-none focus:ring-2 focus:ring-gov-copper/40 transition-all font-mono'
+                    className='w-full px-4 py-3 rounded-xl bg-white dark:bg-surface-base border border-red-300 text-gov-dark dark:text-white placeholder:text-gov-forest/30 dark:text-emerald-100/30 focus:outline-none focus:ring-2 focus:ring-gov-copper/40 transition-all font-mono'
                   />
                   <div className='flex gap-3'>
                     <button
@@ -458,7 +458,7 @@ export default function AccountDashboard() {
                 <Loader2 className='w-6 h-6 animate-spin text-gov-sage' />
               </div>
             ) : watchlist.length === 0 ? (
-              <div className='text-center py-20 bg-white/60 backdrop-blur-md rounded-2xl border border-gov-sage/15'>
+              <div className='text-center py-20 bg-white/60 dark:bg-surface-elevated backdrop-blur-md rounded-2xl border border-gov-sage/15'>
                 <Bookmark className='w-12 h-12 mx-auto text-gov-sage/30 mb-4' />
                 <h3 className='text-lg font-bold text-gov-dark dark:text-white mb-2'>No items yet</h3>
                 <p className='text-gov-forest/50 dark:text-emerald-100/50 text-sm max-w-md mx-auto'>
@@ -476,7 +476,7 @@ export default function AccountDashboard() {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, x: -40 }}
-                    className='flex items-center justify-between p-4 bg-white/80 backdrop-blur-md border border-gov-sage/15 rounded-xl shadow-sm hover:shadow-md transition-shadow'>
+                    className='flex items-center justify-between p-4 bg-white/80 dark:bg-surface-elevated backdrop-blur-md border border-gov-sage/15 rounded-xl shadow-sm hover:shadow-md transition-shadow'>
                     <Link
                       href={item.item_type === 'county' ? `/counties/${item.item_id}` : '/budget'}
                       className='flex items-center gap-3 flex-1 min-w-0'>
@@ -526,7 +526,7 @@ export default function AccountDashboard() {
                 <Loader2 className='w-6 h-6 animate-spin text-gov-sage' />
               </div>
             ) : alerts.length === 0 ? (
-              <div className='text-center py-20 bg-white/60 backdrop-blur-md rounded-2xl border border-gov-sage/15'>
+              <div className='text-center py-20 bg-white/60 dark:bg-surface-elevated backdrop-blur-md rounded-2xl border border-gov-sage/15'>
                 <BellOff className='w-12 h-12 mx-auto text-gov-sage/30 mb-4' />
                 <h3 className='text-lg font-bold text-gov-dark dark:text-white mb-2'>No alerts</h3>
                 <p className='text-gov-forest/50 dark:text-emerald-100/50 text-sm max-w-md mx-auto'>
@@ -552,8 +552,8 @@ export default function AccountDashboard() {
                       layout
                       className={`p-4 rounded-xl border transition-all cursor-pointer ${
                         alert.read
-                          ? 'bg-white/60 border-gov-sage/10 opacity-70'
-                          : 'bg-white/90 border-gov-sage/20 shadow-sm'
+                          ? 'bg-white/60 dark:bg-surface-elevated border-gov-sage/10 opacity-70'
+                          : 'bg-white/90 dark:bg-surface-elevated border-gov-sage/20 shadow-sm'
                       }`}
                       onClick={() => !alert.read && handleMarkRead(alert.id)}>
                       <div className='flex items-start gap-3'>
@@ -598,7 +598,7 @@ export default function AccountDashboard() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.85, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              className='bg-white dark:bg-gov-dark/60 rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl'>
+              className='bg-white dark:bg-surface-base rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl'>
               <div className='w-16 h-16 mx-auto mb-5 rounded-full bg-gov-sage/10 flex items-center justify-center'>
                 <LogOut className='w-8 h-8 text-gov-sage' />
               </div>

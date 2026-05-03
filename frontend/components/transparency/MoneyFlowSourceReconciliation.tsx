@@ -151,7 +151,7 @@ export default function MoneyFlowSourceReconciliation({ fiscalYear }: Props) {
   const sources = buildSourcesFor(fiscalYear);
 
   return (
-    <section className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-neutral-border/40 shadow-surface overflow-hidden'>
+    <section className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 shadow-surface overflow-hidden'>
       <div className='px-5 sm:px-7 pt-5 pb-3 flex items-start gap-3'>
         <div className='w-9 h-9 rounded-lg bg-gov-forest/10 text-gov-forest dark:text-emerald-100 flex items-center justify-center flex-shrink-0'>
           <BookOpenCheck size={18} />

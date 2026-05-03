@@ -59,7 +59,7 @@ export default function InteractiveGlossary({
               value={internalSearch}
               onChange={(e) => setInternalSearch(e.target.value)}
               placeholder='Search terms, examples, or definitions…'
-              className='w-full rounded-xl border border-neutral-border bg-white/80 py-2.5 pl-9 pr-3 text-sm shadow-inner transition-shadow placeholder:text-neutral-muted focus:outline-none focus:ring-2 focus:ring-gov-sage/40'
+              className='w-full rounded-xl border border-neutral-border bg-white/80 dark:bg-surface-elevated py-2.5 pl-9 pr-3 text-sm shadow-inner transition-shadow placeholder:text-neutral-muted focus:outline-none focus:ring-2 focus:ring-gov-sage/40'
             />
           </label>
         )}
@@ -82,7 +82,7 @@ export default function InteractiveGlossary({
                 {cat.label}
                 <span
                   className={`rounded-full px-1.5 text-[10px] ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-white dark:bg-gov-dark/60 text-gov-forest/70 dark:text-emerald-100/70'
+                    isActive ? 'bg-white/20 text-white' : 'bg-white dark:bg-surface-base text-gov-forest/70 dark:text-emerald-100/70'
                   }`}>
                   {count}
                 </span>
@@ -117,7 +117,7 @@ export default function InteractiveGlossary({
 
       {/* ── Grouped sections ── */}
       {grouped.length === 0 ? (
-        <div className='rounded-2xl border border-dashed border-neutral-border bg-white/60 p-10 text-center'>
+        <div className='rounded-2xl border border-dashed border-neutral-border bg-white/60 dark:bg-surface-elevated p-10 text-center'>
           <Search size={28} className='mx-auto mb-3 text-neutral-muted' />
           <h3 className='font-display text-lg text-gov-dark dark:text-white'>No matches</h3>
           <p className='mt-1 text-sm text-neutral-muted'>
@@ -144,7 +144,7 @@ export default function InteractiveGlossary({
               </span>
             </div>
 
-            <ul className='divide-y divide-neutral-border/60 overflow-hidden rounded-2xl border border-white/70 bg-white/70 shadow-surface'>
+            <ul className='divide-y divide-neutral-border/60 overflow-hidden rounded-2xl border border-white/70 bg-white/70 dark:bg-surface-elevated shadow-surface'>
               {group.terms.map((term) => {
                 const Icon = term.icon;
                 const isOpen = openId === term.id;
@@ -154,8 +154,8 @@ export default function InteractiveGlossary({
                       type='button'
                       onClick={() => setOpenId((v) => (v === term.id ? null : term.id))}
                       aria-expanded={isOpen}
-                      className={`flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gov-cream/40 dark:bg-white/5 sm:px-5 sm:py-4 ${
-                        isOpen ? 'bg-gov-cream/50 dark:bg-white/5' : ''
+                      className={`flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gov-cream/40 dark:bg-surface-sunken sm:px-5 sm:py-4 ${
+                        isOpen ? 'bg-gov-cream/50 dark:bg-surface-sunken' : ''
                       }`}>
                       <span className='mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gov-forest/8 text-gov-forest dark:text-emerald-100'>
                         <Icon size={16} />
@@ -191,7 +191,7 @@ export default function InteractiveGlossary({
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                           className='overflow-hidden'>
-                          <div className='space-y-4 border-t border-neutral-border/60 bg-gov-cream/30 dark:bg-white/5 px-4 py-4 sm:px-5 sm:py-5'>
+                          <div className='space-y-4 border-t border-neutral-border/60 bg-gov-cream/30 dark:bg-surface-sunken px-4 py-4 sm:px-5 sm:py-5'>
                             <p className='text-[14px] leading-relaxed text-gov-dark dark:text-white'>
                               {term.longDef}
                             </p>

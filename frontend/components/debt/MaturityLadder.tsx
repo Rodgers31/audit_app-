@@ -162,7 +162,7 @@ export default function MaturityLadder({ loans }: MaturityLadderProps) {
       </div>
 
       {hasData ? (
-        <div className='rounded-xl bg-white/70 border border-white/70 shadow-surface p-4 sm:p-5'>
+        <div className='rounded-xl bg-white/70 dark:bg-surface-elevated border border-white/70 shadow-surface p-4 sm:p-5'>
           <ResponsiveContainer width='100%' height={320}>
             <BarChart data={buckets} margin={{ top: 16, right: 12, left: 0, bottom: 8 }}>
               <defs>
@@ -223,7 +223,7 @@ export default function MaturityLadder({ loans }: MaturityLadderProps) {
           </p>
         </div>
       ) : (
-        <div className='rounded-xl bg-white/60 border border-white/60 p-8 text-center text-sm text-neutral-muted'>
+        <div className='rounded-xl bg-white/60 dark:bg-surface-elevated border border-white/60 p-8 text-center text-sm text-neutral-muted'>
           No dated maturity profile available yet.
         </div>
       )}
@@ -248,7 +248,7 @@ export default function MaturityLadder({ loans }: MaturityLadderProps) {
               return (
                 <div
                   key={loan.lender}
-                  className='flex items-center gap-2 rounded-lg bg-white/70 border border-white/60 px-3 py-2'>
+                  className='flex items-center gap-2 rounded-lg bg-white/70 dark:bg-surface-elevated border border-white/60 px-3 py-2'>
                   <span
                     className='w-2.5 h-2.5 rounded-full flex-shrink-0'
                     style={{ backgroundColor: tone.bar }}

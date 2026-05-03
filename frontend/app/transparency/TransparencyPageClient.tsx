@@ -155,7 +155,7 @@ interface CountyFlowRow {
 
 function MilestoneChip({ icon, label, sub }: { icon: React.ReactNode; label: string; sub: string }) {
   return (
-    <div className='rounded-xl bg-white/70 border border-amber-200/50 px-3 py-2 flex items-start gap-2'>
+    <div className='rounded-xl bg-white/70 dark:bg-surface-elevated border border-amber-200/50 px-3 py-2 flex items-start gap-2'>
       <div className='flex-shrink-0 mt-0.5 text-amber-700'>{icon}</div>
       <div className='min-w-0'>
         <p className='text-[10px] font-semibold text-amber-900/60 uppercase tracking-wider'>
@@ -223,7 +223,7 @@ function EfficiencyBar({ score }: { score: number }) {
     score >= 70 ? 'text-emerald-700' : score >= 50 ? 'text-amber-700' : 'text-red-700';
   return (
     <div className='flex items-center gap-2 min-w-[120px]'>
-      <div className='flex-1 h-2 bg-gray-100 rounded-full overflow-hidden'>
+      <div className='flex-1 h-2 bg-gray-100 dark:bg-surface-elevated rounded-full overflow-hidden'>
         <motion.div
           initial={{ width: 0 }}
           whileInView={{ width: `${Math.min(score, 100)}%` }}
@@ -384,7 +384,7 @@ export default function TransparencyPage() {
         <ArrowUpDown
           size={11}
           className={`transition-colors ${
-            sortKey === field ? 'text-gov-forest dark:text-emerald-100' : 'text-gray-300 group-hover:text-gray-400'
+            sortKey === field ? 'text-gov-forest dark:text-emerald-100' : 'text-gray-300 dark:text-neutral-muted/60 group-hover:text-gray-400 dark:text-neutral-muted/80'
           }`}
         />
       </span>
@@ -421,7 +421,7 @@ export default function TransparencyPage() {
       {/* ═══ 3. The waterfall hero ═══ */}
       <Section delay={0.08}>
         {nationalLoading ? (
-          <div className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-neutral-border/40 shadow-surface p-16 flex items-center justify-center'>
+          <div className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 shadow-surface p-16 flex items-center justify-center'>
             <Loader2 className='w-6 h-6 animate-spin text-gov-sage' />
             <span className='ml-3 text-gov-dark/60 dark:text-white/60 font-medium'>
               Loading money-flow waterfall…
@@ -528,14 +528,14 @@ export default function TransparencyPage() {
             <div className='relative'>
               <Search
                 size={14}
-                className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'
+                className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-neutral-muted/80'
               />
               <input
                 type='text'
                 placeholder='Search county…'
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className='pl-8 pr-3 py-2 text-sm rounded-xl border border-gray-200 bg-white/80 focus:outline-none focus:ring-2 focus:ring-gov-sage/30 focus:border-gov-sage w-60'
+                className='pl-8 pr-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-neutral-border bg-white/80 dark:bg-surface-elevated focus:outline-none focus:ring-2 focus:ring-gov-sage/30 focus:border-gov-sage w-60'
               />
             </div>
           </div>
@@ -559,7 +559,7 @@ export default function TransparencyPage() {
                 className={`text-xs px-3 py-1.5 rounded-full transition-all ${
                   sortKey === btn.key
                     ? 'bg-gov-forest text-white shadow-sm'
-                    : 'bg-white/60 text-gov-dark/60 dark:text-white/60 hover:bg-white dark:bg-gov-dark/60 border border-gray-200/60'
+                    : 'bg-white/60 dark:bg-surface-elevated text-gov-dark/60 dark:text-white/60 hover:bg-white dark:bg-surface-base border border-gray-200/60 dark:border-neutral-border/60'
                 }`}>
                 {btn.label}
               </button>
@@ -573,10 +573,10 @@ export default function TransparencyPage() {
             </div>
           ) : isProjectedFY ? (
             <ResponsiveTable>
-              <div className='rounded-xl border border-gray-200/60 bg-white/60'>
+              <div className='rounded-xl border border-gray-200/60 dark:border-neutral-border/60 bg-white/60 dark:bg-surface-elevated'>
                 <table className='w-full text-sm'>
                   <thead>
-                    <tr className='border-b border-gray-200 bg-gray-50/50 text-left'>
+                    <tr className='border-b border-gray-200 dark:border-neutral-border bg-gray-50/50 dark:bg-surface-elevated/70 text-left'>
                       <th className='py-3 pl-4 pr-3 font-semibold text-gov-dark/60 dark:text-white/60 text-xs uppercase tracking-wider w-8'>
                         #
                       </th>
@@ -602,8 +602,8 @@ export default function TransparencyPage() {
                         return (
                           <tr
                             key={row.county_id}
-                            className={`border-b border-gray-100 hover:bg-gov-forest/[0.04] transition-colors ${
-                              i % 2 === 0 ? 'bg-white/40' : 'bg-gray-50/30'
+                            className={`border-b border-gray-100 dark:border-neutral-border hover:bg-gov-forest/[0.04] transition-colors ${
+                              i % 2 === 0 ? 'bg-white/40 dark:bg-surface-elevated' : 'bg-gray-50/30 dark:bg-surface-elevated/70'
                             }`}>
                             <td className='py-3 pl-4 pr-3 text-gov-dark/30 dark:text-white/30 font-mono text-xs'>
                               {i + 1}
@@ -621,7 +621,7 @@ export default function TransparencyPage() {
                             <td className='py-3 pr-3'>
                               {share != null ? (
                                 <div className='flex items-center gap-2 min-w-[140px]'>
-                                  <div className='flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden'>
+                                  <div className='flex-1 h-1.5 bg-gray-100 dark:bg-surface-elevated rounded-full overflow-hidden'>
                                     <motion.div
                                       initial={{ width: 0 }}
                                       whileInView={{ width: `${Math.min(share * 4, 100)}%` }}
@@ -635,7 +635,7 @@ export default function TransparencyPage() {
                                   </span>
                                 </div>
                               ) : (
-                                <span className='text-gray-300 text-xs'>—</span>
+                                <span className='text-gray-300 dark:text-neutral-muted/60 text-xs'>—</span>
                               )}
                             </td>
                             <td className='py-3 pr-4'>
@@ -654,10 +654,10 @@ export default function TransparencyPage() {
             </ResponsiveTable>
           ) : (
             <ResponsiveTable>
-              <div className='rounded-xl border border-gray-200/60 bg-white/60'>
+              <div className='rounded-xl border border-gray-200/60 dark:border-neutral-border/60 bg-white/60 dark:bg-surface-elevated'>
                 <table className='w-full text-sm'>
                   <thead>
-                    <tr className='border-b border-gray-200 bg-gray-50/50 text-left'>
+                    <tr className='border-b border-gray-200 dark:border-neutral-border bg-gray-50/50 dark:bg-surface-elevated/70 text-left'>
                       <th className='py-3 pl-4 pr-3 font-semibold text-gov-dark/60 dark:text-white/60 text-xs uppercase tracking-wider w-8'>
                         #
                       </th>
@@ -682,8 +682,8 @@ export default function TransparencyPage() {
                       return (
                         <tr
                           key={row.county_id}
-                          className={`border-b border-gray-100 hover:bg-gov-forest/[0.04] transition-colors ${
-                            i % 2 === 0 ? 'bg-white/40' : 'bg-gray-50/30'
+                          className={`border-b border-gray-100 dark:border-neutral-border hover:bg-gov-forest/[0.04] transition-colors ${
+                            i % 2 === 0 ? 'bg-white/40 dark:bg-surface-elevated' : 'bg-gray-50/30 dark:bg-surface-elevated/70'
                           }`}>
                           <td className='py-3 pl-4 pr-3 text-gov-dark/30 dark:text-white/30 font-mono text-xs'>
                             {i + 1}
@@ -705,7 +705,7 @@ export default function TransparencyPage() {
                             {row.efficiency_score != null ? (
                               <EfficiencyBar score={row.efficiency_score} />
                             ) : (
-                              <span className='text-gray-300 text-xs'>—</span>
+                              <span className='text-gray-300 dark:text-neutral-muted/60 text-xs'>—</span>
                             )}
                           </td>
                           <td className='py-3 pr-3 text-right'>
@@ -714,7 +714,7 @@ export default function TransparencyPage() {
                                 {fmtKES(row.flagged_amount)}
                               </span>
                             ) : (
-                              <span className='text-gray-300 text-xs'>—</span>
+                              <span className='text-gray-300 dark:text-neutral-muted/60 text-xs'>—</span>
                             )}
                           </td>
                           <td className='py-3 pr-3 text-right'>
@@ -723,7 +723,7 @@ export default function TransparencyPage() {
                                 {fmtKES(row.total_gap)}
                               </span>
                             ) : (
-                              <span className='text-gray-300 text-xs'>—</span>
+                              <span className='text-gray-300 dark:text-neutral-muted/60 text-xs'>—</span>
                             )}
                           </td>
                           <td className='py-3 pr-4 hidden lg:table-cell'>
@@ -813,7 +813,7 @@ function InsightCard({
     amber: 'bg-amber-50/80 border-amber-200/50 text-amber-900',
     red: 'bg-red-50/80 border-red-200/50 text-red-900',
     green: 'bg-emerald-50/80 border-emerald-200/50 text-emerald-900',
-    gray: 'bg-gray-50/80 border-gray-200/50 text-gray-700',
+    gray: 'bg-gray-50/80 dark:bg-surface-elevated/70 border-gray-200/50 dark:border-neutral-border/50 text-gray-700 dark:text-neutral-muted',
   };
   return (
     <div className={`rounded-xl border p-4 transition-shadow hover:shadow-md ${styles[accent]}`}>
@@ -844,7 +844,7 @@ function ActionCard({
   const Comp = external ? 'a' : Link;
   const extraProps = external ? { target: '_blank', rel: 'noopener noreferrer' } : {};
   return (
-    <div className='bg-white/60 rounded-xl border border-white/80 p-4 space-y-2 hover:shadow-sm transition-shadow'>
+    <div className='bg-white/60 dark:bg-surface-elevated rounded-xl border border-white/80 p-4 space-y-2 hover:shadow-sm transition-shadow'>
       <div className='w-9 h-9 rounded-lg bg-gov-forest/10 flex items-center justify-center text-gov-forest dark:text-emerald-100'>
         {icon}
       </div>

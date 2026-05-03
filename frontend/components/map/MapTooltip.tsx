@@ -111,8 +111,8 @@ const STATUS_CONFIG: Record<
     stripe: 'bg-violet-500',
   },
   pending: {
-    bg: 'bg-gray-50',
-    text: 'text-gray-600',
+    bg: 'bg-gray-50 dark:bg-surface-elevated',
+    text: 'text-gray-600 dark:text-neutral-muted',
     ring: 'ring-gray-200',
     dot: 'bg-gray-400',
     stripe: 'bg-gray-300',
@@ -249,7 +249,7 @@ export default function MapTooltip({
                     e.stopPropagation();
                     onClose();
                   }}
-                  className='inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-800 active:bg-gray-300 transition-colors'>
+                  className='inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 dark:bg-surface-elevated text-gray-500 dark:text-neutral-muted/80 hover:bg-gray-200 dark:bg-surface-sunken hover:text-gray-800 dark:text-neutral-text active:bg-gray-300 transition-colors'>
                   <X className='w-3.5 h-3.5' />
                 </button>
               )}
@@ -259,7 +259,7 @@ export default function MapTooltip({
           {/* ── Metrics row ── */}
           <div className='grid grid-cols-2 gap-2 mb-3'>
             {/* Budget utilisation */}
-            <div className='rounded-lg border border-neutral-border/40 bg-white/70 p-2.5'>
+            <div className='rounded-lg border border-neutral-border/40 bg-white/70 dark:bg-surface-elevated p-2.5'>
               <div className='flex items-center gap-1 mb-1.5'>
                 <Coins className='w-3 h-3 text-gov-forest/70 dark:text-emerald-100/70' />
                 <span className='text-[10px] font-medium text-neutral-muted'>Utilisation</span>
@@ -279,7 +279,7 @@ export default function MapTooltip({
             </div>
 
             {/* Debt ratio */}
-            <div className='rounded-lg border border-neutral-border/40 bg-white/70 p-2.5'>
+            <div className='rounded-lg border border-neutral-border/40 bg-white/70 dark:bg-surface-elevated p-2.5'>
               <div className='flex items-center gap-1 mb-1.5'>
                 <TrendingUp className='w-3 h-3 text-gov-gold/80' />
                 <span className='text-[10px] font-medium text-neutral-muted'>Debt Ratio</span>
@@ -375,7 +375,7 @@ function AlertRow({
       className={`flex items-center justify-between rounded-md px-2 py-1.5 border ${t.bg} ${t.border}`}>
       <div className='flex items-center gap-1.5'>
         {icon}
-        <span className='text-[10px] font-medium text-gray-700'>{label}</span>
+        <span className='text-[10px] font-medium text-gray-700 dark:text-neutral-muted'>{label}</span>
       </div>
       <span className={`text-[10px] font-bold tabular-nums ${t.value}`}>{value}</span>
     </div>

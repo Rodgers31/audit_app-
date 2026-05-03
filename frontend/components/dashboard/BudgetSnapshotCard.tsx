@@ -218,7 +218,7 @@ export default function BudgetSnapshotCard() {
 
         <Link
           href='/budget'
-          className='group mt-auto pt-4 flex items-center justify-center gap-1.5 w-full rounded-lg bg-white/60 border border-neutral-border/40 hover:border-gov-sage/40 hover:bg-gov-sage/[0.04] px-4 py-2.5 transition-all text-xs font-medium text-gov-dark dark:text-white'>
+          className='group mt-auto pt-4 flex items-center justify-center gap-1.5 w-full rounded-lg bg-white/60 dark:bg-surface-elevated border border-neutral-border/40 hover:border-gov-sage/40 hover:bg-gov-sage/[0.04] px-4 py-2.5 transition-all text-xs font-medium text-gov-dark dark:text-white'>
           {t('home.budget.view_full')}
         </Link>
       </div>

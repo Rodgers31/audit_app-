@@ -268,7 +268,7 @@ export default function QuizGame() {
               transition={{ delay: i * 0.06, duration: 0.45 }}
               whileHover={{ y: -4 }}
               whileTap={{ scale: 0.97 }}
-              className='group relative overflow-hidden rounded-2xl bg-white/60 backdrop-blur border border-white/50 p-5 text-left shadow-surface hover:shadow-elevated transition-shadow'>
+              className='group relative overflow-hidden rounded-2xl bg-white/60 dark:bg-surface-elevated backdrop-blur border border-white/50 p-5 text-left shadow-surface hover:shadow-elevated transition-shadow'>
               {/* Gradient accent bar */}
               <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${cat.gradient}`} />
               <span className='text-3xl mb-3 block'>{cat.emoji}</span>
@@ -339,7 +339,7 @@ export default function QuizGame() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -40 }}
             transition={{ duration: 0.35 }}
-            className='rounded-2xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-elevated p-6 sm:p-8'>
+            className='rounded-2xl bg-white/70 dark:bg-surface-elevated backdrop-blur-xl border border-white/60 shadow-elevated p-6 sm:p-8'>
             {/* Difficulty badge */}
             <span
               className={`mb-4 inline-block rounded-full px-3 py-0.5 text-xs font-semibold uppercase tracking-wide ${
@@ -364,7 +364,7 @@ export default function QuizGame() {
                 const isAnswer = i === currentQ.correctIndex;
 
                 let ring = 'border-neutral-border hover:border-gov-sage/60';
-                let bg = 'bg-white/60 hover:bg-white/80';
+                let bg = 'bg-white/60 dark:bg-surface-elevated hover:bg-white/80 dark:bg-surface-elevated';
                 let textColor = 'text-gov-dark dark:text-white';
 
                 if (isFeedback && isAnswer) {
@@ -476,7 +476,7 @@ export default function QuizGame() {
           initial={{ opacity: 0, scale: 0.92 }}
           animate={{ opacity: 1, scale: 1 }}
           className='mx-auto max-w-lg text-center space-y-6'>
-          <div className='rounded-2xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-elevated p-8'>
+          <div className='rounded-2xl bg-white/70 dark:bg-surface-elevated backdrop-blur-xl border border-white/60 shadow-elevated p-8'>
             <span className='text-5xl mb-2 block'>{grade.emoji}</span>
             <h2 className={`text-3xl font-display ${grade.color} mb-1`}>{grade.label}</h2>
             <p className='text-neutral-muted mb-6'>
@@ -539,14 +539,14 @@ export default function QuizGame() {
                 onClick={reset}
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.96 }}
-                className='inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-border bg-white/60 px-5 py-3 font-semibold text-gov-dark dark:text-white hover:bg-white dark:bg-gov-dark/60 transition-colors'>
+                className='inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-border bg-white/60 dark:bg-surface-elevated px-5 py-3 font-semibold text-gov-dark dark:text-white hover:bg-white dark:bg-surface-base transition-colors'>
                 <Trophy size={16} /> All Categories
               </motion.button>
             </div>
           </div>
 
           {/* Review answers */}
-          <div className='rounded-2xl bg-white/50 backdrop-blur border border-white/40 p-5 text-left'>
+          <div className='rounded-2xl bg-white/50 dark:bg-surface-elevated backdrop-blur border border-white/40 p-5 text-left'>
             <h3 className='font-bold text-gov-dark dark:text-white mb-3'>Review Answers</h3>
             <div className='space-y-2'>
               {game.answers.map((a, i) => {

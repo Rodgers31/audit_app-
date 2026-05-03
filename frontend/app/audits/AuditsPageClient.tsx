@@ -761,7 +761,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className='text-sm px-3 py-1.5 rounded-lg bg-white/60 border border-gov-dark/10 text-gov-dark dark:text-white focus:outline-none focus:ring-2 focus:ring-gov-sage/30 focus:border-gov-sage appearance-none pr-8 min-w-[140px]'
+        className='text-sm px-3 py-1.5 rounded-lg bg-white/60 dark:bg-surface-elevated border border-gov-dark/10 text-gov-dark dark:text-white focus:outline-none focus:ring-2 focus:ring-gov-sage/30 focus:border-gov-sage appearance-none pr-8 min-w-[140px]'
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
           backgroundRepeat: 'no-repeat',
@@ -786,7 +786,7 @@ function SeverityBadge({ severity }: { severity: string }) {
     Low: 'bg-green-100 text-green-700',
   };
   return (
-    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${styles[severity] || 'bg-gray-100 text-gray-600'}`}>
+    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${styles[severity] || 'bg-gray-100 dark:bg-surface-elevated text-gray-600 dark:text-neutral-muted'}`}>
       {severity}
     </span>
   );
@@ -800,7 +800,7 @@ function StatusBadge({ status }: { status: string | null }) {
     'Partially Resolved': 'bg-amber-100 text-amber-700',
   };
   return (
-    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-600'}`}>
+    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${styles[status] || 'bg-gray-100 dark:bg-surface-elevated text-gray-600 dark:text-neutral-muted'}`}>
       {status}
     </span>
   );

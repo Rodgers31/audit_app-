@@ -138,21 +138,21 @@ function IngestionJobsInner() {
       back={{ href: '/admin', label: 'Back to overview' }}>
       <div className='space-y-5'>
         {/* ── Filter bar ── */}
-        <div className='bg-white dark:bg-gov-dark/60 border border-neutral-border rounded-2xl p-4 shadow-surface flex flex-wrap items-end gap-3'>
+        <div className='bg-white dark:bg-surface-base border border-neutral-border rounded-2xl p-4 shadow-surface flex flex-wrap items-end gap-3'>
           <FilterField label='Domain'>
             <input
               type='text'
               value={domain}
               onChange={(e) => setQuery({ domain: e.target.value || null })}
               placeholder='e.g. counties_budget'
-              className='w-48 px-3 py-1.5 text-sm rounded-lg border border-neutral-border focus:outline-none focus:ring-2 focus:ring-gov-sage/40 focus:border-gov-sage/40 bg-gov-cream/40 dark:bg-white/5'
+              className='w-48 px-3 py-1.5 text-sm rounded-lg border border-neutral-border focus:outline-none focus:ring-2 focus:ring-gov-sage/40 focus:border-gov-sage/40 bg-gov-cream/40 dark:bg-surface-sunken'
             />
           </FilterField>
           <FilterField label='Status'>
             <select
               value={status}
               onChange={(e) => setQuery({ status: e.target.value || null })}
-              className='w-52 px-3 py-1.5 text-sm rounded-lg border border-neutral-border focus:outline-none focus:ring-2 focus:ring-gov-sage/40 focus:border-gov-sage/40 bg-gov-cream/40 dark:bg-white/5'>
+              className='w-52 px-3 py-1.5 text-sm rounded-lg border border-neutral-border focus:outline-none focus:ring-2 focus:ring-gov-sage/40 focus:border-gov-sage/40 bg-gov-cream/40 dark:bg-surface-sunken'>
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
@@ -164,7 +164,7 @@ function IngestionJobsInner() {
             <select
               value={days}
               onChange={(e) => setQuery({ days: e.target.value })}
-              className='w-40 px-3 py-1.5 text-sm rounded-lg border border-neutral-border focus:outline-none focus:ring-2 focus:ring-gov-sage/40 focus:border-gov-sage/40 bg-gov-cream/40 dark:bg-white/5'>
+              className='w-40 px-3 py-1.5 text-sm rounded-lg border border-neutral-border focus:outline-none focus:ring-2 focus:ring-gov-sage/40 focus:border-gov-sage/40 bg-gov-cream/40 dark:bg-surface-sunken'>
               {DAYS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   Last {opt.label}
@@ -183,7 +183,7 @@ function IngestionJobsInner() {
             <button
               onClick={() => refetch()}
               disabled={isFetching}
-              className='inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gov-dark/60 border border-neutral-border hover:border-gov-sage/40 text-neutral-text rounded-lg text-sm transition-all shadow-surface disabled:opacity-50'>
+              className='inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-surface-base border border-neutral-border hover:border-gov-sage/40 text-neutral-text rounded-lg text-sm transition-all shadow-surface disabled:opacity-50'>
               <RefreshCcw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
               Refresh
             </button>
@@ -213,10 +213,10 @@ function IngestionJobsInner() {
           </BodyState>
         ) : (
           <>
-            <div className='bg-white dark:bg-gov-dark/60 border border-neutral-border rounded-2xl overflow-hidden shadow-surface'>
+            <div className='bg-white dark:bg-surface-base border border-neutral-border rounded-2xl overflow-hidden shadow-surface'>
               {/* Desktop table */}
               <table className='hidden md:table w-full text-sm'>
-                <thead className='bg-gov-cream dark:bg-white/5 border-b border-neutral-border text-[11px] uppercase tracking-wider text-neutral-muted'>
+                <thead className='bg-gov-cream dark:bg-surface-sunken border-b border-neutral-border text-[11px] uppercase tracking-wider text-neutral-muted'>
                   <tr>
                     <th className='px-4 py-3 text-left font-semibold'>Domain</th>
                     <th className='px-4 py-3 text-left font-semibold'>Status</th>
@@ -237,7 +237,7 @@ function IngestionJobsInner() {
                       animate='show'
                       custom={i}
                       onClick={() => router.push(`/admin/ingestion/${job.id}`)}
-                      className='border-b last:border-0 border-neutral-border/60 hover:bg-gov-cream/60 dark:hover:bg-white/5 cursor-pointer transition-colors group'>
+                      className='border-b last:border-0 border-neutral-border/60 hover:bg-gov-cream/60 dark:hover:bg-surface-elevated cursor-pointer transition-colors group'>
                       <td className='px-4 py-3'>
                         <div className='flex items-center gap-2'>
                           <span className='font-mono text-xs font-semibold text-neutral-text'>
@@ -287,7 +287,7 @@ function IngestionJobsInner() {
                     custom={i}>
                     <Link
                       href={`/admin/ingestion/${job.id}`}
-                      className='block px-4 py-3 hover:bg-gov-cream/60 dark:hover:bg-white/5 transition-colors'>
+                      className='block px-4 py-3 hover:bg-gov-cream/60 dark:hover:bg-surface-elevated transition-colors'>
                       <div className='flex items-center justify-between gap-2 mb-1'>
                         <span className='font-mono text-xs font-semibold text-neutral-text'>
                           {job.domain}
@@ -376,14 +376,14 @@ function StatusBadge({ status, hasErrors }: { status: string; hasErrors: boolean
         };
       case 'pending':
         return {
-          bg: 'bg-gov-cream dark:bg-white/5',
+          bg: 'bg-gov-cream dark:bg-surface-sunken',
           text: 'text-neutral-muted',
           icon: Clock,
           label: status,
         };
       default:
         return {
-          bg: 'bg-gov-cream dark:bg-white/5',
+          bg: 'bg-gov-cream dark:bg-surface-sunken',
           text: 'text-neutral-muted',
           icon: Clock,
           label: status,
@@ -437,7 +437,7 @@ function Pagination({
         <button
           onClick={() => onChange(Math.max(1, page - 1))}
           disabled={page <= 1}
-          className='inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white dark:bg-gov-dark/60 border border-neutral-border hover:border-gov-sage/40 text-neutral-text disabled:opacity-40 transition-all shadow-surface'>
+          className='inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white dark:bg-surface-base border border-neutral-border hover:border-gov-sage/40 text-neutral-text disabled:opacity-40 transition-all shadow-surface'>
           <ArrowLeft className='w-3.5 h-3.5' />
           Prev
         </button>
@@ -445,7 +445,7 @@ function Pagination({
         <button
           onClick={() => onChange(page + 1)}
           disabled={!hasMore}
-          className='inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white dark:bg-gov-dark/60 border border-neutral-border hover:border-gov-sage/40 text-neutral-text disabled:opacity-40 transition-all shadow-surface'>
+          className='inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white dark:bg-surface-base border border-neutral-border hover:border-gov-sage/40 text-neutral-text disabled:opacity-40 transition-all shadow-surface'>
           Next
           <ArrowRight className='w-3.5 h-3.5' />
         </button>
@@ -456,7 +456,7 @@ function Pagination({
 
 function BodyState({ children }: { children: React.ReactNode }) {
   return (
-    <div className='bg-white dark:bg-gov-dark/60 border border-neutral-border rounded-2xl py-16 flex flex-col items-center justify-center gap-3 shadow-surface'>
+    <div className='bg-white dark:bg-surface-base border border-neutral-border rounded-2xl py-16 flex flex-col items-center justify-center gap-3 shadow-surface'>
       {children}
     </div>
   );

@@ -64,11 +64,11 @@ export default function MoneyFlowTab({ data: countyData }: { data: CountyCompreh
         <div>
           <div className='flex items-center gap-2 mb-1'>
             <div className='h-6 w-1 rounded-full bg-gov-forest' />
-            <h3 className='text-base font-semibold text-gray-900'>
+            <h3 className='text-base font-semibold text-gray-900 dark:text-neutral-text'>
               {t('county.money.header_prefix')} · {countyData.name}
             </h3>
           </div>
-          <p className='text-xs text-gray-500 ml-3'>
+          <p className='text-xs text-gray-500 dark:text-neutral-muted/80 ml-3'>
             {t('county.money.subtitle')} · {selectedYear}
           </p>
         </div>

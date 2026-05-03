@@ -42,7 +42,7 @@ function fmtRelativeDate(iso: string | null): string {
 }
 
 function freshnessColor(iso: string | null): string {
-  if (!iso) return 'text-gray-400';
+  if (!iso) return 'text-gray-400 dark:text-neutral-muted/80';
   const diff = Date.now() - new Date(iso).getTime();
   const days = diff / (24 * 60 * 60 * 1000);
   if (days < 14) return 'text-emerald-600';
@@ -55,7 +55,7 @@ function DocTypeBadge({ type, count }: { type: string; count: number }) {
     budget: 'bg-blue-50 text-blue-700 border-blue-200',
     audit: 'bg-rose-50 text-rose-700 border-rose-200',
     report: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    other: 'bg-gray-50 text-gray-700 border-gray-200',
+    other: 'bg-gray-50 dark:bg-surface-elevated text-gray-700 dark:text-neutral-muted border-gray-200 dark:border-neutral-border',
   };
   const cls = palette[type] || palette.other;
   return (
@@ -81,16 +81,16 @@ export default function SourcesPage() {
       subtitle='Every figure on AuditGava traces back to a document published by a Kenyan government agency. No scraping private sources, no opinion — just what the state already publishes, aggregated in one place.'>
       <div className='space-y-6'>
         {/* Hero stat strip */}
-        <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 px-5 py-4 flex flex-wrap items-center gap-6'>
+        <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border px-5 py-4 flex flex-wrap items-center gap-6'>
           <div className='flex items-center gap-3'>
             <div className='w-10 h-10 rounded-lg bg-gov-forest/10 flex items-center justify-center'>
               <Database className='text-gov-forest dark:text-emerald-100' size={20} />
             </div>
             <div>
-              <div className='text-xs uppercase tracking-wider text-gray-500 font-semibold'>
+              <div className='text-xs uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-semibold'>
                 Documents indexed
               </div>
-              <div className='text-2xl font-bold text-gray-900 tabular-nums'>
+              <div className='text-2xl font-bold text-gray-900 dark:text-neutral-text tabular-nums'>
                 {total.toLocaleString()}
               </div>
             </div>
@@ -100,15 +100,15 @@ export default function SourcesPage() {
               <Globe className='text-amber-700' size={20} />
             </div>
             <div>
-              <div className='text-xs uppercase tracking-wider text-gray-500 font-semibold'>
+              <div className='text-xs uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-semibold'>
                 Publishing agencies
               </div>
-              <div className='text-2xl font-bold text-gray-900 tabular-nums'>
+              <div className='text-2xl font-bold text-gray-900 dark:text-neutral-text tabular-nums'>
                 {sources.length}
               </div>
             </div>
           </div>
-          <div className='flex-1 min-w-[220px] text-sm text-gray-600 leading-relaxed sm:pl-6 sm:border-l border-gray-100'>
+          <div className='flex-1 min-w-[220px] text-sm text-gray-600 dark:text-neutral-muted leading-relaxed sm:pl-6 sm:border-l border-gray-100 dark:border-neutral-border'>
             The freshness dot below shows how recently we last fetched each
             agency. If a feed goes stale, we flag it so you know the numbers
             may not reflect the latest publication.
@@ -117,7 +117,7 @@ export default function SourcesPage() {
 
         {/* Loading / Error */}
         {isLoading && (
-          <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-8 flex items-center justify-center gap-3 text-gray-500'>
+          <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-8 flex items-center justify-center gap-3 text-gray-500 dark:text-neutral-muted/80'>
             <Loader2 className='animate-spin' size={18} />
             <span>Loading source manifest…</span>
           </div>
@@ -134,7 +134,7 @@ export default function SourcesPage() {
             {sources.map((s) => (
               <article
                 key={s.publisher}
-                className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5 hover:border-gov-sage/40 hover:shadow-md transition-all'>
+                className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-5 hover:border-gov-sage/40 hover:shadow-md transition-all'>
                 <div className='flex items-start justify-between gap-3 mb-3'>
                   <div className='min-w-0'>
                     <div className='flex items-center gap-2 mb-1'>
@@ -143,12 +143,12 @@ export default function SourcesPage() {
                           {s.short}
                         </span>
                       )}
-                      <h2 className='text-base font-bold text-gray-900 truncate'>
+                      <h2 className='text-base font-bold text-gray-900 dark:text-neutral-text truncate'>
                         {s.publisher}
                       </h2>
                     </div>
                     {s.role && (
-                      <p className='text-sm text-gray-600 leading-relaxed'>{s.role}</p>
+                      <p className='text-sm text-gray-600 dark:text-neutral-muted leading-relaxed'>{s.role}</p>
                     )}
                   </div>
                   {s.website && (
@@ -163,17 +163,17 @@ export default function SourcesPage() {
                   )}
                 </div>
 
-                <div className='flex flex-wrap items-center gap-4 pt-3 border-t border-gray-100'>
+                <div className='flex flex-wrap items-center gap-4 pt-3 border-t border-gray-100 dark:border-neutral-border'>
                   <div>
-                    <div className='text-[10px] uppercase tracking-wider text-gray-500 font-semibold'>
+                    <div className='text-[10px] uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-semibold'>
                       Documents
                     </div>
-                    <div className='text-lg font-bold text-gray-900 tabular-nums'>
+                    <div className='text-lg font-bold text-gray-900 dark:text-neutral-text tabular-nums'>
                       {s.document_count.toLocaleString()}
                     </div>
                   </div>
                   <div>
-                    <div className='text-[10px] uppercase tracking-wider text-gray-500 font-semibold'>
+                    <div className='text-[10px] uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-semibold'>
                       Last fetched
                     </div>
                     <div
@@ -201,8 +201,8 @@ export default function SourcesPage() {
         <div className='bg-gov-forest/5 border border-gov-forest/20 rounded-xl p-5'>
           <div className='flex items-start gap-3'>
             <FileText className='text-gov-forest dark:text-emerald-100 mt-0.5 shrink-0' size={18} />
-            <div className='text-sm text-gray-700 leading-relaxed'>
-              <p className='font-semibold text-gray-900 mb-1'>How this works</p>
+            <div className='text-sm text-gray-700 dark:text-neutral-muted leading-relaxed'>
+              <p className='font-semibold text-gray-900 dark:text-neutral-text mb-1'>How this works</p>
               <p>
                 Our ETL pipeline fetches PDFs and spreadsheets from each agency&apos;s
                 official portal, extracts line-items using a combination of

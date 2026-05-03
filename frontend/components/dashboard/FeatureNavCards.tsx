@@ -39,7 +39,7 @@ export default function FeatureNavCards() {
           transition={{ duration: 0.5, delay: 0.08 * i }}>
           <Link href={feat.href}>
             <div
-              className='group relative bg-white/70 backdrop-blur-sm border border-neutral-border/40 rounded-2xl p-5 sm:p-6 text-center
+              className='group relative bg-white/70 dark:bg-surface-elevated backdrop-blur-sm border border-neutral-border/40 rounded-2xl p-5 sm:p-6 text-center
                             transition-all duration-300
                             hover:shadow-elevated hover:-translate-y-1 hover:border-gov-sage/30
                             cursor-pointer'>

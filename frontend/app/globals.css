@@ -22,17 +22,37 @@
   --c-neutral-text: 28 28 28;
   --c-neutral-muted: 107 114 128;
   --c-neutral-border: 226 221 213;
+  /* Surface tokens — used for cards & elevated surfaces. In light
+     mode the cards are white, so all three resolve to the same
+     value. In dark mode they fan out into three distinct elevations
+     so depth reads visually instead of flat-on-flat. */
+  --c-surface-base: 255 255 255; /* card body */
+  --c-surface-elevated: 255 255 255; /* hover / floating */
+  --c-surface-sunken: 250 247 240; /* nested input, list rows */
 }
 
 /* Dark theme triggers when ``<html>`` carries the ``dark`` class
    (set by the boot script in app/layout.tsx). Tailwind also
    matches its ``dark:`` variants on this same class — see
-   tailwind.config.js ``darkMode: 'class'``. */
+   tailwind.config.js ``darkMode: 'class'``.
+
+   Palette is intentionally NOT pure-green-on-green. Instead the
+   body sits at a warm near-black with a hint of the brand's
+   forest tone, cards step UP to a clearly distinct slate-warm
+   surface, and elevated/hover state goes another step lighter.
+   Text is a warm cream-white (inverted from the light-mode cream
+   on dark) so the brand identity carries through. Muted text and
+   borders use warm taupe-grays to break the green monotony.
+   gov-gold and the SubStat accent palette pop crisply on this
+   warm dark. */
 :root.dark {
-  --page-bg-rgb: 10, 20, 16;
-  --c-neutral-text: 245 245 245;
-  --c-neutral-muted: 156 163 175;
-  --c-neutral-border: 55 70 60;
+  --page-bg-rgb: 16, 20, 18; /* #101412 — warm near-black, hint of forest */
+  --c-neutral-text: 240 234 222; /* #F0EADE — warm cream-white (inverted cream) */
+  --c-neutral-muted: 168 162 148; /* #A8A294 — warm taupe-gray */
+  --c-neutral-border: 50 56 50; /* #323832 — visible but subtle warm dark */
+  --c-surface-base: 28 34 30; /* #1C221E — slate-warm card surface */
+  --c-surface-elevated: 38 46 40; /* #262E28 — hover / floating */
+  --c-surface-sunken: 22 26 24; /* #161A18 — nested input bg */
 }
 
 /* ── Base ── */
@@ -48,7 +68,9 @@
 
   body {
     @apply bg-gov-sand text-neutral-text;
-    @apply dark:bg-[#0a1410] dark:text-neutral-100;
+    /* Warm near-black, mirrors --page-bg-rgb above so gradient
+       blends and inline rgba() consumers stay in sync. */
+    @apply dark:bg-[#101412] dark:text-neutral-text;
     /* Body-level fallback so text doesn't snap. Per-element
        transitions are applied below to cards, borders, etc. */
     transition:
@@ -73,15 +95,21 @@
 
 /* ── Component tokens ── */
 @layer components {
-  /* Glass surfaces */
+  /* Glass surfaces — light keeps cream/white tints, dark switches to
+     the layered surface tokens so cards read as warm-slate (not flat
+     green-on-green) and shadows deepen for proper depth. */
   .glass-surface {
-    @apply bg-white/60 backdrop-blur-xl border border-white/30 shadow-surface;
+    @apply bg-white/60 backdrop-blur-xl border border-white/30 shadow-surface
+           dark:bg-surface-base/60 dark:border-white/10;
   }
   .glass-surface-dark {
-    @apply bg-gov-dark/40 backdrop-blur-xl border border-white/10;
+    @apply bg-gov-dark/40 backdrop-blur-xl border border-white/10
+           dark:bg-surface-base/60;
   }
   .glass-card {
-    @apply bg-white/70 backdrop-blur-lg border border-white/40 shadow-surface rounded-2xl;
+    @apply bg-white/70 backdrop-blur-lg border border-white/40 shadow-surface rounded-2xl
+           dark:bg-surface-base/80 dark:border-white/10
+           dark:shadow-[0_8px_40px_rgba(0,0,0,0.35)];
   }
 
   /* Editorial metric type */
@@ -123,9 +151,12 @@
            text-xs font-semibold bg-gov-sage/15 text-gov-sage;
   }
 
-  /* Cards / panels */
+  /* Cards / panels — dark mode picks up the surface-base token so
+     cards stand a step above the page bg, with a subtle warm-dark
+     border instead of the harsh light-mode gray-200. */
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6;
+    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6
+           dark:bg-surface-base dark:border-neutral-border;
   }
   .metric-card {
     @apply card hover:shadow-md transition-shadow duration-200;

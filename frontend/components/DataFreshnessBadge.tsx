@@ -160,7 +160,7 @@ export default function DataFreshnessBadge({
   // Default: inline variant
   if (matched.length === 0) {
     return (
-      <div className={`flex items-center gap-2 text-xs text-gray-400 ${className}`}>
+      <div className={`flex items-center gap-2 text-xs text-gray-400 dark:text-neutral-muted/80 ${className}`}>
         <span
           className='inline-block w-2 h-2 rounded-full bg-gray-300'
           aria-label="Data freshness status: unknown"
@@ -172,7 +172,7 @@ export default function DataFreshnessBadge({
 
   return (
     <div
-      className={`flex items-center gap-2 text-xs text-gray-500 ${className}`}
+      className={`flex items-center gap-2 text-xs text-gray-500 dark:text-neutral-muted/80 ${className}`}
       title={`${label} — ${STATUS_LABEL[worstStatus]}. Updated: ${latestDate || 'unknown'}`}>
       <span
         className={`inline-block w-2 h-2 rounded-full ${STATUS_DOT[worstStatus]}`}

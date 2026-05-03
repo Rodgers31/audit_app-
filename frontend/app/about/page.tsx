@@ -129,7 +129,7 @@ export default function AboutPage() {
               whileInView='show'
               viewport={{ once: true, margin: '-30px' }}
               custom={i}
-              className='bg-white dark:bg-gov-dark/60 rounded-2xl p-5 border border-neutral-border shadow-surface hover:shadow-elevated transition-shadow'>
+              className='bg-white dark:bg-surface-base rounded-2xl p-5 border border-neutral-border shadow-surface hover:shadow-elevated transition-shadow'>
               <div className='flex items-start gap-3'>
                 <div className='w-9 h-9 rounded-lg bg-gov-sage/10 flex items-center justify-center shrink-0 border border-gov-sage/15'>
                   <p.icon className='w-[18px] h-[18px] text-gov-sage' />
@@ -156,7 +156,7 @@ export default function AboutPage() {
               whileInView='show'
               viewport={{ once: true, margin: '-30px' }}
               custom={i}
-              className='flex items-center gap-3 bg-white dark:bg-gov-dark/60 rounded-xl p-4 border border-neutral-border shadow-surface'>
+              className='flex items-center gap-3 bg-white dark:bg-surface-base rounded-xl p-4 border border-neutral-border shadow-surface'>
               <f.icon className='w-5 h-5 text-gov-gold shrink-0' />
               <span className='text-sm text-neutral-text'>{f.label}</span>
             </motion.div>
@@ -183,7 +183,7 @@ export default function AboutPage() {
               whileInView='show'
               viewport={{ once: true, margin: '-20px' }}
               custom={i}
-              className='flex items-center justify-between gap-3 bg-white dark:bg-gov-dark/60 rounded-xl p-4 border border-neutral-border shadow-surface hover:shadow-elevated hover:border-gov-sage/30 transition-all group'>
+              className='flex items-center justify-between gap-3 bg-white dark:bg-surface-base rounded-xl p-4 border border-neutral-border shadow-surface hover:shadow-elevated hover:border-gov-sage/30 transition-all group'>
               <div>
                 <h3 className='font-semibold text-sm text-neutral-text group-hover:text-gov-sage transition-colors'>
                   {s.name}
@@ -228,7 +228,7 @@ export default function AboutPage() {
       {/* ── Contact ── */}
       <section className='space-y-3'>
         <h2 className='font-display text-2xl text-neutral-text'>Contact</h2>
-        <div className='bg-white dark:bg-gov-dark/60 rounded-2xl p-5 border border-neutral-border shadow-surface'>
+        <div className='bg-white dark:bg-surface-base rounded-2xl p-5 border border-neutral-border shadow-surface'>
           <p className='text-neutral-muted text-sm leading-relaxed'>
             Have a tip, question, or partnership inquiry? Reach out:
           </p>

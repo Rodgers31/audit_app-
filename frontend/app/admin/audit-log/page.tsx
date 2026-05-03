@@ -122,14 +122,14 @@ function AuditLogInner() {
       back={{ href: '/admin', label: 'Back to overview' }}>
       <div className='space-y-5'>
         {/* ── Filter bar ── */}
-        <div className='bg-white dark:bg-gov-dark/60 border border-neutral-border rounded-2xl p-4 shadow-surface flex flex-wrap items-end gap-3'>
+        <div className='bg-white dark:bg-surface-base border border-neutral-border rounded-2xl p-4 shadow-surface flex flex-wrap items-end gap-3'>
           <FilterField label='Actor (UUID)'>
             <input
               type='text'
               value={actor_id}
               onChange={(e) => setQuery({ actor_id: e.target.value || null })}
               placeholder='admin user id'
-              className='w-56 px-3 py-1.5 text-xs rounded-lg border border-neutral-border focus:outline-none focus:ring-2 focus:ring-gov-sage/40 bg-gov-cream/40 dark:bg-white/5 font-mono'
+              className='w-56 px-3 py-1.5 text-xs rounded-lg border border-neutral-border focus:outline-none focus:ring-2 focus:ring-gov-sage/40 bg-gov-cream/40 dark:bg-surface-sunken font-mono'
             />
           </FilterField>
           <FilterField label='Action'>
@@ -138,7 +138,7 @@ function AuditLogInner() {
               value={action}
               onChange={(e) => setQuery({ action: e.target.value || null })}
               placeholder='e.g. users.update_roles'
-              className='w-56 px-3 py-1.5 text-xs rounded-lg border border-neutral-border focus:outline-none focus:ring-2 focus:ring-gov-sage/40 bg-gov-cream/40 dark:bg-white/5 font-mono'
+              className='w-56 px-3 py-1.5 text-xs rounded-lg border border-neutral-border focus:outline-none focus:ring-2 focus:ring-gov-sage/40 bg-gov-cream/40 dark:bg-surface-sunken font-mono'
             />
           </FilterField>
           <FilterField label='Target type'>
@@ -147,14 +147,14 @@ function AuditLogInner() {
               value={target_type}
               onChange={(e) => setQuery({ target_type: e.target.value || null })}
               placeholder='user / etl_source'
-              className='w-44 px-3 py-1.5 text-xs rounded-lg border border-neutral-border focus:outline-none focus:ring-2 focus:ring-gov-sage/40 bg-gov-cream/40 dark:bg-white/5 font-mono'
+              className='w-44 px-3 py-1.5 text-xs rounded-lg border border-neutral-border focus:outline-none focus:ring-2 focus:ring-gov-sage/40 bg-gov-cream/40 dark:bg-surface-sunken font-mono'
             />
           </FilterField>
           <FilterField label='Time window'>
             <select
               value={days}
               onChange={(e) => setQuery({ days: e.target.value })}
-              className='w-36 px-3 py-1.5 text-sm rounded-lg border border-neutral-border focus:outline-none focus:ring-2 focus:ring-gov-sage/40 bg-gov-cream/40 dark:bg-white/5'>
+              className='w-36 px-3 py-1.5 text-sm rounded-lg border border-neutral-border focus:outline-none focus:ring-2 focus:ring-gov-sage/40 bg-gov-cream/40 dark:bg-surface-sunken'>
               {DAYS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.value === 0 ? opt.label : `Last ${opt.label}`}
@@ -173,7 +173,7 @@ function AuditLogInner() {
             <button
               onClick={() => refetch()}
               disabled={isFetching}
-              className='inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gov-dark/60 border border-neutral-border hover:border-gov-sage/40 text-neutral-text rounded-lg text-sm transition-all shadow-surface disabled:opacity-50'>
+              className='inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-surface-base border border-neutral-border hover:border-gov-sage/40 text-neutral-text rounded-lg text-sm transition-all shadow-surface disabled:opacity-50'>
               <RefreshCcw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
               Refresh
             </button>
@@ -225,11 +225,11 @@ function AuditRow({ entry, index }: { entry: AuditEntry; index: number }) {
       initial='hidden'
       animate='show'
       custom={index}
-      className='bg-white dark:bg-gov-dark/60 border border-neutral-border rounded-2xl shadow-surface overflow-hidden'>
+      className='bg-white dark:bg-surface-base border border-neutral-border rounded-2xl shadow-surface overflow-hidden'>
       <button
         onClick={() => hasPayload && setExpanded(!expanded)}
         className={`w-full text-left px-4 py-3 flex flex-wrap items-center gap-3 ${
-          hasPayload ? 'hover:bg-gov-cream/50 dark:hover:bg-white/5 cursor-pointer' : 'cursor-default'
+          hasPayload ? 'hover:bg-gov-cream/50 dark:hover:bg-surface-elevated cursor-pointer' : 'cursor-default'
         }`}>
         <span className='inline-flex items-center px-2 py-0.5 rounded-full text-xs font-mono font-semibold bg-gov-sage/15 text-gov-forest dark:text-emerald-200 ring-1 ring-inset ring-gov-sage/20'>
           {entry.action}
@@ -261,7 +261,7 @@ function AuditRow({ entry, index }: { entry: AuditEntry; index: number }) {
           <p className='text-[10px] uppercase tracking-wider text-neutral-muted font-semibold mt-3 mb-1.5'>
             Payload
           </p>
-          <pre className='text-xs font-mono bg-gov-cream dark:bg-white/5 border border-neutral-border rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all text-neutral-text'>
+          <pre className='text-xs font-mono bg-gov-cream dark:bg-surface-sunken border border-neutral-border rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all text-neutral-text'>
             {JSON.stringify(entry.payload, null, 2)}
           </pre>
         </div>
@@ -307,7 +307,7 @@ function Pagination({
         <button
           onClick={() => onChange(Math.max(1, page - 1))}
           disabled={page <= 1}
-          className='inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white dark:bg-gov-dark/60 border border-neutral-border hover:border-gov-sage/40 text-neutral-text disabled:opacity-40 transition-all shadow-surface'>
+          className='inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white dark:bg-surface-base border border-neutral-border hover:border-gov-sage/40 text-neutral-text disabled:opacity-40 transition-all shadow-surface'>
           <ArrowLeft className='w-3.5 h-3.5' />
           Prev
         </button>
@@ -315,7 +315,7 @@ function Pagination({
         <button
           onClick={() => onChange(page + 1)}
           disabled={!hasMore}
-          className='inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white dark:bg-gov-dark/60 border border-neutral-border hover:border-gov-sage/40 text-neutral-text disabled:opacity-40 transition-all shadow-surface'>
+          className='inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white dark:bg-surface-base border border-neutral-border hover:border-gov-sage/40 text-neutral-text disabled:opacity-40 transition-all shadow-surface'>
           Next
           <ArrowRight className='w-3.5 h-3.5' />
         </button>
@@ -326,7 +326,7 @@ function Pagination({
 
 function BodyState({ children }: { children: React.ReactNode }) {
   return (
-    <div className='bg-white dark:bg-gov-dark/60 border border-neutral-border rounded-2xl py-16 flex flex-col items-center justify-center gap-3 shadow-surface'>
+    <div className='bg-white dark:bg-surface-base border border-neutral-border rounded-2xl py-16 flex flex-col items-center justify-center gap-3 shadow-surface'>
       {children}
     </div>
   );

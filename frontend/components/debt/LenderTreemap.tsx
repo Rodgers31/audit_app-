@@ -229,7 +229,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
 
   if (!filtered.length) {
     return (
-      <div className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-neutral-border/40 p-8 text-center text-sm text-neutral-muted'>
+      <div className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 p-8 text-center text-sm text-neutral-muted'>
         No lender breakdown available yet.
       </div>
     );
@@ -245,7 +245,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
           transition={{ duration: 0.4 }}
           onMouseEnter={() => setHoverSlice('External')}
           onMouseLeave={() => setHoverSlice(null)}
-          className='relative rounded-2xl bg-white dark:bg-gov-dark/60 border border-gov-copper/25 shadow-surface p-5 overflow-hidden cursor-default'>
+          className='relative rounded-2xl bg-white dark:bg-surface-base border border-gov-copper/25 shadow-surface p-5 overflow-hidden cursor-default'>
           <div className='absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-gov-copper via-gov-copper/70 to-gov-copper/30' />
           <div className='flex items-center justify-between mb-2'>
             <span className='text-[11px] font-semibold uppercase tracking-[0.15em] text-gov-copper'>
@@ -268,7 +268,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
           transition={{ duration: 0.4 }}
           onMouseEnter={() => setHoverSlice('Domestic')}
           onMouseLeave={() => setHoverSlice(null)}
-          className='relative rounded-2xl bg-white dark:bg-gov-dark/60 border border-gov-sage/25 shadow-surface p-5 overflow-hidden cursor-default'>
+          className='relative rounded-2xl bg-white dark:bg-surface-base border border-gov-sage/25 shadow-surface p-5 overflow-hidden cursor-default'>
           <div className='absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-gov-sage via-gov-sage/70 to-gov-sage/30' />
           <div className='flex items-center justify-between mb-2'>
             <span className='text-[11px] font-semibold uppercase tracking-[0.15em] text-gov-sage'>
@@ -514,7 +514,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
                     onMouseLeave={() => setHoverSlice(null)}
                     className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 transition-all ${
                       isHover
-                        ? 'bg-white dark:bg-gov-dark/60 shadow-sm border border-neutral-border/40'
+                        ? 'bg-white dark:bg-surface-base shadow-sm border border-neutral-border/40'
                         : 'bg-transparent border border-transparent'
                     }`}>
                     <span
@@ -562,7 +562,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
                 layout
                 onMouseEnter={() => setHoverSlice(cat.label)}
                 onMouseLeave={() => setHoverSlice(null)}
-                className={`relative rounded-xl bg-white dark:bg-gov-dark/60 border shadow-sm overflow-hidden transition-shadow ${
+                className={`relative rounded-xl bg-white dark:bg-surface-base border shadow-sm overflow-hidden transition-shadow ${
                   isOpen ? 'shadow-elevated' : 'hover:shadow-md'
                 } ${hoverSlice === cat.label ? 'ring-2 ring-offset-1 ring-offset-gov-sand' : ''}`}
                 style={{

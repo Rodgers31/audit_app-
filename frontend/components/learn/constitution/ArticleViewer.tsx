@@ -280,7 +280,7 @@ export default function ArticleViewer({
           </div>
 
           {/* ── Footer nav ── */}
-          <footer className='flex items-center justify-between gap-3 border-t border-neutral-border/70 bg-gov-cream/60 dark:bg-white/5 px-5 py-3 sm:px-7'>
+          <footer className='flex items-center justify-between gap-3 border-t border-neutral-border/70 bg-gov-cream/60 dark:bg-surface-sunken px-5 py-3 sm:px-7'>
             <button
               type='button'
               onClick={onPrev}

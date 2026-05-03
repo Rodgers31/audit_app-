@@ -147,7 +147,7 @@ export default function RevenueMix({ revenueBySource }: Props) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.55 }}
-      className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-neutral-border/40 shadow-surface p-5 sm:p-7'>
+      className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 shadow-surface p-5 sm:p-7'>
       <div className='flex items-start justify-between gap-4 flex-wrap mb-4'>
         <div>
           <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/80 dark:text-emerald-100/80'>
@@ -213,7 +213,7 @@ export default function RevenueMix({ revenueBySource }: Props) {
               key={r.key}
               onMouseEnter={() => setHoverKey(r.key)}
               onMouseLeave={() => setHoverKey(null)}
-              className={`relative rounded-xl bg-white dark:bg-gov-dark/60 border overflow-hidden transition-all ${
+              className={`relative rounded-xl bg-white dark:bg-surface-base border overflow-hidden transition-all ${
                 isHover ? 'border-neutral-border/80 shadow-elevated' : 'border-neutral-border/30 shadow-sm'
               }`}>
               {/* Left accent stripe */}
@@ -245,7 +245,7 @@ export default function RevenueMix({ revenueBySource }: Props) {
                           ? 'bg-green-50 text-green-700'
                           : yoyDown
                             ? 'bg-red-50 text-red-600'
-                            : 'bg-gray-100 text-gray-500'
+                            : 'bg-gray-100 dark:bg-surface-elevated text-gray-500 dark:text-neutral-muted/80'
                       }`}>
                       {yoyUp ? <ArrowUp size={11} /> : yoyDown ? <ArrowDown size={11} /> : <Minus size={11} />}
                       {Math.abs(r.yoy).toFixed(1)}%

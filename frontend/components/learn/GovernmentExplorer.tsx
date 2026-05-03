@@ -198,7 +198,7 @@ export default function GovernmentExplorer() {
                 {/* Header */}
                 <motion.button
                   onClick={() => toggle(b.id)}
-                  className='w-full flex items-center gap-4 p-5 bg-white/60 backdrop-blur hover:bg-white/80 transition-colors text-left'
+                  className='w-full flex items-center gap-4 p-5 bg-white/60 dark:bg-surface-elevated backdrop-blur hover:bg-white/80 dark:bg-surface-elevated transition-colors text-left'
                   whileTap={{ scale: 0.995 }}>
                   <div
                     className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${b.iconBg}`}>
@@ -230,7 +230,7 @@ export default function GovernmentExplorer() {
                           {b.details.map((d) => (
                             <div
                               key={d.office}
-                              className='rounded-xl bg-white/50 border border-white/40 p-4'>
+                              className='rounded-xl bg-white/50 dark:bg-surface-elevated border border-white/40 p-4'>
                               <h5 className='font-semibold text-gov-dark dark:text-white text-sm mb-1'>
                                 {d.office}
                               </h5>

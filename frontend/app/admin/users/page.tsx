@@ -127,13 +127,13 @@ function UsersListInner() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder='Search by email…'
-              className='w-full pl-10 pr-3 py-2.5 text-sm rounded-xl border border-neutral-border bg-white dark:bg-gov-dark/60 focus:outline-none focus:ring-2 focus:ring-gov-sage/40 focus:border-gov-sage/40 transition-all shadow-surface'
+              className='w-full pl-10 pr-3 py-2.5 text-sm rounded-xl border border-neutral-border bg-white dark:bg-surface-base focus:outline-none focus:ring-2 focus:ring-gov-sage/40 focus:border-gov-sage/40 transition-all shadow-surface'
             />
           </div>
           <button
             onClick={() => refetch()}
             disabled={isFetching}
-            className='inline-flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-gov-dark/60 border border-neutral-border hover:border-gov-sage/40 text-neutral-text rounded-xl text-sm transition-all shadow-surface disabled:opacity-50'>
+            className='inline-flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-surface-base border border-neutral-border hover:border-gov-sage/40 text-neutral-text rounded-xl text-sm transition-all shadow-surface disabled:opacity-50'>
             <RefreshCcw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
             Refresh
           </button>
@@ -162,7 +162,7 @@ function UsersListInner() {
           </BodyState>
         ) : (
           <>
-            <ul className='bg-white dark:bg-gov-dark/60 border border-neutral-border rounded-2xl divide-y divide-neutral-border/60 shadow-surface overflow-hidden'>
+            <ul className='bg-white dark:bg-surface-base border border-neutral-border rounded-2xl divide-y divide-neutral-border/60 shadow-surface overflow-hidden'>
               {data.users.map((u, i) => (
                 <motion.li
                   key={u.id}
@@ -172,7 +172,7 @@ function UsersListInner() {
                   custom={i}>
                   <Link
                     href={`/admin/users/${u.id}`}
-                    className='flex items-center gap-4 px-5 py-4 hover:bg-gov-cream/60 dark:hover:bg-white/5 transition-colors group'>
+                    className='flex items-center gap-4 px-5 py-4 hover:bg-gov-cream/60 dark:hover:bg-surface-elevated transition-colors group'>
                     <div
                       className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border ${
                         u.roles.includes('admin')
@@ -234,7 +234,7 @@ function RolePill({ role }: { role: string }) {
       className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold ${
         isAdmin
           ? 'bg-gov-gold/20 text-gov-forest dark:text-emerald-200 ring-1 ring-inset ring-gov-gold/40'
-          : 'bg-gov-cream dark:bg-white/5 text-neutral-muted ring-1 ring-inset ring-neutral-border'
+          : 'bg-gov-cream dark:bg-surface-sunken text-neutral-muted ring-1 ring-inset ring-neutral-border'
       }`}>
       {role}
     </span>
@@ -267,7 +267,7 @@ function Pagination({
         <button
           onClick={() => onChange(Math.max(1, page - 1))}
           disabled={page <= 1}
-          className='inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white dark:bg-gov-dark/60 border border-neutral-border hover:border-gov-sage/40 text-neutral-text disabled:opacity-40 transition-all shadow-surface'>
+          className='inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white dark:bg-surface-base border border-neutral-border hover:border-gov-sage/40 text-neutral-text disabled:opacity-40 transition-all shadow-surface'>
           <ArrowLeft className='w-3.5 h-3.5' />
           Prev
         </button>
@@ -275,7 +275,7 @@ function Pagination({
         <button
           onClick={() => onChange(page + 1)}
           disabled={!hasMore}
-          className='inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white dark:bg-gov-dark/60 border border-neutral-border hover:border-gov-sage/40 text-neutral-text disabled:opacity-40 transition-all shadow-surface'>
+          className='inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white dark:bg-surface-base border border-neutral-border hover:border-gov-sage/40 text-neutral-text disabled:opacity-40 transition-all shadow-surface'>
           Next
           <ArrowRight className='w-3.5 h-3.5' />
         </button>
@@ -286,7 +286,7 @@ function Pagination({
 
 function BodyState({ children }: { children: React.ReactNode }) {
   return (
-    <div className='bg-white dark:bg-gov-dark/60 border border-neutral-border rounded-2xl py-16 flex flex-col items-center justify-center gap-3 shadow-surface'>
+    <div className='bg-white dark:bg-surface-base border border-neutral-border rounded-2xl py-16 flex flex-col items-center justify-center gap-3 shadow-surface'>
       {children}
     </div>
   );

@@ -94,7 +94,7 @@ export default function IngestionJobDetailPage({
           <button
             onClick={() => refetch()}
             disabled={isFetching}
-            className='inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gov-dark/60 border border-neutral-border hover:border-gov-sage/40 text-neutral-text rounded-lg text-sm transition-all shadow-surface disabled:opacity-50'>
+            className='inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-surface-base border border-neutral-border hover:border-gov-sage/40 text-neutral-text rounded-lg text-sm transition-all shadow-surface disabled:opacity-50'>
             <RefreshCcw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
             Refresh
           </button>
@@ -106,7 +106,7 @@ export default function IngestionJobDetailPage({
           initial='hidden'
           animate='show'
           custom={0}
-          className='bg-white dark:bg-gov-dark/60 border border-neutral-border rounded-2xl p-6 shadow-surface'>
+          className='bg-white dark:bg-surface-base border border-neutral-border rounded-2xl p-6 shadow-surface'>
           <div className='flex items-center gap-2 mb-4'>
             <StatusBadge status={data.status} hasErrors={data.errors.length > 0} />
             {data.dry_run && (
@@ -156,7 +156,7 @@ export default function IngestionJobDetailPage({
             initial='hidden'
             animate='show'
             custom={1}
-            className='bg-white dark:bg-gov-dark/60 border border-gov-copper/30 rounded-2xl p-5 shadow-surface'>
+            className='bg-white dark:bg-surface-base border border-gov-copper/30 rounded-2xl p-5 shadow-surface'>
             <div className='flex items-center gap-2 mb-3'>
               <div className='w-7 h-7 rounded-lg bg-gov-copper/15 border border-gov-copper/25 flex items-center justify-center'>
                 <AlertTriangle className='w-3.5 h-3.5 text-gov-copper dark:text-red-400' />
@@ -186,9 +186,9 @@ export default function IngestionJobDetailPage({
             initial='hidden'
             animate='show'
             custom={2}
-            className='bg-white dark:bg-gov-dark/60 border border-neutral-border rounded-2xl p-5 shadow-surface'>
+            className='bg-white dark:bg-surface-base border border-neutral-border rounded-2xl p-5 shadow-surface'>
             <h2 className='font-display text-lg text-neutral-text mb-3'>Metadata</h2>
-            <pre className='text-xs font-mono bg-gov-cream dark:bg-white/5 border border-neutral-border rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all text-neutral-text'>
+            <pre className='text-xs font-mono bg-gov-cream dark:bg-surface-sunken border border-neutral-border rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all text-neutral-text'>
               {JSON.stringify(data.metadata, null, 2)}
             </pre>
           </motion.section>
@@ -267,9 +267,9 @@ function StatusBadge({ status, hasErrors }: { status: string; hasErrors: boolean
       case 'running':
         return { bg: 'bg-blue-100 dark:bg-blue-900/40', text: 'text-blue-700 dark:text-blue-300', icon: PlayCircle, label: status };
       case 'pending':
-        return { bg: 'bg-gov-cream dark:bg-white/5', text: 'text-neutral-muted', icon: Clock, label: status };
+        return { bg: 'bg-gov-cream dark:bg-surface-sunken', text: 'text-neutral-muted', icon: Clock, label: status };
       default:
-        return { bg: 'bg-gov-cream dark:bg-white/5', text: 'text-neutral-muted', icon: Clock, label: status };
+        return { bg: 'bg-gov-cream dark:bg-surface-sunken', text: 'text-neutral-muted', icon: Clock, label: status };
     }
   })();
   const Icon = config.icon;

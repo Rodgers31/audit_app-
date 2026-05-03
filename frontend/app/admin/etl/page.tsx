@@ -108,7 +108,7 @@ export default function AdminEtlPage() {
               schedule.refetch();
               health.refetch();
             }}
-            className='inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gov-dark/60 border border-neutral-border hover:border-gov-sage/40 text-neutral-text rounded-lg text-sm transition-all shadow-surface'>
+            className='inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-surface-base border border-neutral-border hover:border-gov-sage/40 text-neutral-text rounded-lg text-sm transition-all shadow-surface'>
             <RefreshCcw
               className={`w-4 h-4 ${
                 schedule.isFetching || health.isFetching ? 'animate-spin' : ''
@@ -189,8 +189,8 @@ export default function AdminEtlPage() {
           initial='hidden'
           animate='show'
           custom={3}
-          className='bg-white dark:bg-gov-dark/60 border border-neutral-border rounded-2xl overflow-hidden shadow-surface'>
-          <header className='px-5 py-3.5 border-b border-neutral-border bg-gov-cream dark:bg-white/5'>
+          className='bg-white dark:bg-surface-base border border-neutral-border rounded-2xl overflow-hidden shadow-surface'>
+          <header className='px-5 py-3.5 border-b border-neutral-border bg-gov-cream dark:bg-surface-sunken'>
             <div className='flex items-center gap-2'>
               <PlayCircle className='w-4 h-4 text-gov-sage' />
               <h2 className='font-display text-lg text-neutral-text'>Sources</h2>
@@ -246,7 +246,7 @@ function SummaryCard({
       initial='hidden'
       animate='show'
       custom={order}
-      className='bg-white dark:bg-gov-dark/60 border border-neutral-border rounded-2xl p-5 shadow-surface'>
+      className='bg-white dark:bg-surface-base border border-neutral-border rounded-2xl p-5 shadow-surface'>
       <div className='flex items-center gap-2 mb-2'>
         <div className='w-7 h-7 rounded-lg bg-gov-sage/15 border border-gov-sage/20 flex items-center justify-center'>
           <Icon className='w-3.5 h-3.5 text-gov-sage' />
@@ -288,7 +288,7 @@ function SourceRow({
       initial='hidden'
       animate='show'
       custom={index}
-      className='px-5 py-4 flex flex-wrap items-center gap-4 hover:bg-gov-cream/40 dark:hover:bg-white/5 transition-colors'>
+      className='px-5 py-4 flex flex-wrap items-center gap-4 hover:bg-gov-cream/40 dark:hover:bg-surface-elevated transition-colors'>
       <div className='flex items-center gap-3 min-w-[12rem]'>
         <Icon className={`w-5 h-5 ${colour}`} />
         <div>
@@ -340,7 +340,7 @@ function SourceRow({
           <>
             <button
               onClick={() => setConfirming('dry')}
-              className='inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-full bg-white dark:bg-gov-dark/60 border border-neutral-border hover:border-gov-sage/40 text-neutral-text transition-all shadow-surface'>
+              className='inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-full bg-white dark:bg-surface-base border border-neutral-border hover:border-gov-sage/40 text-neutral-text transition-all shadow-surface'>
               Dry-run
             </button>
             <button

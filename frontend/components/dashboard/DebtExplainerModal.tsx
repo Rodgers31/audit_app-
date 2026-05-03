@@ -62,7 +62,7 @@ export default function DebtExplainerModal({ context, className = '' }: Props) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 12 }}
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-              className='fixed inset-x-4 top-[15vh] z-50 mx-auto max-w-lg bg-white dark:bg-gov-dark/60 rounded-2xl shadow-2xl ring-1 ring-neutral-border/30 overflow-hidden'>
+              className='fixed inset-x-4 top-[15vh] z-50 mx-auto max-w-lg bg-white dark:bg-surface-base rounded-2xl shadow-2xl ring-1 ring-neutral-border/30 overflow-hidden'>
               {/* Header */}
               <div className='flex items-center justify-between px-6 pt-5 pb-3 border-b border-neutral-border/20'>
                 <div className='flex items-center gap-2'>
@@ -123,7 +123,7 @@ export default function DebtExplainerModal({ context, className = '' }: Props) {
                 </div>
 
                 {/* Gap explanation */}
-                <div className='rounded-xl border border-neutral-border/40 bg-white dark:bg-gov-dark/60 px-4 py-3'>
+                <div className='rounded-xl border border-neutral-border/40 bg-white dark:bg-surface-base px-4 py-3'>
                   <p className='text-xs font-semibold uppercase tracking-wider text-neutral-muted mb-1'>
                     📊 The ~1 T gap is explained by
                   </p>

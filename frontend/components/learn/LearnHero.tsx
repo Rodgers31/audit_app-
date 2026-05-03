@@ -220,7 +220,7 @@ export default function LearnHero({ onSearchSubmit, onArticleSelect }: LearnHero
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.18 }}
-                  className='absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-neutral-border bg-white dark:bg-gov-dark/60 text-gov-dark dark:text-white shadow-elevated'>
+                  className='absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-neutral-border bg-white dark:bg-surface-base text-gov-dark dark:text-white shadow-elevated'>
                   {showHits && (
                     <>
                       <div className='border-b border-neutral-border/60 px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-neutral-muted'>
@@ -268,7 +268,7 @@ export default function LearnHero({ onSearchSubmit, onArticleSelect }: LearnHero
                     <button
                       type='button'
                       onClick={() => submit(value)}
-                      className='flex w-full items-center justify-between gap-3 border-t border-neutral-border/60 bg-gov-cream/40 dark:bg-white/5 px-3 py-2.5 text-left text-sm font-semibold text-gov-forest dark:text-emerald-100 transition-colors hover:bg-gov-forest/5'>
+                      className='flex w-full items-center justify-between gap-3 border-t border-neutral-border/60 bg-gov-cream/40 dark:bg-surface-sunken px-3 py-2.5 text-left text-sm font-semibold text-gov-forest dark:text-emerald-100 transition-colors hover:bg-gov-forest/5'>
                       <span className='inline-flex items-center gap-2'>
                         <Search size={14} />
                         Search Constitution for &ldquo;{query}&rdquo;

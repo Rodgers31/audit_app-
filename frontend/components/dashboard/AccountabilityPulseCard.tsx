@@ -135,7 +135,7 @@ export default function AccountabilityPulseCard() {
             {topCounties.map((c: any, i: number) => (
               <div
                 key={c.county}
-                className='flex items-center gap-2.5 rounded-lg bg-white/40 border border-neutral-border/20 px-3 py-2'>
+                className='flex items-center gap-2.5 rounded-lg bg-white/40 dark:bg-surface-elevated border border-neutral-border/20 px-3 py-2'>
                 <span className='w-5 h-5 rounded-md bg-gov-copper/10 flex items-center justify-center flex-shrink-0'>
                   <MapPin className='w-3 h-3 text-gov-copper' />
                 </span>
@@ -169,7 +169,7 @@ export default function AccountabilityPulseCard() {
 
         <Link
           href='/counties'
-          className='group flex items-center justify-center gap-1.5 w-full rounded-lg bg-white/60 border border-neutral-border/40 hover:border-gov-copper/30 hover:bg-gov-copper/[0.03] px-4 py-2.5 transition-all text-xs font-medium text-gov-dark dark:text-white'>
+          className='group flex items-center justify-center gap-1.5 w-full rounded-lg bg-white/60 dark:bg-surface-elevated border border-neutral-border/40 hover:border-gov-copper/30 hover:bg-gov-copper/[0.03] px-4 py-2.5 transition-all text-xs font-medium text-gov-dark dark:text-white'>
           Explore County Audits →
         </Link>
       </div>

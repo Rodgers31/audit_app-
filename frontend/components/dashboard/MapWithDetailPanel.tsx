@@ -60,7 +60,7 @@ export default function MapWithDetailPanel({
       whileInView={{ opacity: 1 }}
       viewport={{ once: true, margin: '-80px' }}
       transition={{ duration: 0.8, delay: 0.2 }}
-      className='grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-0 items-stretch rounded-xl bg-gray-50/60 border border-gray-200/40 overflow-hidden scroll-mt-24'>
+      className='grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-0 items-stretch rounded-xl bg-gray-50/60 dark:bg-surface-elevated/70 border border-gray-200/40 dark:border-neutral-border/40 overflow-hidden scroll-mt-24'>
       <InteractiveKenyaMap
         counties={counties}
         onCountySelect={setSelectedCounty}
@@ -70,7 +70,7 @@ export default function MapWithDetailPanel({
         onCountyIndexChange={setCountyIndex}
         className='p-4'
       />
-      <div className='border-t lg:border-t-0 lg:border-l border-gray-200/50'>
+      <div className='border-t lg:border-t-0 lg:border-l border-gray-200/50 dark:border-neutral-border/50'>
         <CountyDetailsPanel
           county={activeCounty}
           className='h-full rounded-none border-0 shadow-none'

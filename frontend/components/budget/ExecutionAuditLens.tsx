@@ -106,7 +106,7 @@ export default function ExecutionAuditLens({ rows }: Props) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.55 }}
-      className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-neutral-border/40 shadow-surface p-5 sm:p-7'>
+      className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 shadow-surface p-5 sm:p-7'>
       <div className='flex items-start justify-between gap-4 flex-wrap mb-5'>
         <div>
           <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-copper/90'>
@@ -149,7 +149,7 @@ export default function ExecutionAuditLens({ rows }: Props) {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ delay: Math.min(i * 0.04, 0.3), duration: 0.3 }}
-              className='rounded-xl border border-neutral-border/30 bg-white dark:bg-gov-dark/60 overflow-hidden'>
+              className='rounded-xl border border-neutral-border/30 bg-white dark:bg-surface-base overflow-hidden'>
               <button
                 type='button'
                 onClick={() => setExpanded(isOpen ? null : r.sector)}

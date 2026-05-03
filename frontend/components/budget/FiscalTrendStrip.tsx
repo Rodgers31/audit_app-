@@ -107,7 +107,7 @@ export default function FiscalTrendStrip({ history }: Props) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.5 }}
-      className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-neutral-border/40 shadow-surface p-5 sm:p-6'>
+      className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 shadow-surface p-5 sm:p-6'>
       <div className='flex items-baseline justify-between mb-4'>
         <div>
           <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/80 dark:text-emerald-100/80'>
@@ -134,7 +134,7 @@ export default function FiscalTrendStrip({ history }: Props) {
           return (
             <div
               key={c.label}
-              className='relative rounded-xl bg-white dark:bg-gov-dark/60 border border-neutral-border/30 shadow-sm overflow-hidden'>
+              className='relative rounded-xl bg-white dark:bg-surface-base border border-neutral-border/30 shadow-sm overflow-hidden'>
               <div
                 className='absolute inset-x-0 top-0 h-0.5'
                 style={{ background: `linear-gradient(90deg, ${c.gradStart}, ${c.gradEnd})` }}
@@ -153,7 +153,7 @@ export default function FiscalTrendStrip({ history }: Props) {
                             ? c.key === 'total_borrowing' || c.key === 'debt_service_cost'
                               ? 'bg-green-50 text-green-700'
                               : 'bg-red-50 text-red-600'
-                            : 'bg-gray-100 text-gray-500'
+                            : 'bg-gray-100 dark:bg-surface-elevated text-gray-500 dark:text-neutral-muted/80'
                       }`}>
                       {isUp ? <ArrowUp size={10} /> : isDown ? <ArrowDown size={10} /> : <Minus size={10} />}
                       {Math.abs(delta).toFixed(0)}%

@@ -355,7 +355,7 @@ function FlowBar({
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.15 }}
-                className='absolute left-1/2 -translate-x-1/2 -top-2 -translate-y-full z-10 bg-white dark:bg-gov-dark/60 border border-neutral-border/60 shadow-elevated rounded-lg px-3 py-2 w-56 pointer-events-none'>
+                className='absolute left-1/2 -translate-x-1/2 -top-2 -translate-y-full z-10 bg-white dark:bg-surface-base border border-neutral-border/60 shadow-elevated rounded-lg px-3 py-2 w-56 pointer-events-none'>
                 <div className='text-[10px] font-semibold uppercase tracking-wider' style={{ color: seg.accent }}>
                   {seg.label}
                 </div>
@@ -397,7 +397,7 @@ function SegmentLegend({
             onMouseLeave={() => setHover(null)}
             className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-all ${
               isHover
-                ? 'bg-white dark:bg-gov-dark/60 border border-neutral-border/60 shadow-sm'
+                ? 'bg-white dark:bg-surface-base border border-neutral-border/60 shadow-sm'
                 : 'border border-transparent'
             }`}>
             <span

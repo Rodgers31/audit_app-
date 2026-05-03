@@ -22,7 +22,7 @@ export default function LearningHubCTA() {
           <h2 className='font-display text-2xl sm:text-3xl text-gov-dark dark:text-white mb-3 leading-tight'>
             {t('home.learning.heading')}
           </h2>
-          <p className='text-sm sm:text-base text-gray-600 mb-6 leading-relaxed'>
+          <p className='text-sm sm:text-base text-gray-600 dark:text-neutral-muted mb-6 leading-relaxed'>
             {t('home.learning.body_prefix')}{' '}
             <span className='font-semibold text-gov-forest dark:text-emerald-100'>{t('home.learning.hub_name')}</span>.
           </p>

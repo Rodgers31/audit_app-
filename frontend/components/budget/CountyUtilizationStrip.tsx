@@ -67,7 +67,7 @@ export default function CountyUtilizationStrip({ top, bottom, average }: Props) 
       <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
         {/* Top performers */}
         {hasTop && (
-          <div className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-gov-sage/25 shadow-surface overflow-hidden'>
+          <div className='rounded-2xl bg-white dark:bg-surface-base border border-gov-sage/25 shadow-surface overflow-hidden'>
             <div className='bg-gradient-to-r from-gov-sage/15 via-white to-transparent border-b border-neutral-border/30 px-5 py-3 flex items-center gap-2'>
               <TrendingUp size={16} className='text-gov-sage' />
               <h4 className='text-[13px] font-semibold text-gov-dark dark:text-white'>Best absorbed</h4>
@@ -115,7 +115,7 @@ export default function CountyUtilizationStrip({ top, bottom, average }: Props) 
 
         {/* Bottom performers */}
         {hasBottom && (
-          <div className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-gov-copper/25 shadow-surface overflow-hidden'>
+          <div className='rounded-2xl bg-white dark:bg-surface-base border border-gov-copper/25 shadow-surface overflow-hidden'>
             <div className='bg-gradient-to-r from-gov-copper/12 via-white to-transparent border-b border-neutral-border/30 px-5 py-3 flex items-center gap-2'>
               <TrendingDown size={16} className='text-gov-copper' />
               <h4 className='text-[13px] font-semibold text-gov-dark dark:text-white'>Biggest underspend</h4>

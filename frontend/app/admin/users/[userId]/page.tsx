@@ -135,7 +135,7 @@ export default function UserDetailPage({
           initial='hidden'
           animate='show'
           custom={0}
-          className='bg-white dark:bg-gov-dark/60 rounded-2xl p-6 border border-neutral-border shadow-surface'>
+          className='bg-white dark:bg-surface-base rounded-2xl p-6 border border-neutral-border shadow-surface'>
           <div className='flex items-start gap-4'>
             <div
               className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border ${
@@ -184,7 +184,7 @@ export default function UserDetailPage({
           initial='hidden'
           animate='show'
           custom={1}
-          className='bg-white dark:bg-gov-dark/60 rounded-2xl p-6 border border-neutral-border shadow-surface'>
+          className='bg-white dark:bg-surface-base rounded-2xl p-6 border border-neutral-border shadow-surface'>
           <header className='flex items-center justify-between mb-4'>
             <div className='flex items-center gap-2'>
               <Shield className='w-4 h-4 text-gov-sage' />
@@ -226,7 +226,7 @@ export default function UserDetailPage({
                   className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
                     has
                       ? 'bg-gov-gold/20 text-gov-forest dark:text-emerald-200 ring-1 ring-inset ring-gov-gold/40 shadow-sm'
-                      : 'bg-white dark:bg-gov-dark/60 text-neutral-muted ring-1 ring-inset ring-neutral-border hover:ring-gov-sage/40 hover:text-neutral-text'
+                      : 'bg-white dark:bg-surface-base text-neutral-muted ring-1 ring-inset ring-neutral-border hover:ring-gov-sage/40 hover:text-neutral-text'
                   }`}>
                   {has && <CheckCircle2 className='w-3 h-3' />}
                   {role}
@@ -249,7 +249,7 @@ export default function UserDetailPage({
           initial='hidden'
           animate='show'
           custom={2}
-          className='bg-white dark:bg-gov-dark/60 rounded-2xl p-6 border border-neutral-border shadow-surface space-y-4'>
+          className='bg-white dark:bg-surface-base rounded-2xl p-6 border border-neutral-border shadow-surface space-y-4'>
           <div className='flex items-center gap-2'>
             <AlertTriangle className='w-4 h-4 text-gov-warning dark:text-amber-300' />
             <h2 className='font-display text-lg text-neutral-text'>Account actions</h2>
@@ -263,7 +263,7 @@ export default function UserDetailPage({
               <button
                 onClick={() => sendReset.mutate()}
                 disabled={sendReset.isPending || !data.email}
-                className='inline-flex items-center gap-1 px-3.5 py-1.5 text-xs font-semibold rounded-full bg-white dark:bg-gov-dark/60 border border-neutral-border hover:border-gov-sage/40 text-neutral-text disabled:opacity-50 transition-all shadow-surface'>
+                className='inline-flex items-center gap-1 px-3.5 py-1.5 text-xs font-semibold rounded-full bg-white dark:bg-surface-base border border-neutral-border hover:border-gov-sage/40 text-neutral-text disabled:opacity-50 transition-all shadow-surface'>
                 {sendReset.isPending ? <Loader2 className='w-3 h-3 animate-spin' /> : 'Send'}
               </button>
             }
@@ -301,7 +301,7 @@ export default function UserDetailPage({
           initial='hidden'
           animate='show'
           custom={3}
-          className='bg-white dark:bg-gov-dark/60 rounded-2xl border border-neutral-border shadow-surface group'>
+          className='bg-white dark:bg-surface-base rounded-2xl border border-neutral-border shadow-surface group'>
           <summary className='cursor-pointer px-6 py-4 text-sm font-semibold text-neutral-text flex items-center justify-between'>
             Raw Supabase metadata
             <span className='text-xs text-neutral-muted group-open:rotate-180 transition-transform'>
@@ -313,7 +313,7 @@ export default function UserDetailPage({
               <p className='text-[10px] uppercase tracking-wider text-neutral-muted font-semibold mb-1'>
                 app_metadata
               </p>
-              <pre className='text-xs font-mono bg-gov-cream dark:bg-white/5 border border-neutral-border rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all text-neutral-text'>
+              <pre className='text-xs font-mono bg-gov-cream dark:bg-surface-sunken border border-neutral-border rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all text-neutral-text'>
                 {JSON.stringify(data.app_metadata, null, 2)}
               </pre>
             </div>
@@ -321,7 +321,7 @@ export default function UserDetailPage({
               <p className='text-[10px] uppercase tracking-wider text-neutral-muted font-semibold mb-1'>
                 user_metadata
               </p>
-              <pre className='text-xs font-mono bg-gov-cream dark:bg-white/5 border border-neutral-border rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all text-neutral-text'>
+              <pre className='text-xs font-mono bg-gov-cream dark:bg-surface-sunken border border-neutral-border rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all text-neutral-text'>
                 {JSON.stringify(data.user_metadata, null, 2)}
               </pre>
             </div>

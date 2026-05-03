@@ -39,7 +39,7 @@ export default function PageShell({
   back,
 }: PageShellProps) {
   return (
-    <div className='relative min-h-screen bg-gov-sand dark:bg-[#0a1410]'>
+    <div className='relative min-h-screen bg-gov-sand dark:bg-[#101412]'>
       {/* ═══ Bottom scenic image (Kenyan flag) — pinned to bottom ═══ */}
       <div
         className='absolute bottom-0 left-0 right-0'
@@ -150,7 +150,7 @@ export default function PageShell({
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
-            className={`rounded-2xl bg-white/40 dark:bg-gov-dark/30 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-[0_8px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.4)] p-4 sm:p-6 space-y-6 ${className}`}>
+            className={`rounded-2xl bg-white/40 dark:bg-surface-base/70 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-[0_8px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.4)] p-4 sm:p-6 space-y-6 ${className}`}>
             {children}
           </motion.div>
         </div>
