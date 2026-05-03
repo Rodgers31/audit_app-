@@ -119,20 +119,21 @@ export default function ScenicBackgroundLayout({
             height: topHeight,
             zIndex: 0,
           }}>
-          {/* ``object-contain`` shows the full image without cropping,
-              so both the starfield at the top and the city lights at
-              the bottom of the dark variant are visible. The
-              gradient overlay (L2 below) tints the empty space on
-              the sides so letterboxing blends with the dark band
-              rather than reading as bars. */}
+          {/* ``object-position: center 20%`` anchors the image so the
+              upper portion (where the dark variant's starfield lives)
+              stays visible. ``object-cover`` keeps the full hero
+              filled — ``object-contain`` was tried briefly but left
+              an ugly empty band on the sides, so we accept the
+              bottom-of-image crop in exchange for full coverage. */}
           <img
             src={topImage}
             alt=''
-            className={`absolute inset-0 w-full h-full object-contain object-center ${
+            className={`absolute inset-0 w-full h-full object-cover ${
               topImageDark
                 ? 'opacity-100 dark:opacity-0 transition-opacity duration-500'
                 : ''
             }`}
+            style={{ objectPosition: 'center 20%' }}
             loading='eager'
             decoding='async'
           />
@@ -140,7 +141,8 @@ export default function ScenicBackgroundLayout({
             <img
               src={topImageDark}
               alt=''
-              className='absolute inset-0 w-full h-full object-contain object-center opacity-0 dark:opacity-100 transition-opacity duration-500'
+              className='absolute inset-0 w-full h-full object-cover opacity-0 dark:opacity-100 transition-opacity duration-500'
+              style={{ objectPosition: 'center 20%' }}
               loading='eager'
               decoding='async'
             />
