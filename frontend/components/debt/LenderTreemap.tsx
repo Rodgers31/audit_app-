@@ -288,7 +288,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
       </div>
 
       {/* ── Hero: concentric donut + flow bar ── */}
-      <div className='rounded-2xl bg-gradient-to-br from-white via-gov-sand/30 to-white border border-neutral-border/40 shadow-surface p-5 sm:p-7'>
+      <div className='rounded-2xl bg-gradient-to-br from-white via-gov-sand/30 to-white dark:from-surface-elevated dark:via-surface-base dark:to-surface-elevated border border-neutral-border/40 shadow-surface p-5 sm:p-7'>
         <div className='grid grid-cols-1 lg:grid-cols-5 gap-6 items-center'>
           {/* Donut */}
           <div className='lg:col-span-2 relative'>

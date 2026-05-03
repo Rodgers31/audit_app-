@@ -114,7 +114,7 @@ export default function BroaderDebtCard({ cbkTotalKes, cbkAsOf }: Props) {
         </div>
 
         {/* IMF card (broader measure) */}
-        <div className='rounded-2xl border border-gov-gold/40 bg-gradient-to-br from-gov-gold/5 via-white to-gov-sand p-5 shadow-surface relative overflow-hidden'>
+        <div className='rounded-2xl border border-gov-gold/40 dark:border-gov-gold/30 bg-gradient-to-br from-gov-gold/5 via-white to-gov-sand dark:from-gov-gold/[0.08] dark:via-surface-base dark:to-surface-elevated p-5 shadow-surface relative overflow-hidden'>
           <div className='absolute top-0 right-0 bg-gov-gold/15 text-gov-dark/80 dark:text-white/80 text-[9.5px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-bl-lg'>
             Broader measure
           </div>
