@@ -5,7 +5,6 @@ import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import React from 'react';
 import SmartBackLink from '@/lib/navigation/SmartBackLink';
-import ScenicHeaderBand from './ScenicHeaderBand';
 
 /**
  * PageShell
@@ -101,16 +100,9 @@ export default function PageShell({
 
       {/* ═══ Content layer (above the bottom image) ═══ */}
       <div className='relative z-[1]'>
-        {/* ── Scenic header band ──
-             Mirrors the home page treatment: the brand scenic image
-             sits behind the title with a dark tint overlay so titles
-             stay readable. Light + dark variants crossfade with the
-             theme. Falls back to ``bg-gov-dark`` if images haven't
-             loaded yet so first paint still has the right tonal
-             anchor instead of a flash of cream. */}
+        {/* ── Dark-green header band ── */}
         <div className='relative overflow-hidden bg-gov-dark'>
-          <ScenicHeaderBand />
-          {/* Subtle decorative layers — sage + gold hint, unchanged */}
+          {/* Subtle decorative layers — kept faint so existing pages still feel the same */}
           <div
             aria-hidden
             className='pointer-events-none absolute inset-0'
