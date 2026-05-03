@@ -80,13 +80,13 @@ export default function EconomicContextStrip({ ctx }: Props) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.5 }}
-      className='rounded-2xl bg-white border border-neutral-border/40 shadow-surface p-5 sm:p-6'>
+      className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-neutral-border/40 shadow-surface p-5 sm:p-6'>
       <div className='flex items-baseline justify-between gap-3 mb-4'>
         <div>
-          <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/80'>
+          <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/80 dark:text-emerald-100/80'>
             Economic context
           </div>
-          <h3 className='font-display text-lg sm:text-[20px] text-gov-dark leading-tight mt-0.5'>
+          <h3 className='font-display text-lg sm:text-[20px] text-gov-dark dark:text-white leading-tight mt-0.5'>
             How the budget sits against the wider economy
           </h3>
         </div>
@@ -99,7 +99,7 @@ export default function EconomicContextStrip({ ctx }: Props) {
         {cards.map(({ icon: Icon, label, value, sub, accent }) => (
           <div
             key={label}
-            className='rounded-xl border border-neutral-border/30 bg-white p-4 flex items-start gap-3'>
+            className='rounded-xl border border-neutral-border/30 bg-white dark:bg-gov-dark/60 p-4 flex items-start gap-3'>
             <div
               className='w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0'
               style={{ backgroundColor: `${accent}14` }}>
@@ -109,7 +109,7 @@ export default function EconomicContextStrip({ ctx }: Props) {
               <div className='text-[10.5px] uppercase tracking-wider font-semibold text-neutral-muted'>
                 {label}
               </div>
-              <div className='font-display text-xl text-gov-dark tabular-nums leading-tight mt-0.5'>
+              <div className='font-display text-xl text-gov-dark dark:text-white tabular-nums leading-tight mt-0.5'>
                 {value}
               </div>
               <div className='text-[10.5px] text-neutral-muted leading-tight mt-0.5'>

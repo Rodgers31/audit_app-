@@ -77,12 +77,12 @@ export default function InteractiveGlossary({
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${
                   isActive
                     ? 'bg-gov-forest text-white shadow-surface'
-                    : 'bg-gov-forest/5 text-gov-forest hover:bg-gov-forest/10'
+                    : 'bg-gov-forest/5 text-gov-forest dark:text-emerald-100 hover:bg-gov-forest/10'
                 }`}>
                 {cat.label}
                 <span
                   className={`rounded-full px-1.5 text-[10px] ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-white text-gov-forest/70'
+                    isActive ? 'bg-white/20 text-white' : 'bg-white dark:bg-gov-dark/60 text-gov-forest/70 dark:text-emerald-100/70'
                   }`}>
                   {count}
                 </span>
@@ -94,10 +94,10 @@ export default function InteractiveGlossary({
         <div className='flex items-center justify-between text-[11px] text-neutral-muted'>
           <span>
             {searchValue ? (
-              <>Showing <strong className='text-gov-dark'>{totalMatches}</strong> {totalMatches === 1 ? 'term' : 'terms'} for &ldquo;{searchValue}&rdquo;</>
+              <>Showing <strong className='text-gov-dark dark:text-white'>{totalMatches}</strong> {totalMatches === 1 ? 'term' : 'terms'} for &ldquo;{searchValue}&rdquo;</>
             ) : (
               <>
-                <strong className='text-gov-dark'>{glossaryTerms.length}</strong> terms across {GLOSSARY_CATEGORIES.length - 1} themes
+                <strong className='text-gov-dark dark:text-white'>{glossaryTerms.length}</strong> terms across {GLOSSARY_CATEGORIES.length - 1} themes
               </>
             )}
           </span>
@@ -108,7 +108,7 @@ export default function InteractiveGlossary({
                 setInternalSearch('');
                 setCategory('all');
               }}
-              className='font-semibold text-gov-forest hover:underline'>
+              className='font-semibold text-gov-forest dark:text-emerald-100 hover:underline'>
               Reset filters
             </button>
           )}
@@ -119,7 +119,7 @@ export default function InteractiveGlossary({
       {grouped.length === 0 ? (
         <div className='rounded-2xl border border-dashed border-neutral-border bg-white/60 p-10 text-center'>
           <Search size={28} className='mx-auto mb-3 text-neutral-muted' />
-          <h3 className='font-display text-lg text-gov-dark'>No matches</h3>
+          <h3 className='font-display text-lg text-gov-dark dark:text-white'>No matches</h3>
           <p className='mt-1 text-sm text-neutral-muted'>
             Try a simpler word, or reset the filters above.
           </p>
@@ -134,12 +134,12 @@ export default function InteractiveGlossary({
               <div>
                 <h3
                   id={`glossary-${group.category.id}`}
-                  className='font-display text-lg text-gov-dark sm:text-xl'>
+                  className='font-display text-lg text-gov-dark dark:text-white sm:text-xl'>
                   {group.category.label}
                 </h3>
                 <p className='text-[13px] text-neutral-muted'>{group.category.blurb}</p>
               </div>
-              <span className='text-[11px] font-semibold uppercase tracking-wider text-gov-forest/60'>
+              <span className='text-[11px] font-semibold uppercase tracking-wider text-gov-forest/60 dark:text-emerald-100/60'>
                 {group.terms.length} {group.terms.length === 1 ? 'term' : 'terms'}
               </span>
             </div>
@@ -154,19 +154,19 @@ export default function InteractiveGlossary({
                       type='button'
                       onClick={() => setOpenId((v) => (v === term.id ? null : term.id))}
                       aria-expanded={isOpen}
-                      className={`flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gov-cream/40 sm:px-5 sm:py-4 ${
-                        isOpen ? 'bg-gov-cream/50' : ''
+                      className={`flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gov-cream/40 dark:bg-white/5 sm:px-5 sm:py-4 ${
+                        isOpen ? 'bg-gov-cream/50 dark:bg-white/5' : ''
                       }`}>
-                      <span className='mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gov-forest/8 text-gov-forest'>
+                      <span className='mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gov-forest/8 text-gov-forest dark:text-emerald-100'>
                         <Icon size={16} />
                       </span>
                       <span className='min-w-0 flex-1'>
                         <span className='flex flex-wrap items-center gap-1.5'>
-                          <span className='font-display text-[15.5px] font-semibold text-gov-dark'>
+                          <span className='font-display text-[15.5px] font-semibold text-gov-dark dark:text-white'>
                             {term.term}
                           </span>
                           {term.abbreviation && (
-                            <span className='rounded-md bg-gov-forest/10 px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-gov-forest'>
+                            <span className='rounded-md bg-gov-forest/10 px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-gov-forest dark:text-emerald-100'>
                               {term.abbreviation}
                             </span>
                           )}
@@ -191,12 +191,12 @@ export default function InteractiveGlossary({
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                           className='overflow-hidden'>
-                          <div className='space-y-4 border-t border-neutral-border/60 bg-gov-cream/30 px-4 py-4 sm:px-5 sm:py-5'>
-                            <p className='text-[14px] leading-relaxed text-gov-dark'>
+                          <div className='space-y-4 border-t border-neutral-border/60 bg-gov-cream/30 dark:bg-white/5 px-4 py-4 sm:px-5 sm:py-5'>
+                            <p className='text-[14px] leading-relaxed text-gov-dark dark:text-white'>
                               {term.longDef}
                             </p>
                             <div>
-                              <div className='mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gov-forest/70'>
+                              <div className='mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gov-forest/70 dark:text-emerald-100/70'>
                                 In plain life
                               </div>
                               <ul className='space-y-1.5'>
@@ -213,7 +213,7 @@ export default function InteractiveGlossary({
                             {term.relatedArticle && (
                               <Link
                                 href={`/learn#constitution-book`}
-                                className='inline-flex items-center gap-2 rounded-lg bg-gov-forest/10 px-3 py-2 text-[12.5px] font-semibold text-gov-forest transition-colors hover:bg-gov-forest/15'>
+                                className='inline-flex items-center gap-2 rounded-lg bg-gov-forest/10 px-3 py-2 text-[12.5px] font-semibold text-gov-forest dark:text-emerald-100 transition-colors hover:bg-gov-forest/15'>
                                 <ScrollText size={13} />
                                 {term.relatedArticle.label}
                               </Link>

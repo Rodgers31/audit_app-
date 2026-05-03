@@ -164,7 +164,7 @@ export default function CountyDetailsPanel({ county, className = '' }: CountyDet
   const { t } = useLang();
   return (
     <div
-      className={`rounded-xl bg-white border border-gray-200/60 shadow-sm overflow-hidden flex flex-col ${className}`}>
+      className={`rounded-xl bg-white dark:bg-gov-dark/60 border border-gray-200/60 shadow-sm overflow-hidden flex flex-col ${className}`}>
       <AnimatePresence mode='wait'>
         {county ? (
           <motion.div
@@ -179,10 +179,10 @@ export default function CountyDetailsPanel({ county, className = '' }: CountyDet
               <div className='flex items-center justify-between'>
                 <div className='flex items-center gap-2'>
                   <div className='w-7 h-7 rounded-lg bg-gov-forest/10 flex items-center justify-center'>
-                    <MapPin className='w-3.5 h-3.5 text-gov-forest' />
+                    <MapPin className='w-3.5 h-3.5 text-gov-forest dark:text-emerald-100' />
                   </div>
                   <div>
-                    <h3 className='text-base font-bold text-gov-dark leading-tight'>
+                    <h3 className='text-base font-bold text-gov-dark dark:text-white leading-tight'>
                       {county.name}
                     </h3>
                     <p className='text-[10px] text-gray-400 font-medium'>{t('home.county_panel.county_govt')}</p>
@@ -244,7 +244,7 @@ export default function CountyDetailsPanel({ county, className = '' }: CountyDet
                   icon={<Landmark className='w-3 h-3' />}
                   label={t('home.county_panel.audit_rating')}
                   value={county.audit_rating || '—'}
-                  iconBg='bg-gov-forest/10 text-gov-forest'
+                  iconBg='bg-gov-forest/10 text-gov-forest dark:text-emerald-100'
                 />
               </div>
 
@@ -255,7 +255,7 @@ export default function CountyDetailsPanel({ county, className = '' }: CountyDet
                     <span className='text-[10px] text-gray-500 font-medium'>
                       {t('home.county_panel.utilization')}
                     </span>
-                    <span className='text-xs font-bold text-gov-dark tabular-nums'>
+                    <span className='text-xs font-bold text-gov-dark dark:text-white tabular-nums'>
                       {(county.budgetUtilization ?? 0).toFixed(1)}%
                     </span>
                   </div>
@@ -293,7 +293,7 @@ export default function CountyDetailsPanel({ county, className = '' }: CountyDet
               {/* Per-capita budget */}
               <div className='flex items-center justify-between text-[11px] px-0.5'>
                 <span className='text-gray-500'>{t('home.county_panel.per_capita')}</span>
-                <span className='font-semibold text-gov-dark tabular-nums'>
+                <span className='font-semibold text-gov-dark dark:text-white tabular-nums'>
                   {county.budget_2025 && county.population
                     ? `KES ${Math.round(county.budget_2025 / county.population).toLocaleString()}`
                     : '—'}
@@ -363,7 +363,7 @@ function StatItem({
       <div className='min-w-0'>
         <span className='text-[9px] text-gray-400 font-medium block leading-tight'>{label}</span>
         <span
-          className={`text-[13px] font-bold tabular-nums leading-tight ${alert ? 'text-gov-copper' : 'text-gov-dark'}`}>
+          className={`text-[13px] font-bold tabular-nums leading-tight ${alert ? 'text-gov-copper' : 'text-gov-dark dark:text-white'}`}>
           {value}
         </span>
       </div>
@@ -392,7 +392,7 @@ function MiniMetric({
         <span className='text-[10px] text-gray-500 font-medium'>{label}</span>
       </div>
       <span
-        className={`text-xs font-bold tabular-nums ${alert ? 'text-gov-copper' : 'text-gov-dark'}`}>
+        className={`text-xs font-bold tabular-nums ${alert ? 'text-gov-copper' : 'text-gov-dark dark:text-white'}`}>
         {value}
       </span>
       {sub && <span className='block text-[9px] text-gray-400 mt-0.5'>{sub}</span>}
@@ -516,7 +516,7 @@ function AuditFindings({ county }: { county: County }) {
         <div className='flex items-center justify-center mt-1.5'>
           <Link
             href={`/counties/${county.name.toLowerCase().replace(/\s+/g, '-')}`}
-            className='text-[10px] font-medium text-gov-forest hover:text-gov-forest/80 flex items-center gap-1'>
+            className='text-[10px] font-medium text-gov-forest dark:text-emerald-100 hover:text-gov-forest/80 dark:text-emerald-100/80 flex items-center gap-1'>
             <BookOpen className='w-3 h-3' />
             {t('home.county_panel.view_all_findings').replace('{n}', String(issues.length))}
           </Link>

@@ -31,7 +31,7 @@ export default function CategoryFilter({
               className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all duration-200 ${
                 selectedCategory === category.id
                   ? 'bg-red-100 border-red-300 text-red-800'
-                  : 'bg-white border-gray-200 text-gray-700 hover:border-red-300'
+                  : 'bg-white dark:bg-gov-dark/60 border-gray-200 text-gray-700 hover:border-red-300'
               }`}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}>

@@ -29,7 +29,7 @@ export default function ProjectsTab({ data }: { data: CountyComprehensive }) {
   return (
     <div className='space-y-4'>
       {/* Summary */}
-      <div className='bg-white rounded-xl border border-gray-100 p-5'>
+      <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
         <div className='grid grid-cols-3 gap-4'>
           <KPI
             label={t('county.projects.kpi_stalled')}
@@ -52,7 +52,7 @@ export default function ProjectsTab({ data }: { data: CountyComprehensive }) {
 
       {/* Project cards */}
       {stalled_projects.projects.map((p, i) => (
-        <div key={i} className='bg-white rounded-xl border border-gray-100 p-5'>
+        <div key={i} className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
           <div className='flex items-start justify-between gap-3 mb-3'>
             <div className='min-w-0'>
               <h4 className='text-sm font-semibold text-gray-900'>{p.project_name}</h4>

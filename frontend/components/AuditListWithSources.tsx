@@ -38,7 +38,7 @@ export default function AuditListWithSources({
         const page = item.source?.page;
         const anchor = url ? `${url}${page ? `#page=${page}` : ''}` : undefined;
         return (
-          <li key={String(item.id)} className='p-3 rounded-lg border border-slate-200 bg-white'>
+          <li key={String(item.id)} className='p-3 rounded-lg border border-slate-200 bg-white dark:bg-gov-dark/60'>
             <div className='text-sm text-slate-800'>{item.description || 'Audit finding'}</div>
             <div className='flex gap-3 text-xs text-slate-600 mt-1'>
               {item.severity && <span>Severity: {item.severity}</span>}

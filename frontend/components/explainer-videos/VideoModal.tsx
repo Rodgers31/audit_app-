@@ -26,7 +26,7 @@ export default function VideoModal({ video, isOpen, onClose }: VideoModalProps) 
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className='bg-white rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto'
+        className='bg-white dark:bg-gov-dark/60 rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto'
         onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className='flex items-center justify-between mb-6'>

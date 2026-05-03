@@ -106,17 +106,17 @@ export default function ExecutionAuditLens({ rows }: Props) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.55 }}
-      className='rounded-2xl bg-white border border-neutral-border/40 shadow-surface p-5 sm:p-7'>
+      className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-neutral-border/40 shadow-surface p-5 sm:p-7'>
       <div className='flex items-start justify-between gap-4 flex-wrap mb-5'>
         <div>
           <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-copper/90'>
             The audit lens · execution
           </div>
-          <h3 className='font-display text-xl sm:text-[22px] text-gov-dark leading-tight mt-0.5'>
+          <h3 className='font-display text-xl sm:text-[22px] text-gov-dark dark:text-white leading-tight mt-0.5'>
             Where approved money went unspent
           </h3>
           <p className='text-[12.5px] text-neutral-muted mt-1 max-w-2xl'>
-            Sectors sorted by the biggest <span className='font-semibold text-gov-dark'>absorption gap</span>{' '}
+            Sectors sorted by the biggest <span className='font-semibold text-gov-dark dark:text-white'>absorption gap</span>{' '}
             first. Unspent money is not savings — it&apos;s approvals by Parliament that failed to reach citizens.
           </p>
         </div>
@@ -124,7 +124,7 @@ export default function ExecutionAuditLens({ rows }: Props) {
           <div className='text-[10px] uppercase tracking-wider font-semibold text-gov-copper'>
             Total unspent
           </div>
-          <div className='font-display text-xl text-gov-dark leading-tight tabular-nums'>
+          <div className='font-display text-xl text-gov-dark dark:text-white leading-tight tabular-nums'>
             KES {fmtB(totals.unspent)}
           </div>
           <div className='text-[10.5px] text-neutral-muted leading-tight tabular-nums'>
@@ -149,7 +149,7 @@ export default function ExecutionAuditLens({ rows }: Props) {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ delay: Math.min(i * 0.04, 0.3), duration: 0.3 }}
-              className='rounded-xl border border-neutral-border/30 bg-white overflow-hidden'>
+              className='rounded-xl border border-neutral-border/30 bg-white dark:bg-gov-dark/60 overflow-hidden'>
               <button
                 type='button'
                 onClick={() => setExpanded(isOpen ? null : r.sector)}
@@ -163,7 +163,7 @@ export default function ExecutionAuditLens({ rows }: Props) {
                         background: `linear-gradient(180deg, ${tone.start}, ${tone.end})`,
                       }}
                     />
-                    <span className='text-[12px] sm:text-[13px] font-semibold text-gov-dark truncate'>
+                    <span className='text-[12px] sm:text-[13px] font-semibold text-gov-dark dark:text-white truncate'>
                       {r.sector}
                     </span>
                   </div>
@@ -187,7 +187,7 @@ export default function ExecutionAuditLens({ rows }: Props) {
                 </div>
                 {/* Values */}
                 <div className='flex-shrink-0 text-right w-28 sm:w-36'>
-                  <div className='text-[12px] font-semibold text-gov-dark tabular-nums'>
+                  <div className='text-[12px] font-semibold text-gov-dark dark:text-white tabular-nums'>
                     KES {fmtB(r.spent)}
                   </div>
                   <div className='text-[10.5px] text-neutral-muted tabular-nums'>

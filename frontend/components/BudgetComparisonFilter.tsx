@@ -70,19 +70,19 @@ export default function BudgetComparisonFilter({
     } else {
       switch (color) {
         case 'blue':
-          return `${baseClasses} bg-white text-blue-600 border-blue-200 hover:border-blue-400 hover:bg-blue-50`;
+          return `${baseClasses} bg-white dark:bg-gov-dark/60 text-blue-600 border-blue-200 hover:border-blue-400 hover:bg-blue-50`;
         case 'green':
-          return `${baseClasses} bg-white text-green-600 border-green-200 hover:border-green-400 hover:bg-green-50`;
+          return `${baseClasses} bg-white dark:bg-gov-dark/60 text-green-600 border-green-200 hover:border-green-400 hover:bg-green-50`;
         case 'purple':
-          return `${baseClasses} bg-white text-purple-600 border-purple-200 hover:border-purple-400 hover:bg-purple-50`;
+          return `${baseClasses} bg-white dark:bg-gov-dark/60 text-purple-600 border-purple-200 hover:border-purple-400 hover:bg-purple-50`;
         default:
-          return `${baseClasses} bg-white text-gray-600 border-gray-200 hover:border-gray-400 hover:bg-gray-50`;
+          return `${baseClasses} bg-white dark:bg-gov-dark/60 text-gray-600 border-gray-200 hover:border-gray-400 hover:bg-gray-50`;
       }
     }
   };
 
   return (
-    <div className='bg-white rounded-3xl p-8 shadow-xl border border-gray-200'>
+    <div className='bg-white dark:bg-gov-dark/60 rounded-3xl p-8 shadow-xl border border-gray-200'>
       <div className='text-center mb-8'>
         <h2 className='text-2xl font-bold text-gray-900 mb-2'>Choose Budget Period</h2>
         <p className='text-gray-600'>

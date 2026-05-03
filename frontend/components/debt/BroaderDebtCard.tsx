@@ -73,8 +73,8 @@ export default function BroaderDebtCard({ cbkTotalKes, cbkAsOf }: Props) {
       transition={{ duration: 0.5 }}
       className='space-y-4 scroll-mt-24'>
       <div>
-        <h2 className='font-display text-2xl sm:text-3xl text-gov-dark flex items-center gap-2'>
-          <TrendingUp className='text-gov-forest' size={24} />
+        <h2 className='font-display text-2xl sm:text-3xl text-gov-dark dark:text-white flex items-center gap-2'>
+          <TrendingUp className='text-gov-forest dark:text-emerald-100' size={24} />
           Two measures of public debt
         </h2>
         <p className='text-sm text-neutral-muted mt-1'>
@@ -84,13 +84,13 @@ export default function BroaderDebtCard({ cbkTotalKes, cbkAsOf }: Props) {
 
       <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
         {/* CBK card (Treasury's number) */}
-        <div className='rounded-2xl border border-neutral-border/50 bg-white p-5 shadow-surface'>
-          <div className='flex items-center gap-2 text-[10px] uppercase tracking-widest text-gov-forest/70 font-semibold'>
+        <div className='rounded-2xl border border-neutral-border/50 bg-white dark:bg-gov-dark/60 p-5 shadow-surface'>
+          <div className='flex items-center gap-2 text-[10px] uppercase tracking-widest text-gov-forest/70 dark:text-emerald-100/70 font-semibold'>
             <Landmark size={12} />
             Treasury / CBK
           </div>
           <div className='mt-2 flex items-baseline gap-2'>
-            <span className='font-display text-3xl sm:text-4xl text-gov-dark tabular-nums'>
+            <span className='font-display text-3xl sm:text-4xl text-gov-dark dark:text-white tabular-nums'>
               KES {fmtT(cbkTotalKes)}
             </span>
           </div>
@@ -104,7 +104,7 @@ export default function BroaderDebtCard({ cbkTotalKes, cbkAsOf }: Props) {
                 href='https://www.centralbank.go.ke/releases/statistical-bulletin/'
                 target='_blank'
                 rel='noopener noreferrer'
-                className='text-gov-forest hover:underline inline-flex items-center gap-0.5'>
+                className='text-gov-forest dark:text-emerald-100 hover:underline inline-flex items-center gap-0.5'>
                 CBK Statistical Bulletin
                 <ArrowUpRight size={11} />
               </a>
@@ -115,10 +115,10 @@ export default function BroaderDebtCard({ cbkTotalKes, cbkAsOf }: Props) {
 
         {/* IMF card (broader measure) */}
         <div className='rounded-2xl border border-gov-gold/40 bg-gradient-to-br from-gov-gold/5 via-white to-gov-sand p-5 shadow-surface relative overflow-hidden'>
-          <div className='absolute top-0 right-0 bg-gov-gold/15 text-gov-dark/80 text-[9.5px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-bl-lg'>
+          <div className='absolute top-0 right-0 bg-gov-gold/15 text-gov-dark/80 dark:text-white/80 text-[9.5px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-bl-lg'>
             Broader measure
           </div>
-          <div className='flex items-center gap-2 text-[10px] uppercase tracking-widest text-gov-forest/70 font-semibold'>
+          <div className='flex items-center gap-2 text-[10px] uppercase tracking-widest text-gov-forest/70 dark:text-emerald-100/70 font-semibold'>
             <TrendingUp size={12} />
             IMF general government
           </div>
@@ -126,11 +126,11 @@ export default function BroaderDebtCard({ cbkTotalKes, cbkAsOf }: Props) {
             <div className='mt-2 h-10 w-40 bg-gray-200 animate-pulse rounded' />
           ) : (
             <div className='mt-2 flex items-baseline gap-2'>
-              <span className='font-display text-3xl sm:text-4xl text-gov-dark tabular-nums'>
+              <span className='font-display text-3xl sm:text-4xl text-gov-dark dark:text-white tabular-nums'>
                 KES {fmtT(imfKes)}
               </span>
               {imfPct != null && (
-                <span className='text-sm font-semibold text-gov-forest'>
+                <span className='text-sm font-semibold text-gov-forest dark:text-emerald-100'>
                   {imfPct.toFixed(1)}% GDP
                 </span>
               )}
@@ -147,7 +147,7 @@ export default function BroaderDebtCard({ cbkTotalKes, cbkAsOf }: Props) {
                 href={data?.source?.dataset_url ?? 'https://www.imf.org/external/datamapper'}
                 target='_blank'
                 rel='noopener noreferrer'
-                className='text-gov-forest hover:underline inline-flex items-center gap-0.5'>
+                className='text-gov-forest dark:text-emerald-100 hover:underline inline-flex items-center gap-0.5'>
                 IMF World Economic Outlook
                 <ArrowUpRight size={11} />
               </a>
@@ -169,9 +169,9 @@ export default function BroaderDebtCard({ cbkTotalKes, cbkAsOf }: Props) {
           Kenya the counties/SOE/arrears overhang turns out to be modest
           compared to what it is in, say, Brazil or South Africa. */}
       <div className='rounded-xl bg-gov-forest/[0.04] border border-gov-forest/15 p-4 flex gap-3'>
-        <Info size={16} className='text-gov-forest mt-0.5 shrink-0' />
-        <div className='text-sm text-gov-dark/85 leading-relaxed'>
-          <strong className='text-gov-dark'>What each number counts.</strong>{' '}
+        <Info size={16} className='text-gov-forest dark:text-emerald-100 mt-0.5 shrink-0' />
+        <div className='text-sm text-gov-dark/85 dark:text-white/85 leading-relaxed'>
+          <strong className='text-gov-dark dark:text-white'>What each number counts.</strong>{' '}
           The CBK figure is Central-Government debt — loans Treasury owes
           directly. IMF's figure is General-Government, the measure
           credit-rating agencies and IMF Article IV use: it adds{' '}
@@ -183,7 +183,7 @@ export default function BroaderDebtCard({ cbkTotalKes, cbkAsOf }: Props) {
           {gap != null && gap > 0 && gap >= 1e12 ? (
             <>
               The{' '}
-              <span className='font-semibold text-gov-dark'>
+              <span className='font-semibold text-gov-dark dark:text-white'>
                 ~{fmtT(gap)} gap
               </span>{' '}
               is public debt Kenyans will pay for — it&apos;s just not on
@@ -192,7 +192,7 @@ export default function BroaderDebtCard({ cbkTotalKes, cbkAsOf }: Props) {
           ) : gap != null && gap > 0 ? (
             <>
               For Kenya the gap is modest — about{' '}
-              <span className='font-semibold text-gov-dark'>
+              <span className='font-semibold text-gov-dark dark:text-white'>
                 {fmtT(gap)}
               </span>
               . That&apos;s a good sign: county and SOE exposures off

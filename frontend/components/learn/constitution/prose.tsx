@@ -107,7 +107,7 @@ export function renderProse(
           key={`r-${key++}`}
           type='button'
           onClick={() => onRefClick(ref.target!)}
-          className='inline rounded px-0.5 font-semibold text-gov-forest decoration-gov-forest/40 decoration-dotted underline-offset-2 hover:bg-gov-forest/5 hover:underline focus:outline-none focus:ring-2 focus:ring-gov-forest/30'>
+          className='inline rounded px-0.5 font-semibold text-gov-forest dark:text-emerald-100 decoration-gov-forest/40 decoration-dotted underline-offset-2 hover:bg-gov-forest/5 hover:underline focus:outline-none focus:ring-2 focus:ring-gov-forest/30'>
           {highlightSearch(label, query)}
         </button>,
       );
@@ -219,7 +219,7 @@ function highlightSearch(text: string, query?: string): React.ReactNode {
     out.push(
       <mark
         key={`h-${n++}`}
-        className='rounded bg-gov-gold/30 px-0.5 text-gov-dark'>
+        className='rounded bg-gov-gold/30 px-0.5 text-gov-dark dark:text-white'>
         {text.slice(j, j + q.length)}
       </mark>,
     );

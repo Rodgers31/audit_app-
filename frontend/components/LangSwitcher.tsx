@@ -36,7 +36,7 @@ export default function LangSwitcher({ compact = false }: { compact?: boolean })
             onClick={() => setLang(opt.value)}
             className={`px-2 py-1 rounded-full font-semibold tracking-wide transition-colors ${
               active
-                ? 'bg-gov-sage text-gov-dark shadow-sm'
+                ? 'bg-gov-sage text-gov-dark dark:text-white shadow-sm'
                 : 'text-white/70 hover:text-white hover:bg-white/5'
             }`}>
             {opt.short}

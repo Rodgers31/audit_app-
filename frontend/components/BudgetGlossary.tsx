@@ -109,7 +109,7 @@ export default function BudgetGlossary({ term, children }: BudgetGlossaryProps) 
                 top: tooltipPosition.y,
                 transform: 'translateX(-50%) translateY(-100%)',
               }}
-              className='absolute bg-white rounded-xl shadow-2xl border border-gray-200 p-6 max-w-sm pointer-events-auto'>
+              className='absolute bg-white dark:bg-gov-dark/60 rounded-xl shadow-2xl border border-gray-200 p-6 max-w-sm pointer-events-auto'>
               {/* Arrow */}
               <div
                 className='absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0'

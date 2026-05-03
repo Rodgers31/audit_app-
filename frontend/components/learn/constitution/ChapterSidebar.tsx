@@ -39,7 +39,7 @@ function ChapterSidebarInner({
 }: ChapterSidebarProps) {
   return (
     <nav className='text-sm' aria-label='Constitution chapters'>
-      <div className='flex items-center gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-gov-forest/70'>
+      <div className='flex items-center gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-gov-forest/70 dark:text-emerald-100/70'>
         <BookOpen size={13} />
         Chapters
       </div>
@@ -58,11 +58,11 @@ function ChapterSidebarInner({
                 className={`group flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left transition-colors ${
                   isActive
                     ? 'bg-gov-forest text-white shadow-surface'
-                    : 'text-gov-dark hover:bg-gov-forest/10'
+                    : 'text-gov-dark dark:text-white hover:bg-gov-forest/10'
                 }`}>
                 <span
                   className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold ${
-                    isActive ? 'bg-gov-gold text-gov-dark' : 'bg-gov-forest/10 text-gov-forest'
+                    isActive ? 'bg-gov-gold text-gov-dark dark:text-white' : 'bg-gov-forest/10 text-gov-forest dark:text-emerald-100'
                   }`}>
                   {chapter.number}
                 </span>
@@ -80,7 +80,7 @@ function ChapterSidebarInner({
                 {isActive ? (
                   <ChevronDown size={14} className='mt-1 text-white/80' />
                 ) : (
-                  <ChevronRight size={14} className='mt-1 text-neutral-muted group-hover:text-gov-forest' />
+                  <ChevronRight size={14} className='mt-1 text-neutral-muted group-hover:text-gov-forest dark:text-emerald-100' />
                 )}
               </button>
 
@@ -103,10 +103,10 @@ function ChapterSidebarInner({
                           }}
                           className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-[13px] leading-snug transition-colors ${
                             isArticleActive
-                              ? 'bg-gov-gold/20 font-semibold text-gov-forest'
-                              : 'text-neutral-text hover:bg-gov-forest/5 hover:text-gov-forest'
+                              ? 'bg-gov-gold/20 font-semibold text-gov-forest dark:text-emerald-100'
+                              : 'text-neutral-text hover:bg-gov-forest/5 hover:text-gov-forest dark:text-emerald-100'
                           }`}>
-                          <span className='mt-[1px] w-8 shrink-0 text-[11px] font-semibold text-gov-forest/70'>
+                          <span className='mt-[1px] w-8 shrink-0 text-[11px] font-semibold text-gov-forest/70 dark:text-emerald-100/70'>
                             {a.number}
                           </span>
                           <span className='min-w-0 flex-1 truncate'>{a.title}</span>

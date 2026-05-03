@@ -291,7 +291,7 @@ export default function InfoTip({ term, size = 14, className = '' }: InfoTipProp
           onMouseEnter={clearClose}
           onMouseLeave={scheduleClose}
           style={getStyle()}
-          className='w-[min(18rem,calc(100vw-1rem))] bg-white border border-gray-200 rounded-xl shadow-xl p-3.5 text-left pointer-events-auto animate-fade-in'
+          className='w-[min(18rem,calc(100vw-1rem))] bg-white dark:bg-gov-dark/60 border border-gray-200 rounded-xl shadow-xl p-3.5 text-left pointer-events-auto animate-fade-in'
         >
           <div className='text-xs font-semibold text-gray-800 mb-1.5'>{entry.title}</div>
           <div className='text-[11px] text-gray-600 leading-relaxed'>{entry.body}</div>

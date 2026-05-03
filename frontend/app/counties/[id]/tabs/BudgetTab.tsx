@@ -61,7 +61,7 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
   return (
     <div className='space-y-5'>
       {/* Top-level budget stats */}
-      <div className='bg-white rounded-xl border border-gray-100 p-5'>
+      <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
         <h3 className='text-sm font-semibold text-gray-800 mb-4'>{t('county.budget.summary')}</h3>
         <div className='grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-6'>
           <KPI
@@ -236,7 +236,7 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
                     onMouseLeave={() => setActiveSector(null)}
                     className={`w-full text-left rounded-xl px-3 py-2.5 transition-all border ${
                       isActive
-                        ? 'border-gray-200 bg-white shadow-sm'
+                        ? 'border-gray-200 bg-white dark:bg-gov-dark/60 shadow-sm'
                         : 'border-transparent hover:bg-white/60'
                     }`}>
                     <div className='flex items-center gap-3'>
@@ -300,7 +300,7 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
 
       {/* Debt breakdown */}
       {debt.breakdown.length > 0 && (
-        <div className='bg-white rounded-xl border border-gray-100 p-5'>
+        <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
           <h3 className='text-sm font-semibold text-gray-800 mb-4'>
             {t('county.budget.debt_breakdown')}
           </h3>
@@ -337,7 +337,7 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
 
       {/* County Pending Bills Breakdown */}
       {(countyPendingBills || debt.pending_bills > 0) && (
-        <div className='bg-white rounded-xl border border-red-200 p-5'>
+        <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-red-200 p-5'>
           <div className='flex items-center gap-2 mb-4'>
             <FileWarning size={16} className='text-red-600' />
             <h3 className='text-sm font-semibold text-gray-800'>

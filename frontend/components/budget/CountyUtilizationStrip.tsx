@@ -49,17 +49,17 @@ export default function CountyUtilizationStrip({ top, bottom, average }: Props) 
       className='space-y-3'>
       <div className='flex items-baseline justify-between gap-3 flex-wrap'>
         <div>
-          <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/80'>
+          <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/80 dark:text-emerald-100/80'>
             County execution
           </div>
-          <h3 className='font-display text-xl sm:text-[22px] text-gov-dark leading-tight mt-0.5'>
+          <h3 className='font-display text-xl sm:text-[22px] text-gov-dark dark:text-white leading-tight mt-0.5'>
             Who&apos;s spending their share — and who isn&apos;t
           </h3>
         </div>
         {average != null && average > 0 && (
           <div className='text-[11px] text-neutral-muted'>
             National average{' '}
-            <span className='text-gov-dark font-bold tabular-nums'>{average.toFixed(1)}%</span>
+            <span className='text-gov-dark dark:text-white font-bold tabular-nums'>{average.toFixed(1)}%</span>
           </div>
         )}
       </div>
@@ -67,10 +67,10 @@ export default function CountyUtilizationStrip({ top, bottom, average }: Props) 
       <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
         {/* Top performers */}
         {hasTop && (
-          <div className='rounded-2xl bg-white border border-gov-sage/25 shadow-surface overflow-hidden'>
+          <div className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-gov-sage/25 shadow-surface overflow-hidden'>
             <div className='bg-gradient-to-r from-gov-sage/15 via-white to-transparent border-b border-neutral-border/30 px-5 py-3 flex items-center gap-2'>
               <TrendingUp size={16} className='text-gov-sage' />
-              <h4 className='text-[13px] font-semibold text-gov-dark'>Best absorbed</h4>
+              <h4 className='text-[13px] font-semibold text-gov-dark dark:text-white'>Best absorbed</h4>
               <span className='text-[10.5px] text-neutral-muted ml-auto'>
                 Money reaches citizens
               </span>
@@ -83,7 +83,7 @@ export default function CountyUtilizationStrip({ top, bottom, average }: Props) 
                   </span>
                   <div className='flex-1 min-w-0'>
                     <div className='flex items-baseline justify-between gap-2 mb-1'>
-                      <span className='text-[12.5px] font-semibold text-gov-dark truncate'>
+                      <span className='text-[12.5px] font-semibold text-gov-dark dark:text-white truncate'>
                         {c.county}
                       </span>
                       <span className='text-[12.5px] font-bold text-gov-sage tabular-nums'>
@@ -115,10 +115,10 @@ export default function CountyUtilizationStrip({ top, bottom, average }: Props) 
 
         {/* Bottom performers */}
         {hasBottom && (
-          <div className='rounded-2xl bg-white border border-gov-copper/25 shadow-surface overflow-hidden'>
+          <div className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-gov-copper/25 shadow-surface overflow-hidden'>
             <div className='bg-gradient-to-r from-gov-copper/12 via-white to-transparent border-b border-neutral-border/30 px-5 py-3 flex items-center gap-2'>
               <TrendingDown size={16} className='text-gov-copper' />
-              <h4 className='text-[13px] font-semibold text-gov-dark'>Biggest underspend</h4>
+              <h4 className='text-[13px] font-semibold text-gov-dark dark:text-white'>Biggest underspend</h4>
               <span className='text-[10.5px] text-neutral-muted ml-auto'>
                 Unreleased to citizens
               </span>
@@ -131,7 +131,7 @@ export default function CountyUtilizationStrip({ top, bottom, average }: Props) 
                   </span>
                   <div className='flex-1 min-w-0'>
                     <div className='flex items-baseline justify-between gap-2 mb-1'>
-                      <span className='text-[12.5px] font-semibold text-gov-dark truncate'>
+                      <span className='text-[12.5px] font-semibold text-gov-dark dark:text-white truncate'>
                         {c.county}
                       </span>
                       <span className='text-[12.5px] font-bold text-gov-copper tabular-nums'>
@@ -165,7 +165,7 @@ export default function CountyUtilizationStrip({ top, bottom, average }: Props) 
       <div className='flex justify-end'>
         <Link
           href='/counties'
-          className='inline-flex items-center gap-1 text-[12px] font-semibold text-gov-forest hover:text-gov-dark transition-colors'>
+          className='inline-flex items-center gap-1 text-[12px] font-semibold text-gov-forest dark:text-emerald-100 hover:text-gov-dark dark:text-white transition-colors'>
           See all 47 counties
           <ArrowRight size={13} />
         </Link>

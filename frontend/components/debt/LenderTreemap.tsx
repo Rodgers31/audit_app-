@@ -229,7 +229,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
 
   if (!filtered.length) {
     return (
-      <div className='rounded-2xl bg-white border border-neutral-border/40 p-8 text-center text-sm text-neutral-muted'>
+      <div className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-neutral-border/40 p-8 text-center text-sm text-neutral-muted'>
         No lender breakdown available yet.
       </div>
     );
@@ -245,7 +245,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
           transition={{ duration: 0.4 }}
           onMouseEnter={() => setHoverSlice('External')}
           onMouseLeave={() => setHoverSlice(null)}
-          className='relative rounded-2xl bg-white border border-gov-copper/25 shadow-surface p-5 overflow-hidden cursor-default'>
+          className='relative rounded-2xl bg-white dark:bg-gov-dark/60 border border-gov-copper/25 shadow-surface p-5 overflow-hidden cursor-default'>
           <div className='absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-gov-copper via-gov-copper/70 to-gov-copper/30' />
           <div className='flex items-center justify-between mb-2'>
             <span className='text-[11px] font-semibold uppercase tracking-[0.15em] text-gov-copper'>
@@ -255,7 +255,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
               {externalShare.toFixed(1)}%
             </span>
           </div>
-          <div className='text-3xl font-extrabold text-gov-dark tabular-nums tracking-tight'>
+          <div className='text-3xl font-extrabold text-gov-dark dark:text-white tabular-nums tracking-tight'>
             KES {fmtT(externalSum)}
           </div>
           <p className='text-[11px] text-neutral-muted mt-2 leading-relaxed'>
@@ -268,7 +268,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
           transition={{ duration: 0.4 }}
           onMouseEnter={() => setHoverSlice('Domestic')}
           onMouseLeave={() => setHoverSlice(null)}
-          className='relative rounded-2xl bg-white border border-gov-sage/25 shadow-surface p-5 overflow-hidden cursor-default'>
+          className='relative rounded-2xl bg-white dark:bg-gov-dark/60 border border-gov-sage/25 shadow-surface p-5 overflow-hidden cursor-default'>
           <div className='absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-gov-sage via-gov-sage/70 to-gov-sage/30' />
           <div className='flex items-center justify-between mb-2'>
             <span className='text-[11px] font-semibold uppercase tracking-[0.15em] text-gov-sage'>
@@ -278,7 +278,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
               {domesticShare.toFixed(1)}%
             </span>
           </div>
-          <div className='text-3xl font-extrabold text-gov-dark tabular-nums tracking-tight'>
+          <div className='text-3xl font-extrabold text-gov-dark dark:text-white tabular-nums tracking-tight'>
             KES {fmtT(domesticSum)}
           </div>
           <p className='text-[11px] text-neutral-muted mt-2 leading-relaxed'>
@@ -444,7 +444,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
                     style={{ color: centerInfo.accent, opacity: 0.85 }}>
                     {centerInfo.eyebrow}
                   </div>
-                  <div className='text-[17px] sm:text-[19px] font-extrabold text-gov-dark tabular-nums tracking-tight mt-0.5 leading-none'>
+                  <div className='text-[17px] sm:text-[19px] font-extrabold text-gov-dark dark:text-white tabular-nums tracking-tight mt-0.5 leading-none'>
                     {centerInfo.value}
                   </div>
                   <div className='text-[9.5px] text-neutral-muted mt-1.5 leading-tight'>
@@ -459,7 +459,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
           <div className='lg:col-span-3 space-y-4'>
             <div>
               <div className='flex items-baseline justify-between mb-2'>
-                <h4 className='text-sm font-semibold text-gov-dark'>
+                <h4 className='text-sm font-semibold text-gov-dark dark:text-white'>
                   Breakdown by instrument
                 </h4>
                 <span className='text-[11px] text-neutral-muted'>
@@ -514,7 +514,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
                     onMouseLeave={() => setHoverSlice(null)}
                     className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 transition-all ${
                       isHover
-                        ? 'bg-white shadow-sm border border-neutral-border/40'
+                        ? 'bg-white dark:bg-gov-dark/60 shadow-sm border border-neutral-border/40'
                         : 'bg-transparent border border-transparent'
                     }`}>
                     <span
@@ -525,10 +525,10 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
                     />
                     <div className='flex-1 min-w-0'>
                       <div className='flex items-baseline justify-between gap-2'>
-                        <span className='text-[11px] font-semibold text-gov-dark truncate'>
+                        <span className='text-[11px] font-semibold text-gov-dark dark:text-white truncate'>
                           {d.name}
                         </span>
-                        <span className='text-[11px] font-bold tabular-nums text-gov-dark'>
+                        <span className='text-[11px] font-bold tabular-nums text-gov-dark dark:text-white'>
                           {d.share.toFixed(1)}%
                         </span>
                       </div>
@@ -546,7 +546,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
 
       {/* ── Lender drill-down grid ── */}
       <div>
-        <h4 className='text-sm font-semibold text-gov-dark mb-2'>
+        <h4 className='text-sm font-semibold text-gov-dark dark:text-white mb-2'>
           Who each category is owed to
         </h4>
         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5'>
@@ -562,7 +562,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
                 layout
                 onMouseEnter={() => setHoverSlice(cat.label)}
                 onMouseLeave={() => setHoverSlice(null)}
-                className={`relative rounded-xl bg-white border shadow-sm overflow-hidden transition-shadow ${
+                className={`relative rounded-xl bg-white dark:bg-gov-dark/60 border shadow-sm overflow-hidden transition-shadow ${
                   isOpen ? 'shadow-elevated' : 'hover:shadow-md'
                 } ${hoverSlice === cat.label ? 'ring-2 ring-offset-1 ring-offset-gov-sand' : ''}`}
                 style={{
@@ -586,7 +586,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
                   }`}>
                   <div className='flex-1 min-w-0'>
                     <div className='flex items-baseline justify-between gap-2 mb-0.5'>
-                      <span className='text-xs font-semibold text-gov-dark truncate'>
+                      <span className='text-xs font-semibold text-gov-dark dark:text-white truncate'>
                         {cat.label}
                       </span>
                       <span
@@ -595,7 +595,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
                         {cat.share.toFixed(1)}%
                       </span>
                     </div>
-                    <div className='text-sm font-bold text-gov-dark tabular-nums'>
+                    <div className='text-sm font-bold text-gov-dark dark:text-white tabular-nums'>
                       KES {fmtT(cat.outstanding)}
                     </div>
                     {/* Mini bar showing share of total */}
@@ -612,7 +612,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
                     </div>
                     {topLender && !isOpen && (
                       <div className='mt-2 text-[10px] text-neutral-muted truncate'>
-                        Top: <span className='font-medium text-gov-dark'>{topLender.lender}</span>
+                        Top: <span className='font-medium text-gov-dark dark:text-white'>{topLender.lender}</span>
                       </div>
                     )}
                   </div>
@@ -638,7 +638,7 @@ export default function LenderTreemap({ categories, totalOutstanding }: LenderTr
                         <div key={l.lender}>
                           <div className='flex justify-between items-baseline gap-2 text-[11px]'>
                             <span className='text-neutral-muted truncate'>{l.lender}</span>
-                            <span className='text-gov-dark font-semibold tabular-nums flex-shrink-0'>
+                            <span className='text-gov-dark dark:text-white font-semibold tabular-nums flex-shrink-0'>
                               {fmtT(l.outstanding)}
                             </span>
                           </div>

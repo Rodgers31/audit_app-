@@ -248,7 +248,7 @@ function HealthScoreModal({
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
         onClick={(e) => e.stopPropagation()}
-        className='bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto'>
+        className='bg-white dark:bg-gov-dark/60 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto'>
         {/* Header */}
         <div className='bg-gradient-to-r from-gov-dark to-gov-forest px-6 py-5 rounded-t-2xl flex items-center justify-between'>
           <div>
@@ -430,7 +430,7 @@ function SourcesFooter() {
           href={s.url}
           target='_blank'
           rel='noopener noreferrer'
-          className='inline-flex items-center gap-1 text-[11px] text-gov-forest hover:underline'>
+          className='inline-flex items-center gap-1 text-[11px] text-gov-forest dark:text-emerald-100 hover:underline'>
           {t(s.labelKey)}
           <ExternalLink size={9} />
         </a>
@@ -517,7 +517,7 @@ export default function CountyDetailClient() {
         <div className='text-center py-16'>
           <ShieldAlert size={40} className='mx-auto text-red-400 mb-3' />
           <p className='text-red-600 mb-4'>{t('county.page.failed_load')}</p>
-          <Link href={backHref} className='text-sm text-gov-forest hover:underline'>
+          <Link href={backHref} className='text-sm text-gov-forest dark:text-emerald-100 hover:underline'>
             &larr; {backLabel}
           </Link>
         </div>
@@ -575,7 +575,7 @@ export default function CountyDetailClient() {
             </Link>
             <Link
               href='/counties'
-              className='inline-flex items-center gap-1.5 rounded-full border border-neutral-border/60 bg-white px-3 py-1.5 text-sm text-neutral-muted hover:text-gov-dark hover:border-neutral-border transition-colors'>
+              className='inline-flex items-center gap-1.5 rounded-full border border-neutral-border/60 bg-white dark:bg-gov-dark/60 px-3 py-1.5 text-sm text-neutral-muted hover:text-gov-dark dark:text-white hover:border-neutral-border transition-colors'>
               <Grid3x3 size={14} />
               {t('county.page.all_counties_short')}
             </Link>
@@ -583,7 +583,7 @@ export default function CountyDetailClient() {
         ) : (
           <SmartBackLink
             href={topBackHref}
-            className='inline-flex items-center gap-1.5 text-sm text-gov-forest hover:text-gov-dark transition-colors'>
+            className='inline-flex items-center gap-1.5 text-sm text-gov-forest dark:text-emerald-100 hover:text-gov-dark dark:text-white transition-colors'>
             <ArrowLeft size={14} />
             {topBackLabel}
           </SmartBackLink>
@@ -729,11 +729,11 @@ export default function CountyDetailClient() {
                 key={tabItem.id}
                 onClick={() => handleTabChange(tabItem.id)}
                 className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap ${
-                  active ? 'text-gov-forest' : 'text-gray-500 hover:text-gray-800'
+                  active ? 'text-gov-forest dark:text-emerald-100' : 'text-gray-500 hover:text-gray-800'
                 }`}>
                 <tabItem.icon
                   size={14}
-                  className={active ? 'text-gov-forest' : 'text-gray-400'}
+                  className={active ? 'text-gov-forest dark:text-emerald-100' : 'text-gray-400'}
                 />
                 {t(tabItem.labelKey)}
                 {active && (

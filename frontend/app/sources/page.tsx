@@ -81,10 +81,10 @@ export default function SourcesPage() {
       subtitle='Every figure on AuditGava traces back to a document published by a Kenyan government agency. No scraping private sources, no opinion — just what the state already publishes, aggregated in one place.'>
       <div className='space-y-6'>
         {/* Hero stat strip */}
-        <div className='bg-white rounded-xl border border-gray-100 px-5 py-4 flex flex-wrap items-center gap-6'>
+        <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 px-5 py-4 flex flex-wrap items-center gap-6'>
           <div className='flex items-center gap-3'>
             <div className='w-10 h-10 rounded-lg bg-gov-forest/10 flex items-center justify-center'>
-              <Database className='text-gov-forest' size={20} />
+              <Database className='text-gov-forest dark:text-emerald-100' size={20} />
             </div>
             <div>
               <div className='text-xs uppercase tracking-wider text-gray-500 font-semibold'>
@@ -117,7 +117,7 @@ export default function SourcesPage() {
 
         {/* Loading / Error */}
         {isLoading && (
-          <div className='bg-white rounded-xl border border-gray-100 p-8 flex items-center justify-center gap-3 text-gray-500'>
+          <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-8 flex items-center justify-center gap-3 text-gray-500'>
             <Loader2 className='animate-spin' size={18} />
             <span>Loading source manifest…</span>
           </div>
@@ -134,12 +134,12 @@ export default function SourcesPage() {
             {sources.map((s) => (
               <article
                 key={s.publisher}
-                className='bg-white rounded-xl border border-gray-100 p-5 hover:border-gov-sage/40 hover:shadow-md transition-all'>
+                className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5 hover:border-gov-sage/40 hover:shadow-md transition-all'>
                 <div className='flex items-start justify-between gap-3 mb-3'>
                   <div className='min-w-0'>
                     <div className='flex items-center gap-2 mb-1'>
                       {s.short && (
-                        <span className='text-[10px] font-bold uppercase tracking-wider bg-gov-forest/10 text-gov-forest px-2 py-0.5 rounded'>
+                        <span className='text-[10px] font-bold uppercase tracking-wider bg-gov-forest/10 text-gov-forest dark:text-emerald-100 px-2 py-0.5 rounded'>
                           {s.short}
                         </span>
                       )}
@@ -156,7 +156,7 @@ export default function SourcesPage() {
                       href={s.website}
                       target='_blank'
                       rel='noopener noreferrer'
-                      className='text-xs text-gov-forest hover:underline inline-flex items-center gap-1 shrink-0 whitespace-nowrap'>
+                      className='text-xs text-gov-forest dark:text-emerald-100 hover:underline inline-flex items-center gap-1 shrink-0 whitespace-nowrap'>
                       Visit site
                       <ExternalLink size={11} />
                     </a>
@@ -200,7 +200,7 @@ export default function SourcesPage() {
         {/* Methodology footer */}
         <div className='bg-gov-forest/5 border border-gov-forest/20 rounded-xl p-5'>
           <div className='flex items-start gap-3'>
-            <FileText className='text-gov-forest mt-0.5 shrink-0' size={18} />
+            <FileText className='text-gov-forest dark:text-emerald-100 mt-0.5 shrink-0' size={18} />
             <div className='text-sm text-gray-700 leading-relaxed'>
               <p className='font-semibold text-gray-900 mb-1'>How this works</p>
               <p>

@@ -123,7 +123,7 @@ export default function MissingFundsPage() {
       <div className='space-y-6'>
         {/* Top-line stats */}
         <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
-          <div className='bg-white rounded-xl border border-gray-100 p-5'>
+          <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
             <div className='text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1'>
               Total flagged
             </div>
@@ -134,7 +134,7 @@ export default function MissingFundsPage() {
               Across {data?.total_cases || 0} documented cases
             </div>
           </div>
-          <div className='bg-white rounded-xl border border-gray-100 p-5'>
+          <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
             <div className='text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1'>
               Counties affected
             </div>
@@ -144,7 +144,7 @@ export default function MissingFundsPage() {
             </div>
             <div className='text-xs text-gray-500 mt-1'>With at least one flagged case</div>
           </div>
-          <div className='bg-white rounded-xl border border-gray-100 p-5'>
+          <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
             <div className='text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1'>
               Recovery status
             </div>
@@ -163,7 +163,7 @@ export default function MissingFundsPage() {
 
         {/* Top counties */}
         {data?.top_counties && data.top_counties.length > 0 && (
-          <div className='bg-white rounded-xl border border-gray-100 p-5'>
+          <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
             <div className='flex items-center gap-2 mb-3'>
               <TrendingUp size={16} className='text-rose-600' />
               <h2 className='text-sm font-semibold text-gray-800'>
@@ -201,7 +201,7 @@ export default function MissingFundsPage() {
         )}
 
         {/* Search + filters */}
-        <div className='bg-white rounded-xl border border-gray-100 p-4 flex flex-wrap items-center gap-3'>
+        <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-4 flex flex-wrap items-center gap-3'>
           <div className='flex-1 min-w-[220px] relative'>
             <Search
               size={14}
@@ -230,7 +230,7 @@ export default function MissingFundsPage() {
 
         {/* Case list */}
         {isLoading && (
-          <div className='bg-white rounded-xl border border-gray-100 p-8 flex items-center justify-center gap-3 text-gray-500'>
+          <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-8 flex items-center justify-center gap-3 text-gray-500'>
             <Loader2 className='animate-spin' size={18} />
             <span>Loading cases…</span>
           </div>
@@ -241,7 +241,7 @@ export default function MissingFundsPage() {
           </div>
         )}
         {!isLoading && !error && (
-          <div className='bg-white rounded-xl border border-gray-100 divide-y divide-gray-100'>
+          <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 divide-y divide-gray-100'>
             {filtered.length === 0 ? (
               <div className='p-8 text-center text-sm text-gray-500'>
                 No cases match your filter.
@@ -254,7 +254,7 @@ export default function MissingFundsPage() {
                       <div className='flex items-center gap-2 mb-1.5 flex-wrap'>
                         <Link
                           href={`/counties?search=${encodeURIComponent(c.county)}`}
-                          className='text-sm font-bold text-gray-900 hover:text-gov-forest hover:underline'>
+                          className='text-sm font-bold text-gray-900 hover:text-gov-forest dark:text-emerald-100 hover:underline'>
                           {c.county}
                         </Link>
                         {c.period && (

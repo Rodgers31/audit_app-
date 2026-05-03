@@ -32,7 +32,7 @@ export default function DidYouKnowSection({ facts }: DidYouKnowSectionProps) {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: index * 0.1, duration: 0.5 }}
-            className='bg-white rounded-xl p-4 border border-gray-100'>
+            className='bg-white dark:bg-gov-dark/60 rounded-xl p-4 border border-gray-100'>
             <div className='flex items-start gap-3'>
               <div className='text-2xl'>{fact.icon}</div>
               <div>

@@ -127,7 +127,7 @@ export default function AuditTab({ data }: { data: CountyComprehensive }) {
     <div className='space-y-5'>
       {/* ── What this means (plain language intro) ── */}
       <div className='bg-gov-forest/5 border border-gov-forest/20 rounded-xl p-4'>
-        <h3 className='text-sm font-semibold text-gov-dark mb-1'>
+        <h3 className='text-sm font-semibold text-gov-dark dark:text-white mb-1'>
           {t('county.audit.intro_title')}
         </h3>
         <p className='text-xs text-gray-600 leading-relaxed'>{t('county.audit.intro_body')}</p>
@@ -135,13 +135,13 @@ export default function AuditTab({ data }: { data: CountyComprehensive }) {
 
       {/* ── Top-level stats ── */}
       <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
-        <div className='bg-white rounded-xl border border-gray-100 p-4 text-center'>
+        <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-4 text-center'>
           <div className='text-2xl font-bold text-gray-900'>{audit.findings_count}</div>
           <div className='text-[11px] text-gray-500 mt-0.5'>
             {t('county.audit.kpi_total_findings')}
           </div>
         </div>
-        <div className='bg-white rounded-xl border border-gray-100 p-4 text-center'>
+        <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-4 text-center'>
           <div className='text-2xl font-bold text-red-700'>
             {audit.total_amount_involved > 0 ? fmtKES(audit.total_amount_involved) : 'KES 0'}
           </div>
@@ -149,7 +149,7 @@ export default function AuditTab({ data }: { data: CountyComprehensive }) {
             {t('county.audit.kpi_money_questioned')}
           </div>
         </div>
-        <div className='bg-white rounded-xl border border-gray-100 p-4 text-center'>
+        <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-4 text-center'>
           <div className='flex items-center justify-center gap-1.5'>
             <div className='w-2 h-2 rounded-full bg-red-500' />
             <span className='text-2xl font-bold text-gray-900'>
@@ -160,7 +160,7 @@ export default function AuditTab({ data }: { data: CountyComprehensive }) {
             {t('county.audit.kpi_critical_issues')}
           </div>
         </div>
-        <div className='bg-white rounded-xl border border-gray-100 p-4 text-center'>
+        <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-4 text-center'>
           <div className='text-2xl font-bold text-green-700'>{statusCounts['Resolved'] || 0}</div>
           <div className='text-[11px] text-gray-500 mt-0.5'>{t('county.audit.kpi_resolved')}</div>
         </div>
@@ -168,7 +168,7 @@ export default function AuditTab({ data }: { data: CountyComprehensive }) {
 
       {/* ── Category breakdown ── */}
       {categoryBreakdown.length > 0 && (
-        <div className='bg-white rounded-xl border border-gray-100 p-5'>
+        <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
           <h3 className='text-sm font-semibold text-gray-800 mb-3'>
             {t('county.audit.findings_by_category')}
           </h3>
@@ -216,7 +216,7 @@ export default function AuditTab({ data }: { data: CountyComprehensive }) {
           {filterCategory !== 'all' && (
             <button
               onClick={() => setFilterCategory('all')}
-              className='mt-2 text-xs text-gov-forest hover:underline'>
+              className='mt-2 text-xs text-gov-forest dark:text-emerald-100 hover:underline'>
               {t('county.audit.show_all_categories')}
             </button>
           )}
@@ -338,7 +338,7 @@ export default function AuditTab({ data }: { data: CountyComprehensive }) {
           return (
             <div
               key={f.id}
-              className={`rounded-xl border border-gray-100 bg-white overflow-hidden transition-shadow ${
+              className={`rounded-xl border border-gray-100 bg-white dark:bg-gov-dark/60 overflow-hidden transition-shadow ${
                 open ? 'shadow-md ring-1 ring-gray-200' : 'hover:shadow-sm'
               }`}>
               <button

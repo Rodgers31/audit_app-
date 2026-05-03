@@ -1152,9 +1152,9 @@ function Th({
             {suffix}
           </span>
         )}
-        <ArrowUpDown size={11} className={active ? 'text-gov-forest' : 'text-gray-300'} />
+        <ArrowUpDown size={11} className={active ? 'text-gov-forest dark:text-emerald-100' : 'text-gray-300'} />
         {active && (
-          <span className='text-[9px] text-gov-forest font-normal'>
+          <span className='text-[9px] text-gov-forest dark:text-emerald-100 font-normal'>
             {dir === 'asc' ? '↑' : '↓'}
           </span>
         )}
@@ -1349,7 +1349,7 @@ function CountyRankingsTable({
                       <div className='w-6 h-6 rounded-md bg-gov-forest/10 flex items-center justify-center flex-shrink-0'>
                         <span className='text-[10px]'>🏛️</span>
                       </div>
-                      <span className='font-semibold text-sm text-gray-900 group-hover:text-gov-forest transition-colors'>
+                      <span className='font-semibold text-sm text-gray-900 group-hover:text-gov-forest dark:text-emerald-100 transition-colors'>
                         {county.name}
                       </span>
                     </Link>
@@ -1370,7 +1370,7 @@ function CountyRankingsTable({
                   <td className='py-3 px-3'>
                     <Link
                       href={`${base}&tab=budget`}
-                      className='block text-sm text-gray-700 tabular-nums font-medium hover:text-gov-forest transition-colors'>
+                      className='block text-sm text-gray-700 tabular-nums font-medium hover:text-gov-forest dark:text-emerald-100 transition-colors'>
                       {fmtKES(budget)}
                     </Link>
                   </td>
@@ -1382,7 +1382,7 @@ function CountyRankingsTable({
                   <td className='py-3 px-3'>
                     <Link
                       href={`${base}&tab=budget`}
-                      className='flex items-center gap-1.5 text-sm text-gray-700 tabular-nums hover:text-gov-forest transition-colors'>
+                      className='flex items-center gap-1.5 text-sm text-gray-700 tabular-nums hover:text-gov-forest dark:text-emerald-100 transition-colors'>
                       <span
                         className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${debt > 50e9 ? 'bg-red-500' : debt > 15e9 ? 'bg-amber-500' : 'bg-emerald-500'}`}
                       />
@@ -1457,7 +1457,7 @@ function CountyRankingsTable({
           )}
           <button
             onClick={() => setShowAll((v) => !v)}
-            className='text-xs text-gov-forest font-medium hover:underline'>
+            className='text-xs text-gov-forest dark:text-emerald-100 font-medium hover:underline'>
             {showAll ? t('counties.rankings.show_paginated') : t('counties.rankings.view_all')}
           </button>
         </div>
@@ -1729,7 +1729,7 @@ export default function CountyExplorerPage() {
                     />
                   </button>
                   {yearOpen && (
-                    <div className='absolute right-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50 min-w-[140px]'>
+                    <div className='absolute right-0 mt-1 bg-white dark:bg-gov-dark/60 rounded-lg shadow-xl border border-gray-200 py-1 z-50 min-w-[140px]'>
                       {YEARS.map((y) => (
                         <button
                           key={y}
@@ -1739,7 +1739,7 @@ export default function CountyExplorerPage() {
                           }}
                           className={`block w-full text-left px-4 py-2 text-sm transition-colors ${
                             y === selectedYear
-                              ? 'bg-gov-forest/10 text-gov-forest font-semibold'
+                              ? 'bg-gov-forest/10 text-gov-forest dark:text-emerald-100 font-semibold'
                               : 'text-gray-700 hover:bg-gray-50'
                           }`}>
                           {y}

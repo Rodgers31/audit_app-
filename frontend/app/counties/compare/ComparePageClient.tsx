@@ -124,7 +124,7 @@ function ComparePicker({
 }) {
   const { t } = useLang();
   return (
-    <div className='bg-white rounded-xl border border-gray-100 p-4 flex flex-wrap items-end gap-3'>
+    <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-4 flex flex-wrap items-end gap-3'>
       {selected.map((sel, i) => (
         <div key={`${sel}-${i}`} className='flex-1 min-w-[200px] relative'>
           <label className='text-[10px] uppercase tracking-wider text-gray-500 font-semibold block mb-1'>
@@ -134,7 +134,7 @@ function ComparePicker({
             <select
               value={sel}
               onChange={(e) => onChange(i, e.target.value)}
-              className='flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gov-forest/30 bg-white'>
+              className='flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gov-forest/30 bg-white dark:bg-gov-dark/60'>
               <option value=''>{t('compare.pick_prompt')}</option>
               {all.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -158,7 +158,7 @@ function ComparePicker({
         <button
           type='button'
           onClick={onAdd}
-          className='text-sm font-semibold text-gov-forest hover:text-gov-forest/80 inline-flex items-center gap-1 px-3 py-2'>
+          className='text-sm font-semibold text-gov-forest dark:text-emerald-100 hover:text-gov-forest/80 dark:text-emerald-100/80 inline-flex items-center gap-1 px-3 py-2'>
           <Plus size={14} />
           {t('compare.add_county')}
         </button>
@@ -255,7 +255,7 @@ function CompareContent() {
   return (
     <div className='space-y-6'>
       {isLoading && (
-        <div className='bg-white rounded-xl border border-gray-100 p-8 flex items-center justify-center gap-3 text-gray-500'>
+        <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-8 flex items-center justify-center gap-3 text-gray-500'>
           <Loader2 className='animate-spin' size={18} />
           <span>{t('compare.loading')}</span>
         </div>
@@ -272,7 +272,7 @@ function CompareContent() {
           />
 
           {picked.length < 2 ? (
-            <div className='bg-white rounded-xl border border-gray-100 p-12 text-center'>
+            <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-12 text-center'>
               <div className='text-base font-semibold text-gray-700 mb-1'>
                 {t('compare.empty.title')}
               </div>
@@ -281,7 +281,7 @@ function CompareContent() {
               </p>
             </div>
           ) : (
-            <div className='bg-white rounded-xl border border-gray-100 overflow-hidden'>
+            <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 overflow-hidden'>
               <div className='overflow-x-auto'>
                 <table className='w-full'>
                   <thead>
@@ -295,7 +295,7 @@ function CompareContent() {
                           className='text-right py-3 px-4 min-w-[140px]'>
                           <Link
                             href={`/counties/${c.id}`}
-                            className='text-sm font-bold text-gray-900 hover:text-gov-forest hover:underline'>
+                            className='text-sm font-bold text-gray-900 hover:text-gov-forest dark:text-emerald-100 hover:underline'>
                             {c.name}
                           </Link>
                           <div className='text-[10px] text-gray-400 font-mono mt-0.5'>
@@ -570,7 +570,7 @@ export default function ComparePage() {
   return (
     <Suspense
       fallback={
-        <div className='bg-white rounded-xl border border-gray-100 p-8 flex items-center justify-center gap-3 text-gray-500'>
+        <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-8 flex items-center justify-center gap-3 text-gray-500'>
           <Loader2 className='animate-spin' size={18} />
         </div>
       }>

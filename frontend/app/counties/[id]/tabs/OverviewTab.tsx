@@ -110,7 +110,7 @@ function OfficialsCard({
   ];
 
   return (
-    <div className='bg-white rounded-xl border border-gray-100 p-5'>
+    <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
       <div className='flex items-center justify-between mb-3'>
         <div>
           <h3 className='text-sm font-semibold text-gray-800'>{t('county.officials.card_title')}</h3>
@@ -121,7 +121,7 @@ function OfficialsCard({
             href={officials.website}
             target='_blank'
             rel='noopener noreferrer'
-            className='text-xs text-gov-forest hover:underline inline-flex items-center gap-1'>
+            className='text-xs text-gov-forest dark:text-emerald-100 hover:underline inline-flex items-center gap-1'>
             {t('county.officials.official_site')}
             <ExternalLink size={11} />
           </a>
@@ -267,7 +267,7 @@ export default function OverviewTab({ data }: { data: CountyComprehensive }) {
       </div>
 
       {/* Audit snapshot — wide banner */}
-      <div className='relative rounded-2xl bg-white border border-gray-100 p-5 overflow-hidden'>
+      <div className='relative rounded-2xl bg-white dark:bg-gov-dark/60 border border-gray-100 p-5 overflow-hidden'>
         <div
           aria-hidden
           className={`absolute inset-y-0 left-0 w-1 ${
@@ -330,7 +330,7 @@ export default function OverviewTab({ data }: { data: CountyComprehensive }) {
       )}
 
       {/* About this county */}
-      <div className='bg-white rounded-xl border border-gray-100 p-5'>
+      <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
         <h3 className='text-sm font-semibold text-gray-800 mb-3'>{t('county.profile.title')}</h3>
         <div className='grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-6'>
           <KPI
@@ -388,7 +388,7 @@ export default function OverviewTab({ data }: { data: CountyComprehensive }) {
 
       {/* Stalled projects summary */}
       {stalled_projects.count > 0 && (
-        <div className='bg-white rounded-xl border border-gray-100 p-5'>
+        <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
           <div className='flex items-center gap-2 mb-2'>
             <HardHat size={16} className='text-red-600' />
             <h3 className='text-sm font-semibold text-gray-800'>

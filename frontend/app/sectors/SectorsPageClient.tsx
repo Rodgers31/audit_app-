@@ -132,7 +132,7 @@ export default function SectorsPage() {
       <div className='space-y-6'>
         {/* Top-line strip */}
         <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
-          <div className='bg-white rounded-xl border border-gray-100 p-5'>
+          <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
             <div className='text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1'>
               {t('sectors.total_allocated')}
             </div>
@@ -143,7 +143,7 @@ export default function SectorsPage() {
               {t('sectors.total_allocated_sub').replace('{n}', String(data?.counties_reporting || 0))}
             </div>
           </div>
-          <div className='bg-white rounded-xl border border-gray-100 p-5'>
+          <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
             <div className='text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1'>
               {t('sectors.total_executed')}
             </div>
@@ -152,7 +152,7 @@ export default function SectorsPage() {
             </div>
             <div className='text-xs text-gray-500 mt-1'>{t('sectors.total_executed_sub')}</div>
           </div>
-          <div className='bg-white rounded-xl border border-gray-100 p-5'>
+          <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
             <div className='text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1'>
               {t('sectors.execution_rate')}
             </div>
@@ -165,7 +165,7 @@ export default function SectorsPage() {
 
         {/* Loading / error */}
         {isLoading && (
-          <div className='bg-white rounded-xl border border-gray-100 p-8 flex items-center justify-center gap-3 text-gray-500'>
+          <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-8 flex items-center justify-center gap-3 text-gray-500'>
             <Loader2 className='animate-spin' size={18} />
             <span>{t('sectors.loading')}</span>
           </div>
@@ -187,7 +187,7 @@ export default function SectorsPage() {
               return (
                 <article
                   key={s.sector}
-                  className='bg-white rounded-xl border border-gray-100 overflow-hidden hover:border-gov-sage/40 hover:shadow-md transition-all'>
+                  className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 overflow-hidden hover:border-gov-sage/40 hover:shadow-md transition-all'>
                   <button
                     type='button'
                     onClick={() => setExpanded(isOpen ? null : s.sector)}
@@ -244,7 +244,7 @@ export default function SectorsPage() {
                               </div>
                               <Link
                                 href={`/counties?search=${encodeURIComponent(c.county)}`}
-                                className='w-32 font-semibold text-gray-800 hover:text-gov-forest hover:underline truncate'>
+                                className='w-32 font-semibold text-gray-800 hover:text-gov-forest dark:text-emerald-100 hover:underline truncate'>
                                 {c.county}
                               </Link>
                               <div className='flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden'>

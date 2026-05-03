@@ -73,7 +73,7 @@ export default function ActionSteps() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: index * 0.1, duration: 0.5 }}
-            className='bg-white rounded-xl p-4 border border-gray-200'>
+            className='bg-white dark:bg-gov-dark/60 rounded-xl p-4 border border-gray-200'>
             {/* Step Header */}
             <div className='flex items-center gap-3 mb-3'>
               <div className='w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-800 font-bold text-sm'>

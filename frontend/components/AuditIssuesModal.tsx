@@ -94,7 +94,7 @@ export default function AuditIssuesModal({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className='fixed inset-x-4 top-4 bottom-4 md:inset-x-8 md:top-8 md:bottom-8 lg:inset-x-16 lg:top-16 lg:bottom-16 bg-white rounded-2xl shadow-2xl z-50 flex flex-col max-w-6xl mx-auto'>
+            className='fixed inset-x-4 top-4 bottom-4 md:inset-x-8 md:top-8 md:bottom-8 lg:inset-x-16 lg:top-16 lg:bottom-16 bg-white dark:bg-gov-dark/60 rounded-2xl shadow-2xl z-50 flex flex-col max-w-6xl mx-auto'>
             {/* Header */}
             <div className='flex items-center justify-between p-6 border-b border-gray-200'>
               <div>

@@ -35,7 +35,7 @@ export default function QuizCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className='bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-lg transition-all duration-300'>
+      className='bg-white dark:bg-gov-dark/60 rounded-2xl border border-gray-200 p-6 hover:shadow-lg transition-all duration-300'>
       {/* Quiz Icon */}
       <div className='text-4xl mb-4'>{icon}</div>
 

@@ -62,7 +62,7 @@ const KEEP_LEARNING: {
       'Walk through the three arms of government and the commissions that keep them honest.',
     icon: Landmark,
     accent: 'from-gov-gold/15 via-white to-gov-sand',
-    iconTint: 'bg-gov-gold text-gov-dark',
+    iconTint: 'bg-gov-gold text-gov-dark dark:text-white',
   },
   {
     href: '/learn/glossary',
@@ -166,7 +166,7 @@ export default function LearningHubPage() {
       <div ref={bookRef} className='scroll-mt-[72px]'>
         <div className='mb-3 flex items-end justify-between gap-4'>
           <div>
-            <h2 className='font-display text-2xl leading-tight text-gov-dark sm:text-[1.7rem]'>
+            <h2 className='font-display text-2xl leading-tight text-gov-dark dark:text-white sm:text-[1.7rem]'>
               The Constitution, as a book you can actually read
             </h2>
             <p className='text-sm text-neutral-muted'>
@@ -175,7 +175,7 @@ export default function LearningHubPage() {
           </div>
           <Link
             href='#constitution-book'
-            className='hidden shrink-0 items-center gap-1.5 rounded-full bg-gov-forest/10 px-3 py-1.5 text-xs font-semibold text-gov-forest hover:bg-gov-forest/15 sm:inline-flex'>
+            className='hidden shrink-0 items-center gap-1.5 rounded-full bg-gov-forest/10 px-3 py-1.5 text-xs font-semibold text-gov-forest dark:text-emerald-100 hover:bg-gov-forest/15 sm:inline-flex'>
             <Sparkles size={12} />
             New
           </Link>
@@ -194,7 +194,7 @@ export default function LearningHubPage() {
           <div>
             <h2
               id='keep-learning-heading'
-              className='font-display text-2xl leading-tight text-gov-dark sm:text-[1.7rem]'>
+              className='font-display text-2xl leading-tight text-gov-dark dark:text-white sm:text-[1.7rem]'>
               Keep learning
             </h2>
             <p className='text-sm text-neutral-muted'>
@@ -221,16 +221,16 @@ export default function LearningHubPage() {
                     className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${card.iconTint} shadow-surface`}>
                     <Icon size={18} />
                   </span>
-                  <div className='mt-4 text-[11px] font-semibold uppercase tracking-wider text-gov-forest/70'>
+                  <div className='mt-4 text-[11px] font-semibold uppercase tracking-wider text-gov-forest/70 dark:text-emerald-100/70'>
                     {card.eyebrow}
                   </div>
-                  <h3 className='mt-0.5 font-display text-lg text-gov-dark'>
+                  <h3 className='mt-0.5 font-display text-lg text-gov-dark dark:text-white'>
                     {card.title}
                   </h3>
                   <p className='mt-1 flex-1 text-[13.5px] leading-relaxed text-neutral-text'>
                     {card.description}
                   </p>
-                  <span className='mt-4 inline-flex items-center gap-1 text-sm font-semibold text-gov-forest transition-transform group-hover:translate-x-0.5'>
+                  <span className='mt-4 inline-flex items-center gap-1 text-sm font-semibold text-gov-forest dark:text-emerald-100 transition-transform group-hover:translate-x-0.5'>
                     Open
                     <ArrowRight size={14} />
                   </span>
@@ -263,7 +263,7 @@ export default function LearningHubPage() {
         </p>
         <Link
           href='/'
-          className='mt-6 inline-flex items-center gap-2 rounded-xl bg-gov-gold px-6 py-3 font-semibold text-gov-dark shadow-elevated transition-colors hover:bg-gov-gold/90'>
+          className='mt-6 inline-flex items-center gap-2 rounded-xl bg-gov-gold px-6 py-3 font-semibold text-gov-dark dark:text-white shadow-elevated transition-colors hover:bg-gov-gold/90'>
           Go to dashboard
           <ArrowRight size={16} />
         </Link>

@@ -299,10 +299,10 @@ export default function InteractiveKenyaMap({
         {/* Title */}
         <div className='flex items-center gap-2'>
           <div className='w-8 h-8 rounded-lg bg-gov-forest/10 flex items-center justify-center'>
-            <MapPin className='w-4 h-4 text-gov-forest' />
+            <MapPin className='w-4 h-4 text-gov-forest dark:text-emerald-100' />
           </div>
           <div>
-            <h3 className='text-sm font-semibold text-gov-dark leading-tight'>{t('home.map.title')}</h3>
+            <h3 className='text-sm font-semibold text-gov-dark dark:text-white leading-tight'>{t('home.map.title')}</h3>
             <p className='text-[11px] text-gray-500 leading-tight'>
               {matchedCount} {t('home.map.subtitle_prefix')} &middot; {t('home.map.subtitle_suffix')}
             </p>

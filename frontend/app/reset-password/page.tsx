@@ -189,7 +189,7 @@ function ResetPasswordForm() {
         transition={{ duration: 0.4 }}
         className='w-full max-w-md'>
         {/* Card */}
-        <div className='bg-white rounded-2xl shadow-xl border border-gov-sage/10 overflow-hidden'>
+        <div className='bg-white dark:bg-gov-dark/60 rounded-2xl shadow-xl border border-gov-sage/10 overflow-hidden'>
           {/* Header band */}
           <div className='bg-gradient-to-r from-gov-dark to-gov-forest px-6 py-8 text-center'>
             <div className='w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center mx-auto mb-4 border border-white/20'>
@@ -213,11 +213,11 @@ function ResetPasswordForm() {
                 animate={{ opacity: 1, y: 0 }}
                 className='text-center'>
                 <CheckCircle2 className='w-16 h-16 mx-auto text-gov-sage mb-4' />
-                <p className='text-gov-forest/70 text-sm mb-2'>
+                <p className='text-gov-forest/70 dark:text-emerald-100/70 text-sm mb-2'>
                   Your password has been updated and you&apos;re signed in. Taking you to the
                   homepage…
                 </p>
-                <div className='flex items-center justify-center gap-2 text-gov-forest/50 text-xs mt-4'>
+                <div className='flex items-center justify-center gap-2 text-gov-forest/50 dark:text-emerald-100/50 text-xs mt-4'>
                   <Loader2 className='w-3.5 h-3.5 animate-spin' />
                   Redirecting
                 </div>
@@ -230,7 +230,7 @@ function ResetPasswordForm() {
                 className='text-center'>
                 <AlertCircle className='w-16 h-16 mx-auto text-gov-copper/60 mb-4' />
                 <p className='text-gov-copper text-sm font-medium mb-2'>{linkError}</p>
-                <p className='text-gov-forest/50 text-xs mb-6'>
+                <p className='text-gov-forest/50 dark:text-emerald-100/50 text-xs mb-6'>
                   Password reset links expire after 1 hour for security.
                 </p>
                 <Link
@@ -245,11 +245,11 @@ function ResetPasswordForm() {
               <form onSubmit={handleSubmit} className='space-y-5'>
                 {/* New Password */}
                 <div>
-                  <label className='block text-xs font-semibold uppercase tracking-wider text-gov-forest/50 mb-1.5'>
+                  <label className='block text-xs font-semibold uppercase tracking-wider text-gov-forest/50 dark:text-emerald-100/50 mb-1.5'>
                     New Password
                   </label>
                   <div className='relative'>
-                    <Lock className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gov-forest/30' />
+                    <Lock className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gov-forest/30 dark:text-emerald-100/30' />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       required
@@ -260,13 +260,13 @@ function ResetPasswordForm() {
                         setError('');
                       }}
                       placeholder='Enter new password'
-                      className='w-full pl-10 pr-12 py-3 rounded-xl bg-gov-cream/40 border border-gov-sage/20 text-gov-dark placeholder:text-gov-forest/30 focus:outline-none focus:ring-2 focus:ring-gov-sage/40 focus:border-transparent transition-all'
+                      className='w-full pl-10 pr-12 py-3 rounded-xl bg-gov-cream/40 dark:bg-white/5 border border-gov-sage/20 text-gov-dark dark:text-white placeholder:text-gov-forest/30 dark:text-emerald-100/30 focus:outline-none focus:ring-2 focus:ring-gov-sage/40 focus:border-transparent transition-all'
                       autoComplete='new-password'
                     />
                     <button
                       type='button'
                       onClick={() => setShowPassword(!showPassword)}
-                      className='absolute right-3 top-1/2 -translate-y-1/2 text-gov-forest/30 hover:text-gov-forest/60 transition-colors'>
+                      className='absolute right-3 top-1/2 -translate-y-1/2 text-gov-forest/30 dark:text-emerald-100/30 hover:text-gov-forest/60 dark:text-emerald-100/60 transition-colors'>
                       {showPassword ? <EyeOff className='w-4 h-4' /> : <Eye className='w-4 h-4' />}
                     </button>
                   </div>
@@ -287,7 +287,7 @@ function ResetPasswordForm() {
                         />
                         <span
                           className={
-                            check.met ? 'text-gov-sage font-medium' : 'text-gov-forest/40'
+                            check.met ? 'text-gov-sage font-medium' : 'text-gov-forest/40 dark:text-emerald-100/40'
                           }>
                           {check.label}
                         </span>
@@ -298,11 +298,11 @@ function ResetPasswordForm() {
 
                 {/* Confirm Password */}
                 <div>
-                  <label className='block text-xs font-semibold uppercase tracking-wider text-gov-forest/50 mb-1.5'>
+                  <label className='block text-xs font-semibold uppercase tracking-wider text-gov-forest/50 dark:text-emerald-100/50 mb-1.5'>
                     Confirm Password
                   </label>
                   <div className='relative'>
-                    <Lock className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gov-forest/30' />
+                    <Lock className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gov-forest/30 dark:text-emerald-100/30' />
                     <input
                       type={showConfirm ? 'text' : 'password'}
                       required
@@ -313,7 +313,7 @@ function ResetPasswordForm() {
                         setError('');
                       }}
                       placeholder='Re-enter new password'
-                      className={`w-full pl-10 pr-12 py-3 rounded-xl bg-gov-cream/40 border text-gov-dark placeholder:text-gov-forest/30 focus:outline-none focus:ring-2 focus:ring-gov-sage/40 focus:border-transparent transition-all ${
+                      className={`w-full pl-10 pr-12 py-3 rounded-xl bg-gov-cream/40 dark:bg-white/5 border text-gov-dark dark:text-white placeholder:text-gov-forest/30 dark:text-emerald-100/30 focus:outline-none focus:ring-2 focus:ring-gov-sage/40 focus:border-transparent transition-all ${
                         confirmPassword.length > 0 && !passwordsMatch
                           ? 'border-gov-copper/40'
                           : confirmPassword.length > 0 && passwordsMatch
@@ -325,7 +325,7 @@ function ResetPasswordForm() {
                     <button
                       type='button'
                       onClick={() => setShowConfirm(!showConfirm)}
-                      className='absolute right-3 top-1/2 -translate-y-1/2 text-gov-forest/30 hover:text-gov-forest/60 transition-colors'>
+                      className='absolute right-3 top-1/2 -translate-y-1/2 text-gov-forest/30 dark:text-emerald-100/30 hover:text-gov-forest/60 dark:text-emerald-100/60 transition-colors'>
                       {showConfirm ? <EyeOff className='w-4 h-4' /> : <Eye className='w-4 h-4' />}
                     </button>
                   </div>
@@ -377,7 +377,7 @@ function ResetPasswordForm() {
         </div>
 
         {/* Security note */}
-        <p className='text-center text-gov-forest/30 text-xs mt-6'>
+        <p className='text-center text-gov-forest/30 dark:text-emerald-100/30 text-xs mt-6'>
           For your security, password reset links expire after 1 hour.
           <br />
           If you didn&apos;t request this reset, you can safely ignore this page.

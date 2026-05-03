@@ -99,7 +99,7 @@ function RingGauge({
         />
       </svg>
       <div className='absolute inset-0 flex items-center justify-center'>
-        <span className='text-base font-bold text-gov-dark tabular-nums'>{centerLabel}</span>
+        <span className='text-base font-bold text-gov-dark dark:text-white tabular-nums'>{centerLabel}</span>
       </div>
     </div>
   );
@@ -126,8 +126,8 @@ export default function PeerStrip({ peers, kenyaCountryName = 'Kenya' }: PeerStr
   return (
     <div className='space-y-4'>
       <div>
-        <h3 className='font-display text-xl sm:text-2xl text-gov-dark flex items-center gap-2'>
-          <Globe2 className='text-gov-forest' size={22} />
+        <h3 className='font-display text-xl sm:text-2xl text-gov-dark dark:text-white flex items-center gap-2'>
+          <Globe2 className='text-gov-forest dark:text-emerald-100' size={22} />
           Kenya in the East African context
         </h3>
         <p className='text-sm text-neutral-muted mt-1'>
@@ -161,7 +161,7 @@ export default function PeerStrip({ peers, kenyaCountryName = 'Kenya' }: PeerStr
               <div className='flex items-center gap-2 mb-3'>
                 <span className='text-2xl'>{meta.emoji}</span>
                 <div className='min-w-0'>
-                  <div className='text-sm font-semibold text-gov-dark truncate'>
+                  <div className='text-sm font-semibold text-gov-dark dark:text-white truncate'>
                     {peer.country}
                   </div>
                   <div className={`text-[10px] font-medium ${band.tone}`}>{band.label}</div>
@@ -180,7 +180,7 @@ export default function PeerStrip({ peers, kenyaCountryName = 'Kenya' }: PeerStr
                     <div className='text-[10px] uppercase tracking-wider text-neutral-muted'>
                       Service / Rev
                     </div>
-                    <div className='text-sm font-bold text-gov-dark tabular-nums'>
+                    <div className='text-sm font-bold text-gov-dark dark:text-white tabular-nums'>
                       {peer.debt_service_to_revenue.toFixed(1)}%
                     </div>
                   </div>
@@ -188,7 +188,7 @@ export default function PeerStrip({ peers, kenyaCountryName = 'Kenya' }: PeerStr
                     <div className='text-[10px] uppercase tracking-wider text-neutral-muted'>
                       External
                     </div>
-                    <div className='text-sm font-bold text-gov-dark tabular-nums'>
+                    <div className='text-sm font-bold text-gov-dark dark:text-white tabular-nums'>
                       {peer.external_debt_share.toFixed(0)}%
                     </div>
                   </div>
@@ -203,7 +203,7 @@ export default function PeerStrip({ peers, kenyaCountryName = 'Kenya' }: PeerStr
         <div className='flex flex-wrap items-center gap-4 rounded-xl bg-gov-dark/5 border border-gov-dark/10 px-4 py-3'>
           <div className='flex items-center gap-2 text-sm'>
             <span className='text-neutral-muted'>EAC peer average debt-to-GDP:</span>
-            <span className='font-bold text-gov-dark tabular-nums'>{eacAvg.toFixed(1)}%</span>
+            <span className='font-bold text-gov-dark dark:text-white tabular-nums'>{eacAvg.toFixed(1)}%</span>
           </div>
           <div className='h-4 w-px bg-gov-dark/15' />
           <div className='flex items-center gap-2 text-sm'>

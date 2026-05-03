@@ -70,7 +70,7 @@ export default function ApiHooksExamples() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className='bg-white rounded-lg shadow-lg p-6'>
+          className='bg-white dark:bg-gov-dark/60 rounded-lg shadow-lg p-6'>
           <h2 className='text-xl font-semibold text-gray-900 mb-4 flex items-center'>
             <BarChart3 className='h-5 w-5 mr-2' />
             National Overview
@@ -106,7 +106,7 @@ export default function ApiHooksExamples() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className='bg-white rounded-lg shadow-lg p-6'>
+        className='bg-white dark:bg-gov-dark/60 rounded-lg shadow-lg p-6'>
         <h2 className='text-xl font-semibold text-gray-900 mb-4'>County Selection</h2>
         <div className='grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2'>
           {counties.slice(0, 12).map((county: County) => (
@@ -131,7 +131,7 @@ export default function ApiHooksExamples() {
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className='bg-white rounded-lg shadow-lg p-6'>
+            className='bg-white dark:bg-gov-dark/60 rounded-lg shadow-lg p-6'>
             <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center'>
               <DollarSign className='h-5 w-5 mr-2' />
               Budget Allocation
@@ -172,7 +172,7 @@ export default function ApiHooksExamples() {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className='bg-white rounded-lg shadow-lg p-6'>
+            className='bg-white dark:bg-gov-dark/60 rounded-lg shadow-lg p-6'>
             <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center'>
               <FileText className='h-5 w-5 mr-2' />
               Latest Audit
@@ -230,7 +230,7 @@ export default function ApiHooksExamples() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className='bg-white rounded-lg shadow-lg p-6'>
+          className='bg-white dark:bg-gov-dark/60 rounded-lg shadow-lg p-6'>
           <h2 className='text-xl font-semibold text-gray-900 mb-4 flex items-center'>
             <TrendingUp className='h-5 w-5 mr-2' />
             Top Performing Counties
@@ -252,7 +252,7 @@ export default function ApiHooksExamples() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className='bg-white rounded-lg shadow-lg p-6'>
+          className='bg-white dark:bg-gov-dark/60 rounded-lg shadow-lg p-6'>
           <h2 className='text-xl font-semibold text-gray-900 mb-4'>
             Recent Clean & Qualified Audits
           </h2>

@@ -377,14 +377,14 @@ export default function TransparencyPage() {
 
   const SortHeader = ({ label, field }: { label: string; field: SortKey }) => (
     <th
-      className='py-3 pr-3 font-semibold text-gov-dark/60 text-xs uppercase tracking-wider cursor-pointer select-none group'
+      className='py-3 pr-3 font-semibold text-gov-dark/60 dark:text-white/60 text-xs uppercase tracking-wider cursor-pointer select-none group'
       onClick={() => toggleSort(field)}>
       <span className='inline-flex items-center gap-1'>
         {label}
         <ArrowUpDown
           size={11}
           className={`transition-colors ${
-            sortKey === field ? 'text-gov-forest' : 'text-gray-300 group-hover:text-gray-400'
+            sortKey === field ? 'text-gov-forest dark:text-emerald-100' : 'text-gray-300 group-hover:text-gray-400'
           }`}
         />
       </span>
@@ -398,7 +398,7 @@ export default function TransparencyPage() {
       {/* ═══ 1. Narrative intro ═══ */}
       <Section>
         <div className='max-w-3xl'>
-          <p className='text-base text-gov-dark/70 leading-relaxed'>
+          <p className='text-base text-gov-dark/70 dark:text-white/70 leading-relaxed'>
             Every year, the Treasury allocates trillions of shillings to Kenya&apos;s 47
             counties. But how much actually reaches citizens? The waterfall below traces
             the journey — from <strong>allocation</strong> by the Commission on Revenue
@@ -421,9 +421,9 @@ export default function TransparencyPage() {
       {/* ═══ 3. The waterfall hero ═══ */}
       <Section delay={0.08}>
         {nationalLoading ? (
-          <div className='rounded-2xl bg-white border border-neutral-border/40 shadow-surface p-16 flex items-center justify-center'>
+          <div className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-neutral-border/40 shadow-surface p-16 flex items-center justify-center'>
             <Loader2 className='w-6 h-6 animate-spin text-gov-sage' />
-            <span className='ml-3 text-gov-dark/60 font-medium'>
+            <span className='ml-3 text-gov-dark/60 dark:text-white/60 font-medium'>
               Loading money-flow waterfall…
             </span>
           </div>
@@ -512,8 +512,8 @@ export default function TransparencyPage() {
         <div className='space-y-4'>
           <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3'>
             <div>
-              <h2 className='font-display text-xl text-gov-dark'>County-by-county breakdown</h2>
-              <p className='text-sm text-gov-dark/50'>
+              <h2 className='font-display text-xl text-gov-dark dark:text-white'>County-by-county breakdown</h2>
+              <p className='text-sm text-gov-dark/50 dark:text-white/50'>
                 {countiesWithData > 0
                   ? isProjectedFY
                     ? `${countiesWithData} of 47 counties have published allocations for FY ${stripFY(
@@ -559,7 +559,7 @@ export default function TransparencyPage() {
                 className={`text-xs px-3 py-1.5 rounded-full transition-all ${
                   sortKey === btn.key
                     ? 'bg-gov-forest text-white shadow-sm'
-                    : 'bg-white/60 text-gov-dark/60 hover:bg-white border border-gray-200/60'
+                    : 'bg-white/60 text-gov-dark/60 dark:text-white/60 hover:bg-white dark:bg-gov-dark/60 border border-gray-200/60'
                 }`}>
                 {btn.label}
               </button>
@@ -569,7 +569,7 @@ export default function TransparencyPage() {
           {allCountyFlowsLoading ? (
             <div className='flex items-center justify-center py-20'>
               <Loader2 className='w-6 h-6 animate-spin text-gov-sage' />
-              <span className='ml-3 text-gov-dark/60 font-medium'>Loading county data…</span>
+              <span className='ml-3 text-gov-dark/60 dark:text-white/60 font-medium'>Loading county data…</span>
             </div>
           ) : isProjectedFY ? (
             <ResponsiveTable>
@@ -577,15 +577,15 @@ export default function TransparencyPage() {
                 <table className='w-full text-sm'>
                   <thead>
                     <tr className='border-b border-gray-200 bg-gray-50/50 text-left'>
-                      <th className='py-3 pl-4 pr-3 font-semibold text-gov-dark/60 text-xs uppercase tracking-wider w-8'>
+                      <th className='py-3 pl-4 pr-3 font-semibold text-gov-dark/60 dark:text-white/60 text-xs uppercase tracking-wider w-8'>
                         #
                       </th>
                       <SortHeader label='County' field='name' />
                       <SortHeader label='Allocated' field='allocated' />
-                      <th className='py-3 pr-3 font-semibold text-gov-dark/60 text-xs uppercase tracking-wider'>
+                      <th className='py-3 pr-3 font-semibold text-gov-dark/60 dark:text-white/60 text-xs uppercase tracking-wider'>
                         Share of national pot
                       </th>
-                      <th className='py-3 pr-4 font-semibold text-gov-dark/60 text-xs uppercase tracking-wider'>
+                      <th className='py-3 pr-4 font-semibold text-gov-dark/60 dark:text-white/60 text-xs uppercase tracking-wider'>
                         Status
                       </th>
                     </tr>
@@ -605,17 +605,17 @@ export default function TransparencyPage() {
                             className={`border-b border-gray-100 hover:bg-gov-forest/[0.04] transition-colors ${
                               i % 2 === 0 ? 'bg-white/40' : 'bg-gray-50/30'
                             }`}>
-                            <td className='py-3 pl-4 pr-3 text-gov-dark/30 font-mono text-xs'>
+                            <td className='py-3 pl-4 pr-3 text-gov-dark/30 dark:text-white/30 font-mono text-xs'>
                               {i + 1}
                             </td>
                             <td className='py-3 pr-3'>
                               <Link
                                 href={`/counties/${row.county_id}?tab=money&from=transparency`}
-                                className='text-gov-forest font-medium hover:underline decoration-gov-sage/30 underline-offset-2'>
+                                className='text-gov-forest dark:text-emerald-100 font-medium hover:underline decoration-gov-sage/30 underline-offset-2'>
                                 {row.county_name}
                               </Link>
                             </td>
-                            <td className='py-3 pr-3 font-mono text-xs text-gov-dark/80'>
+                            <td className='py-3 pr-3 font-mono text-xs text-gov-dark/80 dark:text-white/80'>
                               {row.allocated != null ? fmtKES(row.allocated) : '—'}
                             </td>
                             <td className='py-3 pr-3'>
@@ -630,7 +630,7 @@ export default function TransparencyPage() {
                                       className='h-full rounded-full bg-gov-sage/70'
                                     />
                                   </div>
-                                  <span className='text-xs font-mono text-gov-dark/50 w-10 text-right'>
+                                  <span className='text-xs font-mono text-gov-dark/50 dark:text-white/50 w-10 text-right'>
                                     {share.toFixed(1)}%
                                   </span>
                                 </div>
@@ -658,20 +658,20 @@ export default function TransparencyPage() {
                 <table className='w-full text-sm'>
                   <thead>
                     <tr className='border-b border-gray-200 bg-gray-50/50 text-left'>
-                      <th className='py-3 pl-4 pr-3 font-semibold text-gov-dark/60 text-xs uppercase tracking-wider w-8'>
+                      <th className='py-3 pl-4 pr-3 font-semibold text-gov-dark/60 dark:text-white/60 text-xs uppercase tracking-wider w-8'>
                         #
                       </th>
                       <SortHeader label='County' field='name' />
-                      <th className='py-3 pr-3 font-semibold text-gov-dark/60 text-xs uppercase tracking-wider text-right'>
+                      <th className='py-3 pr-3 font-semibold text-gov-dark/60 dark:text-white/60 text-xs uppercase tracking-wider text-right'>
                         Allocated
                       </th>
-                      <th className='py-3 pr-3 font-semibold text-gov-dark/60 text-xs uppercase tracking-wider text-right'>
+                      <th className='py-3 pr-3 font-semibold text-gov-dark/60 dark:text-white/60 text-xs uppercase tracking-wider text-right'>
                         Spent
                       </th>
                       <SortHeader label='Efficiency' field='efficiency' />
                       <SortHeader label='Flagged' field='flagged' />
                       <SortHeader label='Gap' field='gap' />
-                      <th className='py-3 pr-4 font-semibold text-gov-dark/60 text-xs uppercase tracking-wider hidden lg:table-cell'>
+                      <th className='py-3 pr-4 font-semibold text-gov-dark/60 dark:text-white/60 text-xs uppercase tracking-wider hidden lg:table-cell'>
                         Impact
                       </th>
                     </tr>
@@ -685,20 +685,20 @@ export default function TransparencyPage() {
                           className={`border-b border-gray-100 hover:bg-gov-forest/[0.04] transition-colors ${
                             i % 2 === 0 ? 'bg-white/40' : 'bg-gray-50/30'
                           }`}>
-                          <td className='py-3 pl-4 pr-3 text-gov-dark/30 font-mono text-xs'>
+                          <td className='py-3 pl-4 pr-3 text-gov-dark/30 dark:text-white/30 font-mono text-xs'>
                             {i + 1}
                           </td>
                           <td className='py-3 pr-3'>
                             <Link
                               href={`/counties/${row.county_id}?tab=money&from=transparency`}
-                              className='text-gov-forest font-medium hover:underline decoration-gov-sage/30 underline-offset-2'>
+                              className='text-gov-forest dark:text-emerald-100 font-medium hover:underline decoration-gov-sage/30 underline-offset-2'>
                               {row.county_name}
                             </Link>
                           </td>
-                          <td className='py-3 pr-3 text-right font-mono text-xs text-gov-dark/70'>
+                          <td className='py-3 pr-3 text-right font-mono text-xs text-gov-dark/70 dark:text-white/70'>
                             {row.allocated != null ? fmtKES(row.allocated) : '—'}
                           </td>
-                          <td className='py-3 pr-3 text-right font-mono text-xs text-gov-dark/70'>
+                          <td className='py-3 pr-3 text-right font-mono text-xs text-gov-dark/70 dark:text-white/70'>
                             {row.spent != null ? fmtKES(row.spent) : '—'}
                           </td>
                           <td className='py-3 pr-3'>
@@ -728,7 +728,7 @@ export default function TransparencyPage() {
                           </td>
                           <td className='py-3 pr-4 hidden lg:table-cell'>
                             {impact && (
-                              <span className='text-[11px] text-gov-dark/40 italic'>
+                              <span className='text-[11px] text-gov-dark/40 dark:text-white/40 italic'>
                                 ≈ {impact}
                               </span>
                             )}
@@ -743,7 +743,7 @@ export default function TransparencyPage() {
           )}
 
           {!allCountyFlowsLoading && sortedRows.length === 0 && (
-            <div className='text-center py-12 text-gov-dark/40'>
+            <div className='text-center py-12 text-gov-dark/40 dark:text-white/40'>
               {searchQuery
                 ? 'No counties match your search.'
                 : 'No data available for this fiscal year.'}
@@ -760,8 +760,8 @@ export default function TransparencyPage() {
       {/* ═══ 7. What can you do? ═══ */}
       <Section delay={0.22}>
         <div className='rounded-2xl bg-gradient-to-br from-gov-forest/5 to-gov-sage/5 border border-gov-forest/10 p-6 sm:p-8'>
-          <h2 className='font-display text-xl text-gov-dark mb-2'>What can you do?</h2>
-          <p className='text-sm text-gov-dark/60 mb-5 max-w-2xl'>
+          <h2 className='font-display text-xl text-gov-dark dark:text-white mb-2'>What can you do?</h2>
+          <p className='text-sm text-gov-dark/60 dark:text-white/60 mb-5 max-w-2xl'>
             Public-money transparency isn&apos;t just data — it&apos;s accountability.
             Here&apos;s how to turn these numbers into action.
           </p>
@@ -845,14 +845,14 @@ function ActionCard({
   const extraProps = external ? { target: '_blank', rel: 'noopener noreferrer' } : {};
   return (
     <div className='bg-white/60 rounded-xl border border-white/80 p-4 space-y-2 hover:shadow-sm transition-shadow'>
-      <div className='w-9 h-9 rounded-lg bg-gov-forest/10 flex items-center justify-center text-gov-forest'>
+      <div className='w-9 h-9 rounded-lg bg-gov-forest/10 flex items-center justify-center text-gov-forest dark:text-emerald-100'>
         {icon}
       </div>
-      <h3 className='font-semibold text-gov-dark text-sm'>{title}</h3>
-      <p className='text-xs text-gov-dark/50 leading-relaxed'>{description}</p>
+      <h3 className='font-semibold text-gov-dark dark:text-white text-sm'>{title}</h3>
+      <p className='text-xs text-gov-dark/50 dark:text-white/50 leading-relaxed'>{description}</p>
       <Comp
         href={href}
-        className='inline-flex items-center gap-1 text-xs font-medium text-gov-sage hover:text-gov-forest transition-colors'
+        className='inline-flex items-center gap-1 text-xs font-medium text-gov-sage hover:text-gov-forest dark:text-emerald-100 transition-colors'
         {...extraProps}>
         {linkText}
         {external ? <ExternalLink size={11} /> : <ArrowRight size={11} />}

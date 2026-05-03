@@ -27,7 +27,7 @@ export function EndpointsDebugger() {
       </button>
 
       {isOpen && (
-        <div className='absolute bottom-12 right-0 w-96 max-h-96 overflow-y-auto bg-white border border-gray-300 rounded-lg shadow-xl p-4'>
+        <div className='absolute bottom-12 right-0 w-96 max-h-96 overflow-y-auto bg-white dark:bg-gov-dark/60 border border-gray-300 rounded-lg shadow-xl p-4'>
           <div className='flex justify-between items-center mb-4'>
             <h3 className='font-bold text-lg'>API Endpoints</h3>
             <button onClick={() => setIsOpen(false)} className='text-gray-500 hover:text-gray-700'>

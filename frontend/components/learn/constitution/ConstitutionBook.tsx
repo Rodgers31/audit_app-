@@ -272,7 +272,7 @@ export default function ConstitutionBook({
       aria-label='Constitution of Kenya reader'>
       {/* ── Header ── */}
       <div className='flex items-start gap-3 border-b border-neutral-border/60 bg-gradient-to-r from-gov-forest via-gov-dark to-gov-forest px-5 py-4 sm:px-7'>
-        <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gov-gold/90 text-gov-dark shadow-surface'>
+        <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gov-gold/90 text-gov-dark dark:text-white shadow-surface'>
           <BookOpen size={20} />
         </div>
         <div className='min-w-0 flex-1'>

@@ -59,7 +59,7 @@ const getAuditConfig = (status: string) => {
 export default function CountyInfoStrip({ county, className = '' }: CountyInfoStripProps) {
   if (!county) {
     return (
-      <div className={`bg-white rounded-2xl border border-gray-200 p-8 ${className}`}>
+      <div className={`bg-white dark:bg-gov-dark/60 rounded-2xl border border-gray-200 p-8 ${className}`}>
         <div className='text-center text-gray-500 py-8'>
           <div className='text-4xl mb-4'>🏛️</div>
           <div className='text-lg font-medium text-gray-700 mb-2'>No County Selected</div>
@@ -87,7 +87,7 @@ export default function CountyInfoStrip({ county, className = '' }: CountyInfoSt
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className={`bg-white rounded-2xl border border-gray-200 p-8 ${className}`}>
+      className={`bg-white dark:bg-gov-dark/60 rounded-2xl border border-gray-200 p-8 ${className}`}>
       {/* Header Section */}
       <div className='flex items-start justify-between mb-8'>
         <div>

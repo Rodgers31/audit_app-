@@ -55,7 +55,7 @@ export default function QuizQuestion({
               className={`w-full p-4 text-left rounded-xl border transition-all duration-200 ${
                 selectedAnswer === index
                   ? 'bg-blue-100 border-blue-300 text-blue-800'
-                  : 'bg-white border-gray-200 hover:border-blue-300'
+                  : 'bg-white dark:bg-gov-dark/60 border-gray-200 hover:border-blue-300'
               }`}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}>
@@ -64,7 +64,7 @@ export default function QuizQuestion({
                   className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                     selectedAnswer === index ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
                   }`}>
-                  {selectedAnswer === index && <div className='w-2 h-2 bg-white rounded-full' />}
+                  {selectedAnswer === index && <div className='w-2 h-2 bg-white dark:bg-gov-dark/60 rounded-full' />}
                 </div>
                 <span>{option}</span>
               </div>

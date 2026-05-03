@@ -199,7 +199,7 @@ export default function AuditFindingsPage() {
       <PageShell title='Audit Findings' subtitle='National audit findings dashboard'>
         <div className='flex items-center justify-center py-32'>
           <Loader2 className='w-8 h-8 animate-spin text-gov-sage' />
-          <span className='ml-3 text-gov-dark/60 font-medium'>Loading audit data...</span>
+          <span className='ml-3 text-gov-dark/60 dark:text-white/60 font-medium'>Loading audit data...</span>
         </div>
       </PageShell>
     );
@@ -244,15 +244,15 @@ export default function AuditFindingsPage() {
       <Section delay={0.1}>
         <div className='space-y-3'>
           <div className='flex items-center justify-between'>
-            <h2 className='font-display text-xl text-gov-dark'>Top 10 Worst Offenders</h2>
+            <h2 className='font-display text-xl text-gov-dark dark:text-white'>Top 10 Worst Offenders</h2>
             <div className='flex items-center gap-2'>
-              <span className='text-xs text-gov-dark/50'>Sort by:</span>
+              <span className='text-xs text-gov-dark/50 dark:text-white/50'>Sort by:</span>
               <button
                 onClick={() => setWorstSort('amount')}
                 className={`text-xs px-3 py-1 rounded-full transition-colors ${
                   worstSort === 'amount'
                     ? 'bg-gov-forest text-white'
-                    : 'bg-gov-dark/5 text-gov-dark/60 hover:bg-gov-dark/10'
+                    : 'bg-gov-dark/5 text-gov-dark/60 dark:text-white/60 hover:bg-gov-dark/10'
                 }`}>
                 Amount
               </button>
@@ -261,7 +261,7 @@ export default function AuditFindingsPage() {
                 className={`text-xs px-3 py-1 rounded-full transition-colors ${
                   worstSort === 'count'
                     ? 'bg-gov-forest text-white'
-                    : 'bg-gov-dark/5 text-gov-dark/60 hover:bg-gov-dark/10'
+                    : 'bg-gov-dark/5 text-gov-dark/60 dark:text-white/60 hover:bg-gov-dark/10'
                 }`}>
                 Findings
               </button>
@@ -272,10 +272,10 @@ export default function AuditFindingsPage() {
             <table className='w-full text-sm'>
               <thead>
                 <tr className='border-b border-gov-dark/10 text-left'>
-                  <th className='py-2 pr-3 font-semibold text-gov-dark/70 w-8'>#</th>
-                  <th className='py-2 pr-3 font-semibold text-gov-dark/70'>County</th>
-                  <th className='py-2 pr-3 font-semibold text-gov-dark/70 text-right'>Flagged Amount</th>
-                  <th className='py-2 font-semibold text-gov-dark/70 text-right'>Findings</th>
+                  <th className='py-2 pr-3 font-semibold text-gov-dark/70 dark:text-white/70 w-8'>#</th>
+                  <th className='py-2 pr-3 font-semibold text-gov-dark/70 dark:text-white/70'>County</th>
+                  <th className='py-2 pr-3 font-semibold text-gov-dark/70 dark:text-white/70 text-right'>Flagged Amount</th>
+                  <th className='py-2 font-semibold text-gov-dark/70 dark:text-white/70 text-right'>Findings</th>
                 </tr>
               </thead>
               <tbody>
@@ -283,11 +283,11 @@ export default function AuditFindingsPage() {
                   <tr
                     key={c.county_id}
                     className='border-b border-gov-dark/5 hover:bg-gov-forest/[0.03] transition-colors group'>
-                    <td className='py-2.5 pr-3 text-gov-dark/40 font-mono text-xs'>{i + 1}</td>
+                    <td className='py-2.5 pr-3 text-gov-dark/40 dark:text-white/40 font-mono text-xs'>{i + 1}</td>
                     <td className='py-2.5 pr-3'>
                       <Link
                         href={`/counties/${c.county_id}`}
-                        className='text-gov-forest font-medium hover:underline group-hover:text-gov-sage transition-colors'>
+                        className='text-gov-forest dark:text-emerald-100 font-medium hover:underline group-hover:text-gov-sage transition-colors'>
                         {c.county_name}
                       </Link>
                     </td>
@@ -308,7 +308,7 @@ export default function AuditFindingsPage() {
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
           {/* C. Findings by Type */}
           <div className='space-y-3'>
-            <h2 className='font-display text-xl text-gov-dark'>Findings by Type</h2>
+            <h2 className='font-display text-xl text-gov-dark dark:text-white'>Findings by Type</h2>
             {typeChartData.length > 0 ? (
               <div className='h-[320px]'>
                 <ResponsiveContainer width='100%' height='100%'>
@@ -339,7 +339,7 @@ export default function AuditFindingsPage() {
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className='h-[320px] flex items-center justify-center text-gov-dark/40'>
+              <div className='h-[320px] flex items-center justify-center text-gov-dark/40 dark:text-white/40'>
                 No data available
               </div>
             )}
@@ -347,7 +347,7 @@ export default function AuditFindingsPage() {
 
           {/* D. Year-on-Year Trends */}
           <div className='space-y-3'>
-            <h2 className='font-display text-xl text-gov-dark'>Year-on-Year Trends</h2>
+            <h2 className='font-display text-xl text-gov-dark dark:text-white'>Year-on-Year Trends</h2>
             {trendsLoading ? (
               <div className='h-[320px] flex items-center justify-center'>
                 <Loader2 className='w-6 h-6 animate-spin text-gov-sage' />
@@ -418,7 +418,7 @@ export default function AuditFindingsPage() {
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className='h-[320px] flex items-center justify-center text-gov-dark/40'>
+              <div className='h-[320px] flex items-center justify-center text-gov-dark/40 dark:text-white/40'>
                 No trend data available
               </div>
             )}
@@ -430,14 +430,14 @@ export default function AuditFindingsPage() {
       <Section delay={0.2}>
         <div className='space-y-3'>
           <div className='flex items-center gap-3'>
-            <h2 className='font-display text-xl text-gov-dark'>Recurring Findings</h2>
+            <h2 className='font-display text-xl text-gov-dark dark:text-white'>Recurring Findings</h2>
             {recurring && (
               <span className='text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium'>
                 {recurring.total} patterns
               </span>
             )}
           </div>
-          <p className='text-sm text-gov-dark/50'>
+          <p className='text-sm text-gov-dark/50 dark:text-white/50'>
             Counties with the same type of finding across multiple audit years — the real scandals.
           </p>
 
@@ -450,10 +450,10 @@ export default function AuditFindingsPage() {
               <table className='w-full text-sm'>
                 <thead>
                   <tr className='border-b border-gov-dark/10 text-left'>
-                    <th className='py-2 pr-3 font-semibold text-gov-dark/70'>County</th>
-                    <th className='py-2 pr-3 font-semibold text-gov-dark/70'>Finding Type</th>
-                    <th className='py-2 pr-3 font-semibold text-gov-dark/70'>Years</th>
-                    <th className='py-2 font-semibold text-gov-dark/70 text-right'>Total Amount</th>
+                    <th className='py-2 pr-3 font-semibold text-gov-dark/70 dark:text-white/70'>County</th>
+                    <th className='py-2 pr-3 font-semibold text-gov-dark/70 dark:text-white/70'>Finding Type</th>
+                    <th className='py-2 pr-3 font-semibold text-gov-dark/70 dark:text-white/70'>Years</th>
+                    <th className='py-2 font-semibold text-gov-dark/70 dark:text-white/70 text-right'>Total Amount</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -465,7 +465,7 @@ export default function AuditFindingsPage() {
                           ? 'bg-red-50/50 hover:bg-red-50'
                           : 'hover:bg-gov-forest/[0.03]'
                       }`}>
-                      <td className='py-2.5 pr-3 font-medium text-gov-dark'>{r.county_name}</td>
+                      <td className='py-2.5 pr-3 font-medium text-gov-dark dark:text-white'>{r.county_name}</td>
                       <td className='py-2.5 pr-3'>
                         <span
                           className='inline-block px-2 py-0.5 rounded text-xs font-medium text-white'
@@ -478,7 +478,7 @@ export default function AuditFindingsPage() {
                           {r.years_appeared.map((y) => (
                             <span
                               key={y}
-                              className='text-xs px-1.5 py-0.5 rounded bg-gov-dark/5 text-gov-dark/70 font-mono'>
+                              className='text-xs px-1.5 py-0.5 rounded bg-gov-dark/5 text-gov-dark/70 dark:text-white/70 font-mono'>
                               {y}
                             </span>
                           ))}
@@ -493,7 +493,7 @@ export default function AuditFindingsPage() {
               </table>
             </div>
           ) : (
-            <div className='text-center py-8 text-gov-dark/40'>No recurring findings detected</div>
+            <div className='text-center py-8 text-gov-dark/40 dark:text-white/40'>No recurring findings detected</div>
           )}
         </div>
       </Section>
@@ -502,11 +502,11 @@ export default function AuditFindingsPage() {
       <Section delay={0.25}>
         <div className='space-y-3'>
           <div className='flex items-center justify-between'>
-            <h2 className='font-display text-xl text-gov-dark'>All Findings</h2>
+            <h2 className='font-display text-xl text-gov-dark dark:text-white'>All Findings</h2>
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className='flex items-center gap-1 text-xs text-gov-sage hover:text-gov-forest transition-colors'>
+                className='flex items-center gap-1 text-xs text-gov-sage hover:text-gov-forest dark:text-emerald-100 transition-colors'>
                 <X className='w-3 h-3' />
                 Clear filters
               </button>
@@ -571,11 +571,11 @@ export default function AuditFindingsPage() {
         {findingsLoading ? (
           <div className='flex items-center justify-center py-16'>
             <Loader2 className='w-6 h-6 animate-spin text-gov-sage' />
-            <span className='ml-3 text-gov-dark/60'>Loading findings...</span>
+            <span className='ml-3 text-gov-dark/60 dark:text-white/60'>Loading findings...</span>
           </div>
         ) : findings && findings.items.length > 0 ? (
           <div className='space-y-4'>
-            <div className='text-xs text-gov-dark/50'>
+            <div className='text-xs text-gov-dark/50 dark:text-white/50'>
               Showing {(findings.page - 1) * (filters.limit || 20) + 1}–
               {Math.min(findings.page * (filters.limit || 20), findings.total)} of{' '}
               {findings.total.toLocaleString()} findings
@@ -585,15 +585,15 @@ export default function AuditFindingsPage() {
               <table className='w-full text-sm'>
                 <thead>
                   <tr className='border-b border-gov-dark/10 text-left'>
-                    <th className='py-2 pr-3 font-semibold text-gov-dark/70'>County</th>
-                    <th className='py-2 pr-3 font-semibold text-gov-dark/70'>Year</th>
-                    <th className='py-2 pr-3 font-semibold text-gov-dark/70'>Type</th>
-                    <th className='py-2 pr-3 font-semibold text-gov-dark/70 text-right'>Amount</th>
-                    <th className='py-2 pr-3 font-semibold text-gov-dark/70'>Severity</th>
-                    <th className='py-2 pr-3 font-semibold text-gov-dark/70'>Status</th>
-                    <th className='py-2 pr-3 font-semibold text-gov-dark/70'>Opinion</th>
-                    <th className='py-2 pr-3 font-semibold text-gov-dark/70 text-center w-10'>Source</th>
-                    <th className='py-2 font-semibold text-gov-dark/70 text-center w-8' title='Data confidence'>DQ</th>
+                    <th className='py-2 pr-3 font-semibold text-gov-dark/70 dark:text-white/70'>County</th>
+                    <th className='py-2 pr-3 font-semibold text-gov-dark/70 dark:text-white/70'>Year</th>
+                    <th className='py-2 pr-3 font-semibold text-gov-dark/70 dark:text-white/70'>Type</th>
+                    <th className='py-2 pr-3 font-semibold text-gov-dark/70 dark:text-white/70 text-right'>Amount</th>
+                    <th className='py-2 pr-3 font-semibold text-gov-dark/70 dark:text-white/70'>Severity</th>
+                    <th className='py-2 pr-3 font-semibold text-gov-dark/70 dark:text-white/70'>Status</th>
+                    <th className='py-2 pr-3 font-semibold text-gov-dark/70 dark:text-white/70'>Opinion</th>
+                    <th className='py-2 pr-3 font-semibold text-gov-dark/70 dark:text-white/70 text-center w-10'>Source</th>
+                    <th className='py-2 font-semibold text-gov-dark/70 dark:text-white/70 text-center w-8' title='Data confidence'>DQ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -605,7 +605,7 @@ export default function AuditFindingsPage() {
                       <td className='py-2.5 pr-3'>
                         <Link
                           href={`/counties/${f.entity_id}`}
-                          className='text-gov-forest font-medium hover:underline'>
+                          className='text-gov-forest dark:text-emerald-100 font-medium hover:underline'>
                           {f.county_name || `County ${f.entity_id}`}
                         </Link>
                       </td>
@@ -647,12 +647,12 @@ export default function AuditFindingsPage() {
                             href={f.source_document_url}
                             target='_blank'
                             rel='noopener noreferrer'
-                            className='inline-flex items-center text-gov-sage hover:text-gov-forest transition-colors'
+                            className='inline-flex items-center text-gov-sage hover:text-gov-forest dark:text-emerald-100 transition-colors'
                             title='View OAG source report'>
                             <FileText className='w-4 h-4' />
                           </a>
                         ) : (
-                          <span className='text-gov-dark/20'>—</span>
+                          <span className='text-gov-dark/20 dark:text-white/20'>—</span>
                         )}
                       </td>
                       <td className='py-2.5 text-center'>
@@ -674,7 +674,7 @@ export default function AuditFindingsPage() {
                   <ChevronLeft className='w-4 h-4' />
                   Previous
                 </button>
-                <span className='text-xs text-gov-dark/60'>
+                <span className='text-xs text-gov-dark/60 dark:text-white/60'>
                   Page {filters.page || 1} of {totalPages}
                 </span>
                 <button
@@ -688,7 +688,7 @@ export default function AuditFindingsPage() {
             )}
           </div>
         ) : (
-          <div className='text-center py-16 text-gov-dark/40'>
+          <div className='text-center py-16 text-gov-dark/40 dark:text-white/40'>
             {hasActiveFilters ? 'No findings match your filters.' : 'No findings data available.'}
           </div>
         )}
@@ -755,13 +755,13 @@ function FilterSelect({
 }) {
   return (
     <div className='flex flex-col gap-1'>
-      <label className='text-[10px] font-semibold text-gov-dark/50 uppercase tracking-wider'>
+      <label className='text-[10px] font-semibold text-gov-dark/50 dark:text-white/50 uppercase tracking-wider'>
         {label}
       </label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className='text-sm px-3 py-1.5 rounded-lg bg-white/60 border border-gov-dark/10 text-gov-dark focus:outline-none focus:ring-2 focus:ring-gov-sage/30 focus:border-gov-sage appearance-none pr-8 min-w-[140px]'
+        className='text-sm px-3 py-1.5 rounded-lg bg-white/60 border border-gov-dark/10 text-gov-dark dark:text-white focus:outline-none focus:ring-2 focus:ring-gov-sage/30 focus:border-gov-sage appearance-none pr-8 min-w-[140px]'
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
           backgroundRepeat: 'no-repeat',
@@ -793,7 +793,7 @@ function SeverityBadge({ severity }: { severity: string }) {
 }
 
 function StatusBadge({ status }: { status: string | null }) {
-  if (!status) return <span className='text-gov-dark/30'>—</span>;
+  if (!status) return <span className='text-gov-dark/30 dark:text-white/30'>—</span>;
   const styles: Record<string, string> = {
     Resolved: 'bg-emerald-100 text-emerald-700',
     Unresolved: 'bg-red-100 text-red-700',
@@ -809,7 +809,7 @@ function StatusBadge({ status }: { status: string | null }) {
 function ConfidenceIndicator({ score }: { score: number | null }) {
   if (score === null || score > 0.8) {
     // High confidence or unknown — no indicator needed
-    return <span className='text-gov-dark/15'>—</span>;
+    return <span className='text-gov-dark/15 dark:text-white/15'>—</span>;
   }
   if (score >= 0.5) {
     return (

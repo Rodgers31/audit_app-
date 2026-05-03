@@ -52,7 +52,7 @@ export default function FeatureNavCards() {
                 </span>
               </div>
 
-              <h4 className='text-sm font-semibold text-gov-dark leading-snug mb-1'>
+              <h4 className='text-sm font-semibold text-gov-dark dark:text-white leading-snug mb-1'>
                 {t(feat.titleKey)}
               </h4>
               <span className='inline-block text-[11px] text-neutral-muted bg-gov-sand/60 px-3 py-1 rounded-full'>

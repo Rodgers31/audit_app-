@@ -77,11 +77,11 @@ export default function DebtSourceReconciliation({ reconciliation, lastUpdated }
       {/* Header */}
       <div className='border-b border-neutral-border/40 bg-gradient-to-r from-gov-sand/40 via-white to-transparent px-5 sm:px-7 py-4'>
         <div className='flex items-start gap-3'>
-          <div className='rounded-lg bg-gov-forest/10 text-gov-forest p-2 mt-0.5'>
+          <div className='rounded-lg bg-gov-forest/10 text-gov-forest dark:text-emerald-100 p-2 mt-0.5'>
             <GitCompareArrows size={18} />
           </div>
           <div className='flex-1 min-w-0'>
-            <h3 className='font-display text-lg sm:text-xl text-gov-dark leading-tight'>
+            <h3 className='font-display text-lg sm:text-xl text-gov-dark dark:text-white leading-tight'>
               Sources &amp; Reconciliation
             </h3>
             <p className='text-xs sm:text-sm text-neutral-muted mt-0.5'>
@@ -96,7 +96,7 @@ export default function DebtSourceReconciliation({ reconciliation, lastUpdated }
       <div className='grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-neutral-border/40'>
         {/* ── Primary: live loans register ── */}
         <div className='p-5 sm:p-6 relative'>
-          <div className='absolute top-4 right-4 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-gov-forest bg-gov-forest/10 px-2 py-0.5 rounded-full'>
+          <div className='absolute top-4 right-4 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-gov-forest dark:text-emerald-100 bg-gov-forest/10 px-2 py-0.5 rounded-full'>
             <span className='relative flex h-1.5 w-1.5'>
               <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-gov-forest opacity-60' />
               <span className='relative inline-flex rounded-full h-1.5 w-1.5 bg-gov-forest' />
@@ -104,12 +104,12 @@ export default function DebtSourceReconciliation({ reconciliation, lastUpdated }
             Live
           </div>
           <div className='flex items-center gap-2 mb-2'>
-            <Database size={14} className='text-gov-forest' />
-            <span className='text-xs font-semibold uppercase tracking-wider text-gov-forest'>
+            <Database size={14} className='text-gov-forest dark:text-emerald-100' />
+            <span className='text-xs font-semibold uppercase tracking-wider text-gov-forest dark:text-emerald-100'>
               Outstanding Loan Register
             </span>
           </div>
-          <div className='metric-large text-gov-dark tabular-nums'>
+          <div className='metric-large text-gov-dark dark:text-white tabular-nums'>
             KES {fmtT(primary)}
           </div>
           <p className='text-xs text-neutral-muted mt-2 leading-relaxed'>
@@ -120,22 +120,22 @@ export default function DebtSourceReconciliation({ reconciliation, lastUpdated }
           <dl className='mt-4 space-y-1.5 text-[11px]'>
             <div className='flex justify-between gap-3'>
               <dt className='text-neutral-muted'>Source</dt>
-              <dd className='text-gov-dark font-medium text-right'>
+              <dd className='text-gov-dark dark:text-white font-medium text-right'>
                 CBK Public Debt Statistical Bulletin
               </dd>
             </div>
             <div className='flex justify-between gap-3'>
               <dt className='text-neutral-muted'>Fetch</dt>
-              <dd className='text-gov-dark font-medium text-right'>
+              <dd className='text-gov-dark dark:text-white font-medium text-right'>
                 Daily · PDF parsed server-side
               </dd>
             </div>
             <div className='flex justify-between gap-3'>
               <dt className='text-neutral-muted'>Last updated</dt>
-              <dd className='text-gov-dark font-medium text-right'>{fmtDate(lastUpdated)}</dd>
+              <dd className='text-gov-dark dark:text-white font-medium text-right'>{fmtDate(lastUpdated)}</dd>
             </div>
           </dl>
-          <p className='mt-3 text-[10px] uppercase tracking-wider text-gov-forest font-semibold'>
+          <p className='mt-3 text-[10px] uppercase tracking-wider text-gov-forest dark:text-emerald-100 font-semibold'>
             ← Used as the headline figure on this site
           </p>
         </div>
@@ -152,7 +152,7 @@ export default function DebtSourceReconciliation({ reconciliation, lastUpdated }
               Treasury Annual Aggregate
             </span>
           </div>
-          <div className='metric-large text-gov-dark tabular-nums'>
+          <div className='metric-large text-gov-dark dark:text-white tabular-nums'>
             KES {fmtT(secondary)}
           </div>
           <p className='text-xs text-neutral-muted mt-2 leading-relaxed'>
@@ -162,19 +162,19 @@ export default function DebtSourceReconciliation({ reconciliation, lastUpdated }
           <dl className='mt-4 space-y-1.5 text-[11px]'>
             <div className='flex justify-between gap-3'>
               <dt className='text-neutral-muted'>Source</dt>
-              <dd className='text-gov-dark font-medium text-right'>
+              <dd className='text-gov-dark dark:text-white font-medium text-right'>
                 CBK Annual Report · Treasury BPS
               </dd>
             </div>
             <div className='flex justify-between gap-3'>
               <dt className='text-neutral-muted'>Fetch</dt>
-              <dd className='text-gov-dark font-medium text-right'>
+              <dd className='text-gov-dark dark:text-white font-medium text-right'>
                 Quarterly · manual reconciliation
               </dd>
             </div>
             <div className='flex justify-between gap-3'>
               <dt className='text-neutral-muted'>Covers</dt>
-              <dd className='text-gov-dark font-medium text-right'>
+              <dd className='text-gov-dark dark:text-white font-medium text-right'>
                 FY {reconciliation.secondary_year ?? '—'}
               </dd>
             </div>
@@ -185,12 +185,12 @@ export default function DebtSourceReconciliation({ reconciliation, lastUpdated }
       {/* Gap explainer strip */}
       <div className='border-t border-neutral-border/40 bg-gov-sand/30 px-5 sm:px-7 py-4'>
         <div className='flex items-start gap-3'>
-          <div className='rounded-full bg-white border border-gov-gold/40 text-gov-gold p-1.5 mt-0.5 flex-shrink-0'>
+          <div className='rounded-full bg-white dark:bg-gov-dark/60 border border-gov-gold/40 text-gov-gold p-1.5 mt-0.5 flex-shrink-0'>
             <Info size={14} />
           </div>
           <div className='flex-1'>
             <div className='flex flex-wrap items-baseline gap-x-2 gap-y-0.5'>
-              <span className='text-sm font-semibold text-gov-dark'>
+              <span className='text-sm font-semibold text-gov-dark dark:text-white'>
                 Gap: KES {fmtT(diffKES)}
               </span>
               <span className='text-xs text-neutral-muted'>

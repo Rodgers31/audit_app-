@@ -99,11 +99,11 @@ export default function BudgetSourceReconciliation({
       className='rounded-2xl border border-neutral-border/40 bg-white/70 backdrop-blur-sm overflow-hidden'>
       <div className='border-b border-neutral-border/40 bg-gradient-to-r from-gov-sand/40 via-white to-transparent px-5 sm:px-7 py-4'>
         <div className='flex items-start gap-3'>
-          <div className='rounded-lg bg-gov-forest/10 text-gov-forest p-2 mt-0.5'>
+          <div className='rounded-lg bg-gov-forest/10 text-gov-forest dark:text-emerald-100 p-2 mt-0.5'>
             <GitCompareArrows size={18} />
           </div>
           <div className='flex-1 min-w-0'>
-            <h3 className='font-display text-lg sm:text-xl text-gov-dark leading-tight'>
+            <h3 className='font-display text-lg sm:text-xl text-gov-dark dark:text-white leading-tight'>
               Sources &amp; Reconciliation
             </h3>
             <p className='text-xs sm:text-sm text-neutral-muted mt-0.5'>
@@ -116,7 +116,7 @@ export default function BudgetSourceReconciliation({
       <div className='grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-neutral-border/40'>
         {/* Execution / actuals */}
         <div className='p-5 sm:p-6 relative'>
-          <div className='absolute top-4 right-4 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-gov-forest bg-gov-forest/10 px-2 py-0.5 rounded-full'>
+          <div className='absolute top-4 right-4 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-gov-forest dark:text-emerald-100 bg-gov-forest/10 px-2 py-0.5 rounded-full'>
             <span className='relative flex h-1.5 w-1.5'>
               <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-gov-forest opacity-60' />
               <span className='relative inline-flex rounded-full h-1.5 w-1.5 bg-gov-forest' />
@@ -124,12 +124,12 @@ export default function BudgetSourceReconciliation({
             Actuals
           </div>
           <div className='flex items-center gap-2 mb-2'>
-            <Database size={14} className='text-gov-forest' />
-            <span className='text-xs font-semibold uppercase tracking-wider text-gov-forest'>
+            <Database size={14} className='text-gov-forest dark:text-emerald-100' />
+            <span className='text-xs font-semibold uppercase tracking-wider text-gov-forest dark:text-emerald-100'>
               Controller of Budget
             </span>
           </div>
-          <div className='font-display text-lg text-gov-dark'>
+          <div className='font-display text-lg text-gov-dark dark:text-white'>
             Budget Implementation Review
           </div>
           <p className='text-xs text-neutral-muted mt-2 leading-relaxed'>
@@ -140,15 +140,15 @@ export default function BudgetSourceReconciliation({
           <dl className='mt-4 space-y-1.5 text-[11px]'>
             <div className='flex justify-between gap-3'>
               <dt className='text-neutral-muted'>Source</dt>
-              <dd className='text-gov-dark font-medium text-right'>CoB Annual NG-BIRR</dd>
+              <dd className='text-gov-dark dark:text-white font-medium text-right'>CoB Annual NG-BIRR</dd>
             </div>
             <div className='flex justify-between gap-3'>
               <dt className='text-neutral-muted'>Fetch</dt>
-              <dd className='text-gov-dark font-medium text-right'>Quarterly · PDF parsed</dd>
+              <dd className='text-gov-dark dark:text-white font-medium text-right'>Quarterly · PDF parsed</dd>
             </div>
             <div className='flex justify-between gap-3'>
               <dt className='text-neutral-muted'>Last updated</dt>
-              <dd className='text-gov-dark font-medium text-right'>{fmtDate(lastUpdated)}</dd>
+              <dd className='text-gov-dark dark:text-white font-medium text-right'>{fmtDate(lastUpdated)}</dd>
             </div>
           </dl>
         </div>
@@ -165,7 +165,7 @@ export default function BudgetSourceReconciliation({
               National Treasury
             </span>
           </div>
-          <div className='font-display text-lg text-gov-dark'>
+          <div className='font-display text-lg text-gov-dark dark:text-white'>
             Appropriation Act &amp; BPS
           </div>
           <p className='text-xs text-neutral-muted mt-2 leading-relaxed'>
@@ -176,17 +176,17 @@ export default function BudgetSourceReconciliation({
           <dl className='mt-4 space-y-1.5 text-[11px]'>
             <div className='flex justify-between gap-3'>
               <dt className='text-neutral-muted'>Source</dt>
-              <dd className='text-gov-dark font-medium text-right'>
+              <dd className='text-gov-dark dark:text-white font-medium text-right'>
                 National Treasury BPS
               </dd>
             </div>
             <div className='flex justify-between gap-3'>
               <dt className='text-neutral-muted'>Fetch</dt>
-              <dd className='text-gov-dark font-medium text-right'>Annual publication</dd>
+              <dd className='text-gov-dark dark:text-white font-medium text-right'>Annual publication</dd>
             </div>
             <div className='flex justify-between gap-3'>
               <dt className='text-neutral-muted'>Covers</dt>
-              <dd className='text-gov-dark font-medium text-right'>
+              <dd className='text-gov-dark dark:text-white font-medium text-right'>
                 {fiscalPeriod ?? meta?.covers_through ?? '—'}
               </dd>
             </div>
@@ -202,7 +202,7 @@ export default function BudgetSourceReconciliation({
           </div>
           <div className='flex-1 min-w-0'>
             <div className='flex items-baseline justify-between flex-wrap gap-x-3 gap-y-0.5'>
-              <span className='text-sm font-semibold text-gov-dark'>
+              <span className='text-sm font-semibold text-gov-dark dark:text-white'>
                 Debt-service headline: source by fiscal year
               </span>
               <span className='text-[10px] uppercase tracking-wider text-gov-copper/80 font-semibold'>
@@ -222,9 +222,9 @@ export default function BudgetSourceReconciliation({
                     href={r.url}
                     target='_blank'
                     rel='noopener noreferrer'
-                    className='group flex items-center justify-between gap-2 rounded-md border border-neutral-border/40 bg-white px-2.5 py-1.5 text-[11px] hover:border-gov-copper/50 hover:bg-gov-copper/5 transition-colors'>
+                    className='group flex items-center justify-between gap-2 rounded-md border border-neutral-border/40 bg-white dark:bg-gov-dark/60 px-2.5 py-1.5 text-[11px] hover:border-gov-copper/50 hover:bg-gov-copper/5 transition-colors'>
                     <span className='flex items-center gap-2 min-w-0'>
-                      <span className='font-semibold text-gov-dark tabular-nums flex-shrink-0'>
+                      <span className='font-semibold text-gov-dark dark:text-white tabular-nums flex-shrink-0'>
                         {r.fy.replace('FY ', '')}
                       </span>
                       <span className='text-neutral-muted truncate'>{r.title}</span>
@@ -245,12 +245,12 @@ export default function BudgetSourceReconciliation({
       {(notes.length > 0 || meta?.scope_detail) && (
         <div className='border-t border-neutral-border/40 bg-gov-sand/30 px-5 sm:px-7 py-4'>
           <div className='flex items-start gap-3'>
-            <div className='rounded-full bg-white border border-gov-gold/40 text-gov-gold p-1.5 mt-0.5 flex-shrink-0'>
+            <div className='rounded-full bg-white dark:bg-gov-dark/60 border border-gov-gold/40 text-gov-gold p-1.5 mt-0.5 flex-shrink-0'>
               <Info size={14} />
             </div>
             <div className='flex-1'>
               <div className='flex flex-wrap items-baseline gap-x-2 gap-y-0.5'>
-                <span className='text-sm font-semibold text-gov-dark'>
+                <span className='text-sm font-semibold text-gov-dark dark:text-white'>
                   Data quality: <span className='capitalize'>{qualityLabel}</span>
                 </span>
                 <span className='text-xs text-neutral-muted'>

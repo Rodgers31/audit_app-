@@ -216,7 +216,7 @@ export default function MapTooltip({
           {/* ── Header ── */}
           <div className='flex items-start justify-between gap-2 mb-3'>
             <div className='min-w-0'>
-              <h3 className='text-[16px] font-bold text-gov-dark truncate leading-tight'>
+              <h3 className='text-[16px] font-bold text-gov-dark dark:text-white truncate leading-tight'>
                 {county.name}
               </h3>
               <p className='text-[11px] text-neutral-muted mt-0.5 truncate'>
@@ -261,11 +261,11 @@ export default function MapTooltip({
             {/* Budget utilisation */}
             <div className='rounded-lg border border-neutral-border/40 bg-white/70 p-2.5'>
               <div className='flex items-center gap-1 mb-1.5'>
-                <Coins className='w-3 h-3 text-gov-forest/70' />
+                <Coins className='w-3 h-3 text-gov-forest/70 dark:text-emerald-100/70' />
                 <span className='text-[10px] font-medium text-neutral-muted'>Utilisation</span>
               </div>
               <div className='flex items-baseline gap-1 mb-1.5'>
-                <span className='text-[15px] font-bold text-gov-dark tabular-nums leading-none'>
+                <span className='text-[15px] font-bold text-gov-dark dark:text-white tabular-nums leading-none'>
                   {utilization.toFixed(0)}
                 </span>
                 <span className='text-[10px] font-medium text-neutral-muted'>%</span>
@@ -285,7 +285,7 @@ export default function MapTooltip({
                 <span className='text-[10px] font-medium text-neutral-muted'>Debt Ratio</span>
               </div>
               <div className='flex items-baseline gap-1 mb-0.5'>
-                <span className='text-[15px] font-bold text-gov-dark tabular-nums leading-none'>
+                <span className='text-[15px] font-bold text-gov-dark dark:text-white tabular-nums leading-none'>
                   {debtRatio.toFixed(1)}
                 </span>
                 <span className='text-[10px] font-medium text-neutral-muted'>%</span>
@@ -337,7 +337,7 @@ export default function MapTooltip({
           <Link
             href={`/counties/${county.id}?from=home-map`}
             onClick={(e) => e.stopPropagation()}
-            className='mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-gov-forest/[0.06] hover:bg-gov-forest hover:text-white px-3 py-2 text-[11px] font-semibold text-gov-forest transition-colors group/cta'>
+            className='mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-gov-forest/[0.06] hover:bg-gov-forest hover:text-white px-3 py-2 text-[11px] font-semibold text-gov-forest dark:text-emerald-100 transition-colors group/cta'>
             View detailed analysis
             <ArrowRight className='w-3 h-3 transition-transform group-hover/cta:translate-x-0.5' />
           </Link>

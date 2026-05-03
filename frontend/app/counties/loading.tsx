@@ -17,7 +17,7 @@ export default function CountiesLoading() {
       {/* County cards grid */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div key={i} className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
+          <div key={i} className="bg-white dark:bg-gov-dark/60 rounded-xl p-5 shadow-sm border border-slate-100">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-10 w-10 bg-slate-200 rounded-full" />
               <div>

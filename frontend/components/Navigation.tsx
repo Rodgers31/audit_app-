@@ -134,7 +134,7 @@ export default function Navigation() {
                   key={item.href}
                   href={item.href}
                   className={`relative px-2.5 xl:px-4 py-1.5 rounded-full text-[12px] xl:text-sm font-medium transition-all duration-300 whitespace-nowrap ${
-                    isActive ? 'text-gov-dark' : 'text-white/80 hover:text-white hover:bg-white/10'
+                    isActive ? 'text-gov-dark dark:text-white' : 'text-white/80 hover:text-white hover:bg-white/10'
                   }`}>
                   {isActive && (
                     <motion.div

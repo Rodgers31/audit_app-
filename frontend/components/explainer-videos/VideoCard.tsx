@@ -21,7 +21,7 @@ export default function VideoCard({ video, index, onVideoSelect }: VideoCardProp
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, duration: 0.5 }}
-      className='bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300'>
+      className='bg-white dark:bg-gov-dark/60 rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300'>
       {/* Video Thumbnail */}
       <div className='relative h-48 overflow-hidden'>
         <VideoThumbnail thumbnail={video.thumbnail} />
@@ -32,7 +32,7 @@ export default function VideoCard({ video, index, onVideoSelect }: VideoCardProp
           className='absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-200'
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}>
-          <div className='w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg'>
+          <div className='w-16 h-16 bg-white dark:bg-gov-dark/60 rounded-full flex items-center justify-center shadow-lg'>
             <Play size={24} className='text-gray-800 ml-1' />
           </div>
         </motion.button>

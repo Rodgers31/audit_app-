@@ -119,7 +119,7 @@ export default function CountyMapSelector({
                   ${
                     isSelected
                       ? 'bg-blue-600 text-white shadow-lg scale-105'
-                      : 'bg-white text-gray-700 border border-gray-200 hover:border-blue-300 hover:text-blue-600'
+                      : 'bg-white dark:bg-gov-dark/60 text-gray-700 border border-gray-200 hover:border-blue-300 hover:text-blue-600'
                   }
                 `}
                 whileHover={{ scale: 1.05 }}

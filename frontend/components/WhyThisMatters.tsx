@@ -17,7 +17,7 @@ interface WhyThisMattersProps {
 
 export default function WhyThisMatters({ searchTerm }: WhyThisMattersProps) {
   return (
-    <div className='bg-white rounded-3xl p-8 shadow-xl border border-gray-200'>
+    <div className='bg-white dark:bg-gov-dark/60 rounded-3xl p-8 shadow-xl border border-gray-200'>
       {/* Page Header */}
       <div className='flex items-center gap-3 mb-8'>
         <Heart size={32} className='text-red-600' />

@@ -210,7 +210,7 @@ export default function AccountabilityTab({ data: countyData }: { data: CountyCo
 
       {/* A2. HOW THIS GRADE WAS CALCULATED */}
       {factors.length > 0 && (
-        <div className='bg-white rounded-2xl border border-gray-100 overflow-hidden'>
+        <div className='bg-white dark:bg-gov-dark/60 rounded-2xl border border-gray-100 overflow-hidden'>
           <div className='px-5 pt-5 pb-3 flex items-center gap-2'>
             <div className='h-5 w-1 rounded-full bg-gov-forest' />
             <h3 className='text-base font-semibold text-gray-900'>
@@ -359,7 +359,7 @@ export default function AccountabilityTab({ data: countyData }: { data: CountyCo
           return (
             <div
               key={m.label}
-              className={`bg-white rounded-xl border border-gray-100 border-l-4 ${toneCls} p-4`}>
+              className={`bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 border-l-4 ${toneCls} p-4`}>
               <div className='flex items-center gap-2 mb-1'>
                 <m.Icon size={14} />
                 <div className='text-[10px] uppercase tracking-widest font-semibold text-gray-400'>
@@ -375,7 +375,7 @@ export default function AccountabilityTab({ data: countyData }: { data: CountyCo
 
       {/* B. AUDIT OPINION HISTORY */}
       {data.audit_opinion_history.length > 0 && (
-        <div className='bg-white rounded-xl border border-gray-100 p-5'>
+        <div className='bg-white dark:bg-gov-dark/60 rounded-xl border border-gray-100 p-5'>
           <h3 className='text-sm font-semibold text-gray-800 mb-4'>
             {t('county.acct.opinion_history')}
           </h3>

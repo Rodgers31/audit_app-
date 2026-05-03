@@ -147,13 +147,13 @@ export default function RevenueMix({ revenueBySource }: Props) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.55 }}
-      className='rounded-2xl bg-white border border-neutral-border/40 shadow-surface p-5 sm:p-7'>
+      className='rounded-2xl bg-white dark:bg-gov-dark/60 border border-neutral-border/40 shadow-surface p-5 sm:p-7'>
       <div className='flex items-start justify-between gap-4 flex-wrap mb-4'>
         <div>
-          <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/80'>
+          <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/80 dark:text-emerald-100/80'>
             Where revenue comes from
           </div>
-          <h3 className='font-display text-xl sm:text-[22px] text-gov-dark leading-tight mt-0.5'>
+          <h3 className='font-display text-xl sm:text-[22px] text-gov-dark dark:text-white leading-tight mt-0.5'>
             How KRA collected KES {fmtB(totalB)} in {latest.fiscal_year}
           </h3>
           <p className='text-[12.5px] text-neutral-muted mt-1 max-w-2xl'>
@@ -165,7 +165,7 @@ export default function RevenueMix({ revenueBySource }: Props) {
           <div className='text-[10.5px] uppercase tracking-wider font-semibold text-neutral-muted'>
             Source
           </div>
-          <div className='text-[12px] font-semibold text-gov-dark'>KRA Annual Performance</div>
+          <div className='text-[12px] font-semibold text-gov-dark dark:text-white'>KRA Annual Performance</div>
           <div className='text-[10.5px] text-neutral-muted'>FY {latest.fiscal_year}</div>
         </div>
       </div>
@@ -213,7 +213,7 @@ export default function RevenueMix({ revenueBySource }: Props) {
               key={r.key}
               onMouseEnter={() => setHoverKey(r.key)}
               onMouseLeave={() => setHoverKey(null)}
-              className={`relative rounded-xl bg-white border overflow-hidden transition-all ${
+              className={`relative rounded-xl bg-white dark:bg-gov-dark/60 border overflow-hidden transition-all ${
                 isHover ? 'border-neutral-border/80 shadow-elevated' : 'border-neutral-border/30 shadow-sm'
               }`}>
               {/* Left accent stripe */}
@@ -225,7 +225,7 @@ export default function RevenueMix({ revenueBySource }: Props) {
               />
               <div className='pl-4 pr-3 py-3'>
                 <div className='flex items-baseline justify-between gap-2 mb-1'>
-                  <span className='text-[12px] font-semibold text-gov-dark truncate'>
+                  <span className='text-[12px] font-semibold text-gov-dark dark:text-white truncate'>
                     {r.label}
                   </span>
                   <span
@@ -235,7 +235,7 @@ export default function RevenueMix({ revenueBySource }: Props) {
                   </span>
                 </div>
                 <div className='flex items-baseline justify-between gap-2'>
-                  <div className='text-base font-extrabold text-gov-dark tabular-nums tracking-tight'>
+                  <div className='text-base font-extrabold text-gov-dark dark:text-white tabular-nums tracking-tight'>
                     KES {fmtB(r.amount)}
                   </div>
                   {r.yoy != null && (

@@ -247,10 +247,10 @@ export default function SpendDonut({ data }: Props) {
       className='rounded-2xl bg-gradient-to-br from-white via-gov-sand/30 to-white border border-neutral-border/40 shadow-surface p-5 sm:p-7'>
       <div className='flex items-start justify-between gap-4 flex-wrap mb-4'>
         <div>
-          <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/80'>
+          <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/80 dark:text-emerald-100/80'>
             Where the money goes
           </div>
-          <h3 className='font-display text-xl sm:text-[22px] text-gov-dark leading-tight mt-0.5'>
+          <h3 className='font-display text-xl sm:text-[22px] text-gov-dark dark:text-white leading-tight mt-0.5'>
             The {data.fiscal_year ?? 'current'} budget, visualised
           </h3>
           <p className='text-[12.5px] text-neutral-muted mt-1 max-w-lg'>
@@ -361,7 +361,7 @@ export default function SpendDonut({ data }: Props) {
                   style={{ color: centerInfo.accent, opacity: 0.85 }}>
                   {centerInfo.eyebrow}
                 </div>
-                <div className='text-[17px] sm:text-[19px] font-extrabold text-gov-dark tabular-nums tracking-tight mt-0.5 leading-none'>
+                <div className='text-[17px] sm:text-[19px] font-extrabold text-gov-dark dark:text-white tabular-nums tracking-tight mt-0.5 leading-none'>
                   {centerInfo.value}
                 </div>
                 <div className='text-[9.5px] text-neutral-muted mt-1.5 leading-tight'>
@@ -389,7 +389,7 @@ export default function SpendDonut({ data }: Props) {
                     onMouseLeave={() => setHoverKey(null)}
                     className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 transition-all ${
                       isHover
-                        ? 'bg-white shadow-sm border border-neutral-border/40'
+                        ? 'bg-white dark:bg-gov-dark/60 shadow-sm border border-neutral-border/40'
                         : 'bg-transparent border border-transparent'
                     }`}>
                     <span
@@ -400,10 +400,10 @@ export default function SpendDonut({ data }: Props) {
                     />
                     <div className='flex-1 min-w-0'>
                       <div className='flex items-baseline justify-between gap-2'>
-                        <span className='text-[11.5px] font-semibold text-gov-dark truncate'>
+                        <span className='text-[11.5px] font-semibold text-gov-dark dark:text-white truncate'>
                           {d.name}
                         </span>
-                        <span className='text-[11.5px] font-bold tabular-nums text-gov-dark'>
+                        <span className='text-[11.5px] font-bold tabular-nums text-gov-dark dark:text-white'>
                           {d.share.toFixed(1)}%
                         </span>
                       </div>
@@ -432,7 +432,7 @@ export default function SpendDonut({ data }: Props) {
                     onMouseEnter={() => setHoverKey(d.key)}
                     onMouseLeave={() => setHoverKey(null)}
                     className={`flex items-center gap-2 rounded-md px-2 py-1 transition-all ${
-                      isHover ? 'bg-white shadow-sm' : ''
+                      isHover ? 'bg-white dark:bg-gov-dark/60 shadow-sm' : ''
                     }`}>
                     <span
                       className='w-1.5 h-4 rounded-sm flex-shrink-0'
@@ -440,7 +440,7 @@ export default function SpendDonut({ data }: Props) {
                         background: `linear-gradient(180deg, ${d.gradStart}, ${d.gradEnd})`,
                       }}
                     />
-                    <span className='text-[10.5px] font-medium text-gov-dark flex-1 min-w-0 truncate'>
+                    <span className='text-[10.5px] font-medium text-gov-dark dark:text-white flex-1 min-w-0 truncate'>
                       {d.name}
                     </span>
                     <span className='text-[10px] text-neutral-muted tabular-nums'>

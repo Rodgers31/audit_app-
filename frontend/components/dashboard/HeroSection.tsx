@@ -95,7 +95,7 @@ export function SummaryStrip() {
           🇰🇪
         </span>
         <div>
-          <span className='text-4xl sm:text-5xl font-extrabold text-gov-dark tracking-tight leading-none'>
+          <span className='text-4xl sm:text-5xl font-extrabold text-gov-dark dark:text-white tracking-tight leading-none'>
             {totalT}
             <span className='text-3xl sm:text-4xl ml-0.5'>T</span>
           </span>
@@ -105,7 +105,7 @@ export function SummaryStrip() {
       {/* Risk Level */}
       <div className='flex items-end gap-3'>
         <div>
-          <span className='text-3xl sm:text-4xl font-bold text-gov-dark tracking-tight leading-none'>
+          <span className='text-3xl sm:text-4xl font-bold text-gov-dark dark:text-white tracking-tight leading-none'>
             {typeof gdpPct === 'number' ? Math.round(gdpPct) : gdpPct}
             <span className='text-xl'>%</span>
           </span>
@@ -121,11 +121,11 @@ export function SummaryStrip() {
 
       {/* Labels row */}
       <div className='w-full flex gap-8 mt-0.5'>
-        <span className='text-xs text-gov-dark/60 font-medium inline-flex items-center gap-1'>
+        <span className='text-xs text-gov-dark/60 dark:text-white/60 font-medium inline-flex items-center gap-1'>
           {t('home.hero.total_debt_as_of')} {year}
           <DebtExplainerModal context='hero' />
         </span>
-        <span className='text-xs text-gov-dark/60 font-medium'>
+        <span className='text-xs text-gov-dark/60 dark:text-white/60 font-medium'>
           {t('home.hero.risk_level')}{' '}
           <span className='inline-flex gap-0.5 ml-1'>
             <span>👍</span>
@@ -292,7 +292,7 @@ export function KenyanGovCard() {
                   {t('home.govcard.debt_ceiling')}
                 </span>
                 <span
-                  className={`text-xs font-black tabular-nums ${ceilingOver ? 'text-gov-copper' : 'text-gov-dark'}`}>
+                  className={`text-xs font-black tabular-nums ${ceilingOver ? 'text-gov-copper' : 'text-gov-dark dark:text-white'}`}>
                   {ceilingRaw.toFixed(0)}%
                 </span>
               </div>
@@ -400,7 +400,7 @@ export function KenyanGovCard() {
                       <div key={seg.label} className='flex items-center gap-1.5 min-w-0'>
                         <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${seg.dot}`} />
                         <span className='text-[9px] text-gray-500 truncate'>{seg.label}</span>
-                        <span className='text-[9px] font-semibold text-gov-dark tabular-nums ml-auto'>
+                        <span className='text-[9px] font-semibold text-gov-dark dark:text-white tabular-nums ml-auto'>
                           {((seg.value / total) * 100).toFixed(0)}%
                         </span>
                       </div>
@@ -453,10 +453,10 @@ function StatMiniCard({
     teal: 'border-l-[#0D7377]/60 bg-[#0D7377]/5',
   };
   const valueColors = {
-    forest: 'text-gov-dark',
+    forest: 'text-gov-dark dark:text-white',
     copper: 'text-gov-copper',
-    gold: 'text-gov-dark',
-    teal: 'text-gov-dark',
+    gold: 'text-gov-dark dark:text-white',
+    teal: 'text-gov-dark dark:text-white',
   };
 
   return (

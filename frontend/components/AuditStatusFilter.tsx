@@ -94,15 +94,15 @@ export default function AuditStatusFilter({
     } else {
       switch (color) {
         case 'green':
-          return `${baseClasses} bg-white border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 ${disabledClasses}`;
+          return `${baseClasses} bg-white dark:bg-gov-dark/60 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 ${disabledClasses}`;
         case 'yellow':
-          return `${baseClasses} bg-white border-yellow-200 text-yellow-700 hover:bg-yellow-50 hover:border-yellow-300 ${disabledClasses}`;
+          return `${baseClasses} bg-white dark:bg-gov-dark/60 border-yellow-200 text-yellow-700 hover:bg-yellow-50 hover:border-yellow-300 ${disabledClasses}`;
         case 'red':
-          return `${baseClasses} bg-white border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300 ${disabledClasses}`;
+          return `${baseClasses} bg-white dark:bg-gov-dark/60 border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300 ${disabledClasses}`;
         case 'gray':
-          return `${baseClasses} bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 ${disabledClasses}`;
+          return `${baseClasses} bg-white dark:bg-gov-dark/60 border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 ${disabledClasses}`;
         default:
-          return `${baseClasses} bg-white border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 ${disabledClasses}`;
+          return `${baseClasses} bg-white dark:bg-gov-dark/60 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 ${disabledClasses}`;
       }
     }
   };

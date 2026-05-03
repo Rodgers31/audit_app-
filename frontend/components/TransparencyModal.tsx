@@ -144,7 +144,7 @@ export default function TransparencyModal({ isOpen, onClose, county }: Transpare
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className='fixed inset-x-4 top-4 bottom-4 md:inset-x-8 md:top-8 md:bottom-8 lg:inset-x-16 lg:top-16 lg:bottom-16 bg-white rounded-2xl shadow-2xl z-50 flex flex-col max-w-6xl mx-auto'>
+            className='fixed inset-x-4 top-4 bottom-4 md:inset-x-8 md:top-8 md:bottom-8 lg:inset-x-16 lg:top-16 lg:bottom-16 bg-white dark:bg-gov-dark/60 rounded-2xl shadow-2xl z-50 flex flex-col max-w-6xl mx-auto'>
             {/* Header */}
             <div className='flex items-center justify-between p-6 border-b border-gray-200'>
               <div className='flex items-center gap-3'>
@@ -231,7 +231,7 @@ export default function TransparencyModal({ isOpen, onClose, county }: Transpare
                               initial={{ opacity: 0, x: -20 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: index * 0.1 }}
-                              className='bg-white rounded-xl p-4 border border-blue-200'>
+                              className='bg-white dark:bg-gov-dark/60 rounded-xl p-4 border border-blue-200'>
                               <div className='flex items-start gap-3'>
                                 <Icon
                                   className={`h-6 w-6 ${
@@ -298,13 +298,13 @@ export default function TransparencyModal({ isOpen, onClose, county }: Transpare
                       <span className='font-semibold'>{county.audit_rating}</span>
                     </p>
                     <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-                      <div className='bg-white rounded-xl p-4 border'>
+                      <div className='bg-white dark:bg-gov-dark/60 rounded-xl p-4 border'>
                         <div className='text-sm text-gray-500'>Budget Size</div>
                         <div className='text-lg font-semibold'>
                           {formatCurrency(county.budget_2025 || county.totalBudget || 0)}
                         </div>
                       </div>
-                      <div className='bg-white rounded-xl p-4 border'>
+                      <div className='bg-white dark:bg-gov-dark/60 rounded-xl p-4 border'>
                         <div className='text-sm text-gray-500'>Budget Utilization</div>
                         <div className='text-lg font-semibold'>
                           {formatPct(
@@ -312,7 +312,7 @@ export default function TransparencyModal({ isOpen, onClose, county }: Transpare
                           )}
                         </div>
                       </div>
-                      <div className='bg-white rounded-xl p-4 border'>
+                      <div className='bg-white dark:bg-gov-dark/60 rounded-xl p-4 border'>
                         <div className='text-sm text-gray-500'>Pending Bills</div>
                         <div className='text-lg font-semibold'>
                           {formatCurrency(
@@ -326,13 +326,13 @@ export default function TransparencyModal({ isOpen, onClose, county }: Transpare
 
                     {/* Quick Stats from enriched audits */}
                     <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mt-4'>
-                      <div className='bg-white rounded-xl p-4 border'>
+                      <div className='bg-white dark:bg-gov-dark/60 rounded-xl p-4 border'>
                         <div className='text-sm text-gray-500'>Audit Queries</div>
                         <div className='text-lg font-semibold'>
                           {auditsEnriched?.summary?.queries_count ?? '—'}
                         </div>
                       </div>
-                      <div className='bg-white rounded-xl p-4 border'>
+                      <div className='bg-white dark:bg-gov-dark/60 rounded-xl p-4 border'>
                         <div className='text-sm text-gray-500'>Missing Funds (Total)</div>
                         <div className='text-lg font-semibold'>
                           {auditsEnriched?.missing_funds?.total_amount != null
@@ -340,7 +340,7 @@ export default function TransparencyModal({ isOpen, onClose, county }: Transpare
                             : '—'}
                         </div>
                       </div>
-                      <div className='bg-white rounded-xl p-4 border'>
+                      <div className='bg-white dark:bg-gov-dark/60 rounded-xl p-4 border'>
                         <div className='text-sm text-gray-500'>COB Coverage</div>
                         <div className='text-lg font-semibold'>
                           {auditsEnriched?.cob_implementation?.coverage?.analysis_depth || '—'}
@@ -349,7 +349,7 @@ export default function TransparencyModal({ isOpen, onClose, county }: Transpare
                     </div>
                   </div>
 
-                  <div className='bg-white rounded-2xl border p-6'>
+                  <div className='bg-white dark:bg-gov-dark/60 rounded-2xl border p-6'>
                     <h4 className='font-semibold text-gray-900 mb-3'>Key Findings</h4>
                     {auditsEnriched?.queries?.length ? (
                       <button
@@ -465,13 +465,13 @@ export default function TransparencyModal({ isOpen, onClose, county }: Transpare
                   <div className='bg-green-50 border border-green-200 rounded-2xl p-6'>
                     <h3 className='text-xl font-bold text-green-900 mb-2'>Budget Overview</h3>
                     <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
-                      <div className='bg-white rounded-xl p-4 border'>
+                      <div className='bg-white dark:bg-gov-dark/60 rounded-xl p-4 border'>
                         <div className='text-sm text-gray-500'>Total Budget</div>
                         <div className='text-lg font-semibold'>
                           {formatCurrency(county.budget_2025 || county.totalBudget || 0)}
                         </div>
                       </div>
-                      <div className='bg-white rounded-xl p-4 border'>
+                      <div className='bg-white dark:bg-gov-dark/60 rounded-xl p-4 border'>
                         <div className='text-sm text-gray-500'>Development</div>
                         <div className='text-lg font-semibold'>
                           {county.developmentBudget
@@ -484,7 +484,7 @@ export default function TransparencyModal({ isOpen, onClose, county }: Transpare
                           </div>
                         )}
                       </div>
-                      <div className='bg-white rounded-xl p-4 border'>
+                      <div className='bg-white dark:bg-gov-dark/60 rounded-xl p-4 border'>
                         <div className='text-sm text-gray-500'>Recurrent</div>
                         <div className='text-lg font-semibold'>
                           {county.recurrentBudget
@@ -497,7 +497,7 @@ export default function TransparencyModal({ isOpen, onClose, county }: Transpare
                           </div>
                         )}
                       </div>
-                      <div className='bg-white rounded-xl p-4 border'>
+                      <div className='bg-white dark:bg-gov-dark/60 rounded-xl p-4 border'>
                         <div className='text-sm text-gray-500'>Utilization</div>
                         <div className='text-lg font-semibold'>
                           {formatPct(county.budgetUtilization)}
@@ -506,7 +506,7 @@ export default function TransparencyModal({ isOpen, onClose, county }: Transpare
                     </div>
                   </div>
 
-                  <div className='bg-white rounded-2xl border p-6'>
+                  <div className='bg-white dark:bg-gov-dark/60 rounded-2xl border p-6'>
                     <h4 className='font-semibold text-gray-900 mb-3'>Top Sectors</h4>
                     <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
                       {[
@@ -538,7 +538,7 @@ export default function TransparencyModal({ isOpen, onClose, county }: Transpare
                     </p>
                   </div>
 
-                  <div className='bg-white rounded-2xl border p-6 space-y-4'>
+                  <div className='bg-white dark:bg-gov-dark/60 rounded-2xl border p-6 space-y-4'>
                     <div>
                       <label className='block text-sm font-medium text-gray-700 mb-1'>
                         Subject
