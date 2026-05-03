@@ -1,76 +1,76 @@
 /**
- * ThemeToggle — pill button that cycles System → Light → Dark.
+ * ThemeToggle — pill button that toggles between Light ↔ Dark.
  *
- * Persists the choice in ``localStorage["theme"]`` so reloads
- * remember it. ``'system'`` (the default for first-time visitors)
- * means "follow the OS"; explicit ``'light'`` / ``'dark'`` override.
+ * First-time visitors get the OS preference applied automatically by
+ * the no-flash boot script in app/layout.tsx (no localStorage entry
+ * yet, so the script falls back to ``prefers-color-scheme``). This
+ * button shows the icon for the OPPOSITE state — i.e. if you're in
+ * dark mode it shows a sun (click to go light) and vice versa.
+ * Clicking always writes an explicit ``light`` or ``dark`` to
+ * ``localStorage["theme"]`` so subsequent loads honour the choice.
  *
- * Pairs with the no-flash boot script in app/layout.tsx — that
- * script sets the right ``<html>`` class BEFORE React hydrates so
- * there's no light-then-dark flicker on a dark-mode user's first
- * paint. After hydration this component is the source of truth.
+ * If a viewer never clicks the toggle, the page continues to track
+ * their OS preference in real time (``prefers-color-scheme`` change
+ * listener).
  */
 'use client';
 
-import { Monitor, Moon, Sun } from 'lucide-react';
+import { Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-type ThemeMode = 'system' | 'light' | 'dark';
-
+type ResolvedTheme = 'light' | 'dark';
 const STORAGE_KEY = 'theme';
 
-function readStored(): ThemeMode {
-  if (typeof window === 'undefined') return 'system';
-  const v = window.localStorage.getItem(STORAGE_KEY);
-  return v === 'light' || v === 'dark' ? v : 'system';
+function getSystemTheme(): ResolvedTheme {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-function applyToHtml(mode: ThemeMode) {
-  const root = document.documentElement;
-  const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const shouldBeDark = mode === 'dark' || (mode === 'system' && systemDark);
-  root.classList.toggle('dark', shouldBeDark);
+function readStoredOrSystem(): ResolvedTheme {
+  if (typeof window === 'undefined') return 'light';
+  const v = window.localStorage.getItem(STORAGE_KEY);
+  if (v === 'light' || v === 'dark') return v;
+  return getSystemTheme();
+}
+
+function applyToHtml(theme: ResolvedTheme) {
+  document.documentElement.classList.toggle('dark', theme === 'dark');
 }
 
 export default function ThemeToggle({ className = '' }: { className?: string }) {
-  // ``mounted`` guards against rendering the wrong icon during the
-  // SSR pass — server doesn't know about localStorage. Until the
-  // first effect runs we render a neutral placeholder so the
-  // hydrated client-vs-server markup stays in sync.
+  // ``mounted`` keeps SSR/CSR markup in sync — server can't read
+  // localStorage / matchMedia, so we render a transparent placeholder
+  // until the first effect runs.
   const [mounted, setMounted] = useState(false);
-  const [mode, setMode] = useState<ThemeMode>('system');
+  const [theme, setTheme] = useState<ResolvedTheme>('light');
 
   useEffect(() => {
-    const initial = readStored();
-    setMode(initial);
+    const initial = readStoredOrSystem();
+    setTheme(initial);
     applyToHtml(initial);
     setMounted(true);
 
-    // Re-apply when the OS preference changes IF the user is in
-    // ``system`` mode (an explicit choice should keep winning).
+    // If the user has not made an explicit choice yet, follow the OS
+    // in real time. After they click the button (which writes to
+    // localStorage), this listener becomes a no-op.
     const mql = window.matchMedia('(prefers-color-scheme: dark)');
     const onChange = () => {
-      if (readStored() === 'system') applyToHtml('system');
+      if (window.localStorage.getItem(STORAGE_KEY) === null) {
+        const next = getSystemTheme();
+        setTheme(next);
+        applyToHtml(next);
+      }
     };
     mql.addEventListener('change', onChange);
     return () => mql.removeEventListener('change', onChange);
   }, []);
 
-  function cycle() {
-    const next: ThemeMode =
-      mode === 'system' ? 'dark' : mode === 'dark' ? 'light' : 'system';
-    setMode(next);
-    if (next === 'system') {
-      window.localStorage.removeItem(STORAGE_KEY);
-    } else {
-      window.localStorage.setItem(STORAGE_KEY, next);
-    }
+  function toggle() {
+    const next: ResolvedTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    window.localStorage.setItem(STORAGE_KEY, next);
     applyToHtml(next);
   }
 
-  // Keep the layout stable during hydration: render a same-sized
-  // button that matches the live one's ring/padding so there's no
-  // shift when the icon swaps in.
   const baseClass =
     'p-2 rounded-full bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors border border-white/10 backdrop-blur-sm flex items-center justify-center';
 
@@ -81,24 +81,22 @@ export default function ThemeToggle({ className = '' }: { className?: string }) 
         className={`${baseClass} ${className}`}
         aria-hidden='true'
         tabIndex={-1}>
-        <Monitor className='w-5 h-5 opacity-0' />
+        <Sun className='w-5 h-5 opacity-0' />
       </button>
     );
   }
 
-  const { Icon, label, hint } = (() => {
-    if (mode === 'light')
-      return { Icon: Sun, label: 'Light theme', hint: 'Switch to dark theme' };
-    if (mode === 'dark')
-      return { Icon: Moon, label: 'Dark theme', hint: 'Switch to system theme' };
-    return { Icon: Monitor, label: 'System theme', hint: 'Switch to dark theme' };
-  })();
+  // Show the icon for the OPPOSITE state — what the click will produce.
+  // (A common UX pattern: in dark mode you see a sun "switch to light".)
+  const isDark = theme === 'dark';
+  const Icon = isDark ? Sun : Moon;
+  const label = isDark ? 'Switch to light theme' : 'Switch to dark theme';
 
   return (
     <button
       type='button'
-      onClick={cycle}
-      title={hint}
+      onClick={toggle}
+      title={label}
       aria-label={label}
       className={`${baseClass} ${className}`}>
       <Icon className='w-5 h-5' />
