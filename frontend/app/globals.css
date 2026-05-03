@@ -46,7 +46,12 @@
    gov-gold and the SubStat accent palette pop crisply on this
    warm dark. */
 :root.dark {
-  --page-bg-rgb: 16, 20, 18; /* #101412 — warm near-black, hint of forest */
+  /* Body bg stays cream in dark mode — matches the home page's hybrid
+     ``ScenicBackgroundLayout readabilityMode='light'`` look so inner
+     pages share the same cream-with-floating-slate-cards structure
+     instead of a flat near-black page. The cards themselves still go
+     full slate-warm via the surface-* tokens below. */
+  --page-bg-rgb: 245, 240, 232; /* gov-sand — kept cream in dark mode */
   --c-neutral-text: 240 234 222; /* #F0EADE — warm cream-white (inverted cream) */
   --c-neutral-muted: 168 162 148; /* #A8A294 — warm taupe-gray */
   --c-neutral-border: 50 56 50; /* #323832 — visible but subtle warm dark */
@@ -68,9 +73,9 @@
 
   body {
     @apply bg-gov-sand text-neutral-text;
-    /* Warm near-black, mirrors --page-bg-rgb above so gradient
-       blends and inline rgba() consumers stay in sync. */
-    @apply dark:bg-[#101412] dark:text-neutral-text;
+    /* Body keeps its cream bg in dark mode (matches the home page's
+       hybrid scenic layout). Cards, glass bodies and surface-* tokens
+       provide the dark slate floating on top. */
     /* Body-level fallback so text doesn't snap. Per-element
        transitions are applied below to cards, borders, etc. */
     transition:

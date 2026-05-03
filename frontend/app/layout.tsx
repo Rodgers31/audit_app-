@@ -105,7 +105,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body
-        className='bg-gov-sand dark:bg-[#101412] antialiased'
+        className='bg-gov-sand antialiased'
         suppressHydrationWarning>
         {/* Skip-to-main link. Sighted users never see this (sr-only
             until focused); keyboard users can jump past the fixed

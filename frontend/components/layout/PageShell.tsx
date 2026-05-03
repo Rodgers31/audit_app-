@@ -39,7 +39,7 @@ export default function PageShell({
   back,
 }: PageShellProps) {
   return (
-    <div className='relative min-h-screen bg-gov-sand dark:bg-[#101412]'>
+    <div className='relative min-h-screen bg-gov-sand'>
       {/* ═══ Bottom scenic image (Kenyan flag) — pinned to bottom ═══ */}
       <div
         className='absolute bottom-0 left-0 right-0'
