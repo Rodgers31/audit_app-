@@ -77,8 +77,8 @@ export default function IngestionJobDetailPage({
         title={`Job #${jobId}`}
         back={{ href: '/admin/ingestion', label: 'Back to ingestion jobs' }}>
         <div className='py-16 flex flex-col items-center gap-3'>
-          <XCircle className='w-10 h-10 text-gov-copper' />
-          <p className='text-gov-copper text-sm'>Job not found or failed to load.</p>
+          <XCircle className='w-10 h-10 text-gov-copper dark:text-red-400' />
+          <p className='text-gov-copper dark:text-red-400 text-sm'>Job not found or failed to load.</p>
         </div>
       </PageShell>
     );
@@ -110,7 +110,7 @@ export default function IngestionJobDetailPage({
           <div className='flex items-center gap-2 mb-4'>
             <StatusBadge status={data.status} hasErrors={data.errors.length > 0} />
             {data.dry_run && (
-              <span className='text-[10px] uppercase tracking-wider bg-gov-warning/15 text-gov-warning px-1.5 py-0.5 rounded font-semibold'>
+              <span className='text-[10px] uppercase tracking-wider bg-gov-warning/15 text-gov-warning dark:text-amber-300 px-1.5 py-0.5 rounded font-semibold'>
                 dry-run
               </span>
             )}
@@ -159,7 +159,7 @@ export default function IngestionJobDetailPage({
             className='bg-white dark:bg-gov-dark/60 border border-gov-copper/30 rounded-2xl p-5 shadow-surface'>
             <div className='flex items-center gap-2 mb-3'>
               <div className='w-7 h-7 rounded-lg bg-gov-copper/15 border border-gov-copper/25 flex items-center justify-center'>
-                <AlertTriangle className='w-3.5 h-3.5 text-gov-copper' />
+                <AlertTriangle className='w-3.5 h-3.5 text-gov-copper dark:text-red-400' />
               </div>
               <h2 className='font-display text-lg text-neutral-text'>
                 Errors ({data.errors.length})
@@ -169,7 +169,7 @@ export default function IngestionJobDetailPage({
               {data.errors.map((err, i) => (
                 <li
                   key={i}
-                  className='bg-gov-copper/5 border border-gov-copper/20 rounded-lg p-3 text-xs font-mono text-gov-copper overflow-x-auto'>
+                  className='bg-gov-copper/5 border border-gov-copper/20 rounded-lg p-3 text-xs font-mono text-gov-copper dark:text-red-400 overflow-x-auto'>
                   <pre className='whitespace-pre-wrap break-all'>
                     {typeof err === 'string' ? err : JSON.stringify(err, null, 2)}
                   </pre>
@@ -212,9 +212,9 @@ function Field({
   big?: boolean;
 }) {
   const colour = {
-    ok: 'text-emerald-600',
-    bad: 'text-gov-copper',
-    info: 'text-blue-600',
+    ok: 'text-emerald-600 dark:text-emerald-400',
+    bad: 'text-gov-copper dark:text-red-400',
+    info: 'text-blue-600 dark:text-blue-400',
     muted: 'text-neutral-muted',
     default: 'text-neutral-text',
   }[tone];
@@ -245,27 +245,27 @@ function StatusBadge({ status, hasErrors }: { status: string; hasErrors: boolean
         return hasErrors
           ? {
               bg: 'bg-gov-warning/15',
-              text: 'text-gov-warning',
+              text: 'text-gov-warning dark:text-amber-300',
               icon: AlertTriangle,
               label: 'completed*',
             }
           : {
-              bg: 'bg-emerald-100',
-              text: 'text-emerald-700',
+              bg: 'bg-emerald-100 dark:bg-emerald-900/40',
+              text: 'text-emerald-700 dark:text-emerald-300',
               icon: CheckCircle2,
               label: status,
             };
       case 'completed_with_errors':
         return {
           bg: 'bg-gov-warning/15',
-          text: 'text-gov-warning',
+          text: 'text-gov-warning dark:text-amber-300',
           icon: AlertTriangle,
           label: 'completed w/ errors',
         };
       case 'failed':
-        return { bg: 'bg-gov-copper/15', text: 'text-gov-copper', icon: XCircle, label: status };
+        return { bg: 'bg-gov-copper/15', text: 'text-gov-copper dark:text-red-400', icon: XCircle, label: status };
       case 'running':
-        return { bg: 'bg-blue-100', text: 'text-blue-700', icon: PlayCircle, label: status };
+        return { bg: 'bg-blue-100 dark:bg-blue-900/40', text: 'text-blue-700 dark:text-blue-300', icon: PlayCircle, label: status };
       case 'pending':
         return { bg: 'bg-gov-cream dark:bg-white/5', text: 'text-neutral-muted', icon: Clock, label: status };
       default:

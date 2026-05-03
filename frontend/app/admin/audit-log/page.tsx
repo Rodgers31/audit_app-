@@ -187,8 +187,8 @@ function AuditLogInner() {
           </BodyState>
         ) : error ? (
           <BodyState>
-            <XCircle className='w-8 h-8 text-gov-copper' />
-            <p className='text-gov-copper text-sm'>Could not load audit log.</p>
+            <XCircle className='w-8 h-8 text-gov-copper dark:text-red-400' />
+            <p className='text-gov-copper dark:text-red-400 text-sm'>Could not load audit log.</p>
           </BodyState>
         ) : !data || data.entries.length === 0 ? (
           <BodyState>
@@ -231,7 +231,7 @@ function AuditRow({ entry, index }: { entry: AuditEntry; index: number }) {
         className={`w-full text-left px-4 py-3 flex flex-wrap items-center gap-3 ${
           hasPayload ? 'hover:bg-gov-cream/50 dark:hover:bg-white/5 cursor-pointer' : 'cursor-default'
         }`}>
-        <span className='inline-flex items-center px-2 py-0.5 rounded-full text-xs font-mono font-semibold bg-gov-sage/15 text-gov-forest ring-1 ring-inset ring-gov-sage/20'>
+        <span className='inline-flex items-center px-2 py-0.5 rounded-full text-xs font-mono font-semibold bg-gov-sage/15 text-gov-forest dark:text-emerald-200 ring-1 ring-inset ring-gov-sage/20'>
           {entry.action}
         </span>
         {entry.target_type && (

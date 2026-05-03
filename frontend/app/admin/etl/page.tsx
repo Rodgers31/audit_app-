@@ -152,14 +152,14 @@ export default function AdminEtlPage() {
             variants={fadeUp}
             initial='hidden'
             animate='show'
-            className='bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 flex items-start gap-2.5 text-sm shadow-surface'>
-            <CheckCircle2 className='w-5 h-5 text-emerald-600 mt-0.5 shrink-0' />
+            className='bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 rounded-2xl px-4 py-3 flex items-start gap-2.5 text-sm shadow-surface'>
+            <CheckCircle2 className='w-5 h-5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0' />
             <div>
-              <p className='font-semibold text-emerald-900'>
+              <p className='font-semibold text-emerald-900 dark:text-emerald-200'>
                 Queued <span className='font-mono'>{trigger.data.source}</span> · job #
                 <Link
                   href={`/admin/ingestion/${trigger.data.job_id}`}
-                  className='underline underline-offset-2 hover:text-emerald-700'>
+                  className='underline underline-offset-2 hover:text-emerald-700 dark:text-emerald-300'>
                   {trigger.data.job_id}
                 </Link>
                 {trigger.data.dry_run && ' (dry-run)'}
@@ -174,8 +174,8 @@ export default function AdminEtlPage() {
             initial='hidden'
             animate='show'
             className='bg-gov-copper/10 border border-gov-copper/30 rounded-2xl px-4 py-3 flex items-start gap-2.5 text-sm shadow-surface'>
-            <XCircle className='w-5 h-5 text-gov-copper mt-0.5 shrink-0' />
-            <p className='text-gov-copper'>
+            <XCircle className='w-5 h-5 text-gov-copper dark:text-red-400 mt-0.5 shrink-0' />
+            <p className='text-gov-copper dark:text-red-400'>
               Failed to queue trigger:{' '}
               {(trigger.error as { response?: { data?: { detail?: string } } })?.response?.data
                 ?.detail || 'unknown error'}
@@ -201,7 +201,7 @@ export default function AdminEtlPage() {
               <Loader2 className='w-5 h-5 text-gov-sage animate-spin' />
             </div>
           ) : !schedule.data ? (
-            <div className='py-12 px-6 text-center text-gov-copper text-sm'>
+            <div className='py-12 px-6 text-center text-gov-copper dark:text-red-400 text-sm'>
               <AlertTriangle className='w-6 h-6 mx-auto mb-2' />
               Could not load schedule.
             </div>
@@ -280,7 +280,7 @@ function SourceRow({
 }) {
   const [confirming, setConfirming] = useState<null | 'real' | 'dry'>(null);
   const Icon = decision.should_run ? CheckCircle2 : Clock;
-  const colour = decision.should_run ? 'text-emerald-600' : 'text-neutral-muted/40';
+  const colour = decision.should_run ? 'text-emerald-600 dark:text-emerald-400' : 'text-neutral-muted/40';
 
   return (
     <motion.li

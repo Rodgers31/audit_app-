@@ -152,8 +152,8 @@ function UsersListInner() {
           </BodyState>
         ) : error ? (
           <BodyState>
-            <XCircle className='w-8 h-8 text-gov-copper' />
-            <p className='text-gov-copper text-sm'>Could not load users.</p>
+            <XCircle className='w-8 h-8 text-gov-copper dark:text-red-400' />
+            <p className='text-gov-copper dark:text-red-400 text-sm'>Could not load users.</p>
           </BodyState>
         ) : !data || data.users.length === 0 ? (
           <BodyState>
@@ -194,7 +194,7 @@ function UsersListInner() {
                           <RolePill key={role} role={role} />
                         ))}
                         {u.banned_until && (
-                          <span className='inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-gov-copper/15 text-gov-copper border border-gov-copper/20'>
+                          <span className='inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-gov-copper/15 text-gov-copper dark:text-red-400 border border-gov-copper/20'>
                             banned
                           </span>
                         )}
@@ -233,7 +233,7 @@ function RolePill({ role }: { role: string }) {
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold ${
         isAdmin
-          ? 'bg-gov-gold/20 text-gov-forest ring-1 ring-inset ring-gov-gold/40'
+          ? 'bg-gov-gold/20 text-gov-forest dark:text-emerald-200 ring-1 ring-inset ring-gov-gold/40'
           : 'bg-gov-cream dark:bg-white/5 text-neutral-muted ring-1 ring-inset ring-neutral-border'
       }`}>
       {role}

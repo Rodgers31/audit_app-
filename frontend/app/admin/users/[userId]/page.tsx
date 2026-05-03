@@ -114,8 +114,8 @@ export default function UserDetailPage({
     return (
       <PageShell title='User not found' back={{ href: '/admin/users', label: 'Back to users' }}>
         <div className='py-16 flex flex-col items-center gap-3'>
-          <XCircle className='w-10 h-10 text-gov-copper' />
-          <p className='text-gov-copper text-sm'>This user could not be loaded.</p>
+          <XCircle className='w-10 h-10 text-gov-copper dark:text-red-400' />
+          <p className='text-gov-copper dark:text-red-400 text-sm'>This user could not be loaded.</p>
         </div>
       </PageShell>
     );
@@ -155,7 +155,7 @@ export default function UserDetailPage({
               </p>
               <p className='text-xs font-mono text-neutral-text break-all mt-0.5'>{data.id}</p>
               {isSelf && (
-                <span className='inline-flex items-center gap-1 mt-3 text-[10px] uppercase tracking-wider font-semibold bg-gov-gold/20 text-gov-forest ring-1 ring-inset ring-gov-gold/40 px-2 py-0.5 rounded-full'>
+                <span className='inline-flex items-center gap-1 mt-3 text-[10px] uppercase tracking-wider font-semibold bg-gov-gold/20 text-gov-forest dark:text-emerald-200 ring-1 ring-inset ring-gov-gold/40 px-2 py-0.5 rounded-full'>
                   This is you
                 </span>
               )}
@@ -225,7 +225,7 @@ export default function UserDetailPage({
                   }}
                   className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
                     has
-                      ? 'bg-gov-gold/20 text-gov-forest ring-1 ring-inset ring-gov-gold/40 shadow-sm'
+                      ? 'bg-gov-gold/20 text-gov-forest dark:text-emerald-200 ring-1 ring-inset ring-gov-gold/40 shadow-sm'
                       : 'bg-white dark:bg-gov-dark/60 text-neutral-muted ring-1 ring-inset ring-neutral-border hover:ring-gov-sage/40 hover:text-neutral-text'
                   }`}>
                   {has && <CheckCircle2 className='w-3 h-3' />}
@@ -235,7 +235,7 @@ export default function UserDetailPage({
             })}
           </div>
           {saveRoles.isError && (
-            <p className='text-xs text-gov-copper mt-3 inline-flex items-center gap-1'>
+            <p className='text-xs text-gov-copper dark:text-red-400 mt-3 inline-flex items-center gap-1'>
               <AlertTriangle className='w-3 h-3' />
               {(saveRoles.error as { response?: { data?: { detail?: string } } })?.response?.data
                 ?.detail || 'Failed to update roles.'}
@@ -251,7 +251,7 @@ export default function UserDetailPage({
           custom={2}
           className='bg-white dark:bg-gov-dark/60 rounded-2xl p-6 border border-neutral-border shadow-surface space-y-4'>
           <div className='flex items-center gap-2'>
-            <AlertTriangle className='w-4 h-4 text-gov-warning' />
+            <AlertTriangle className='w-4 h-4 text-gov-warning dark:text-amber-300' />
             <h2 className='font-display text-lg text-neutral-text'>Account actions</h2>
           </div>
 
@@ -269,12 +269,12 @@ export default function UserDetailPage({
             }
             status={
               sendReset.isSuccess ? (
-                <p className='text-xs text-emerald-700 inline-flex items-center gap-1'>
+                <p className='text-xs text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1'>
                   <CheckCircle2 className='w-3 h-3' />
                   Email queued.
                 </p>
               ) : sendReset.isError ? (
-                <p className='text-xs text-gov-copper inline-flex items-center gap-1'>
+                <p className='text-xs text-gov-copper dark:text-red-400 inline-flex items-center gap-1'>
                   <AlertTriangle className='w-3 h-3' />
                   Failed to send.
                 </p>
@@ -342,9 +342,9 @@ function Field({
   tone?: 'ok' | 'bad' | 'warn' | 'muted' | 'default';
 }) {
   const colour = {
-    ok: 'text-emerald-600',
-    bad: 'text-gov-copper',
-    warn: 'text-gov-warning',
+    ok: 'text-emerald-600 dark:text-emerald-400',
+    bad: 'text-gov-copper dark:text-red-400',
+    warn: 'text-gov-warning dark:text-amber-300',
     muted: 'text-neutral-muted',
     default: 'text-neutral-text',
   }[tone];
@@ -409,7 +409,7 @@ function DeleteAction({
     <div className='border-t border-neutral-border pt-4'>
       <div className='flex items-start gap-3'>
         <div className='w-9 h-9 rounded-xl bg-gov-copper/15 border border-gov-copper/25 flex items-center justify-center shrink-0'>
-          <Trash2 className='w-4 h-4 text-gov-copper' />
+          <Trash2 className='w-4 h-4 text-gov-copper dark:text-red-400' />
         </div>
         <div className='flex-1 min-w-0'>
           <p className='text-sm font-semibold text-neutral-text'>Delete user</p>
@@ -418,7 +418,7 @@ function DeleteAction({
             be undone.
           </p>
           {isSelf && (
-            <p className='text-xs text-gov-warning mt-1.5 inline-flex items-center gap-1'>
+            <p className='text-xs text-gov-warning dark:text-amber-300 mt-1.5 inline-flex items-center gap-1'>
               <AlertTriangle className='w-3 h-3' />
               You can&apos;t delete your own account.
             </p>
@@ -458,7 +458,7 @@ function DeleteAction({
                 </button>
               </div>
               {isError && (
-                <p className='text-xs text-gov-copper inline-flex items-center gap-1'>
+                <p className='text-xs text-gov-copper dark:text-red-400 inline-flex items-center gap-1'>
                   <AlertTriangle className='w-3 h-3' />
                   {errorMessage || 'Delete failed.'}
                 </p>
@@ -469,7 +469,7 @@ function DeleteAction({
         {!open && !isSelf && (
           <button
             onClick={() => setOpen(true)}
-            className='shrink-0 inline-flex items-center gap-1 px-3.5 py-1.5 text-xs font-semibold rounded-full border border-gov-copper/40 text-gov-copper hover:bg-gov-copper/5 transition-all'>
+            className='shrink-0 inline-flex items-center gap-1 px-3.5 py-1.5 text-xs font-semibold rounded-full border border-gov-copper/40 text-gov-copper dark:text-red-400 hover:bg-gov-copper/5 transition-all'>
             <Trash2 className='w-3 h-3' />
             Delete…
           </button>

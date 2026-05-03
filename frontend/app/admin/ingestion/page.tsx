@@ -198,11 +198,11 @@ function IngestionJobsInner() {
           </BodyState>
         ) : error ? (
           <BodyState>
-            <XCircle className='w-8 h-8 text-gov-copper' />
-            <p className='text-gov-copper text-sm'>Could not load jobs.</p>
+            <XCircle className='w-8 h-8 text-gov-copper dark:text-red-400' />
+            <p className='text-gov-copper dark:text-red-400 text-sm'>Could not load jobs.</p>
             <button
               onClick={() => refetch()}
-              className='px-3 py-1.5 bg-gov-sage/10 hover:bg-gov-sage/20 text-gov-forest rounded-lg text-sm transition-colors'>
+              className='px-3 py-1.5 bg-gov-sage/10 hover:bg-gov-sage/20 text-gov-forest dark:text-emerald-200 rounded-lg text-sm transition-colors'>
               Retry
             </button>
           </BodyState>
@@ -244,7 +244,7 @@ function IngestionJobsInner() {
                             {job.domain}
                           </span>
                           {job.dry_run && (
-                            <span className='text-[9px] uppercase tracking-wider bg-gov-warning/15 text-gov-warning px-1.5 py-0.5 rounded font-semibold'>
+                            <span className='text-[9px] uppercase tracking-wider bg-gov-warning/15 text-gov-warning dark:text-amber-300 px-1.5 py-0.5 rounded font-semibold'>
                               dry-run
                             </span>
                           )}
@@ -262,10 +262,10 @@ function IngestionJobsInner() {
                       <td className='px-4 py-3 text-right text-neutral-text font-medium'>
                         {job.items_processed.toLocaleString()}
                       </td>
-                      <td className='px-4 py-3 text-right text-emerald-600 font-medium'>
+                      <td className='px-4 py-3 text-right text-emerald-600 dark:text-emerald-400 font-medium'>
                         {job.items_created.toLocaleString()}
                       </td>
-                      <td className='px-4 py-3 text-right text-blue-600 font-medium'>
+                      <td className='px-4 py-3 text-right text-blue-600 dark:text-blue-400 font-medium'>
                         {job.items_updated.toLocaleString()}
                       </td>
                       <td className='px-2 py-3'>
@@ -302,10 +302,10 @@ function IngestionJobsInner() {
                         <span className='text-neutral-muted'>
                           {job.items_processed.toLocaleString()} processed
                         </span>
-                        <span className='text-emerald-600 font-medium'>
+                        <span className='text-emerald-600 dark:text-emerald-400 font-medium'>
                           +{job.items_created.toLocaleString()}
                         </span>
-                        <span className='text-blue-600 font-medium'>
+                        <span className='text-blue-600 dark:text-blue-400 font-medium'>
                           ~{job.items_updated.toLocaleString()}
                         </span>
                       </div>
@@ -343,34 +343,34 @@ function StatusBadge({ status, hasErrors }: { status: string; hasErrors: boolean
         return hasErrors
           ? {
               bg: 'bg-gov-warning/15',
-              text: 'text-gov-warning',
+              text: 'text-gov-warning dark:text-amber-300',
               icon: AlertTriangle,
               label: 'completed*',
             }
           : {
-              bg: 'bg-emerald-100',
-              text: 'text-emerald-700',
+              bg: 'bg-emerald-100 dark:bg-emerald-900/40',
+              text: 'text-emerald-700 dark:text-emerald-300',
               icon: CheckCircle2,
               label: status,
             };
       case 'completed_with_errors':
         return {
           bg: 'bg-gov-warning/15',
-          text: 'text-gov-warning',
+          text: 'text-gov-warning dark:text-amber-300',
           icon: AlertTriangle,
           label: 'completed w/ errors',
         };
       case 'failed':
         return {
           bg: 'bg-gov-copper/15',
-          text: 'text-gov-copper',
+          text: 'text-gov-copper dark:text-red-400',
           icon: XCircle,
           label: status,
         };
       case 'running':
         return {
-          bg: 'bg-blue-100',
-          text: 'text-blue-700',
+          bg: 'bg-blue-100 dark:bg-blue-900/40',
+          text: 'text-blue-700 dark:text-blue-300',
           icon: PlayCircle,
           label: status,
         };

@@ -201,7 +201,7 @@ export default function AdminOverviewPage() {
                       {ok ? (
                         <CheckCircle2 className='w-7 h-7 text-emerald-500' />
                       ) : (
-                        <XCircle className='w-7 h-7 text-gov-copper' />
+                        <XCircle className='w-7 h-7 text-gov-copper dark:text-red-400' />
                       )}
                       <span className='text-2xl font-bold text-neutral-text capitalize'>
                         {d.scheduler_status.split(':')[0]}
@@ -274,7 +274,7 @@ export default function AdminOverviewPage() {
                       <Link
                         key={domain}
                         href={`/admin/ingestion?domain=${encodeURIComponent(domain)}`}
-                        className='inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gov-sage/10 hover:bg-gov-sage/20 ring-1 ring-inset ring-gov-sage/20 text-xs font-medium text-gov-forest transition-colors'>
+                        className='inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gov-sage/10 hover:bg-gov-sage/20 dark:bg-gov-sage/20 dark:hover:bg-gov-sage/30 ring-1 ring-inset ring-gov-sage/20 dark:ring-gov-sage/30 text-xs font-medium text-gov-forest dark:text-emerald-200 transition-colors'>
                         <span className='font-mono'>{domain}</span>
                         <span className='text-neutral-muted'>·</span>
                         <span className='text-gov-sage font-semibold'>{count}</span>
@@ -300,7 +300,7 @@ export default function AdminOverviewPage() {
                 <SectionHeader icon={History} title='Recent admin actions' inline />
                 <Link
                   href='/admin/audit-log'
-                  className='text-xs text-gov-sage hover:text-gov-forest inline-flex items-center gap-1 font-medium'>
+                  className='text-xs text-gov-sage hover:text-gov-forest dark:hover:text-emerald-200 inline-flex items-center gap-1 font-medium'>
                   View all
                   <ArrowRight className='w-3 h-3' />
                 </Link>
@@ -310,7 +310,7 @@ export default function AdminOverviewPage() {
                   <li
                     key={entry.id}
                     className='flex items-center gap-3 px-3 py-2 rounded-lg bg-gov-cream dark:bg-white/5 text-sm'>
-                    <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-white dark:bg-gov-dark/60 text-gov-forest border border-gov-sage/20'>
+                    <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-white dark:bg-gov-dark/60 text-gov-forest dark:text-emerald-200 border border-gov-sage/20 dark:border-gov-sage/30'>
                       {entry.action}
                     </span>
                     {entry.target_type && (
@@ -416,7 +416,7 @@ function StatCard<T>({
             Loading…
           </div>
         ) : query.error || !query.data ? (
-          <div className='flex items-center gap-2 text-gov-warning text-sm h-16'>
+          <div className='flex items-center gap-2 text-gov-warning dark:text-amber-300 text-sm h-16'>
             <AlertTriangle className='w-4 h-4' />
             Could not load
           </div>
@@ -450,11 +450,15 @@ function SubStat({
   value: number;
   tone: 'ok' | 'bad' | 'warn' | 'info' | 'muted';
 }) {
+  // Each tone gets a darker shade for light mode (readable on cream)
+  // and a lighter, more saturated shade for dark mode (readable on
+  // gov-dark). Using -600 on a dark card produces almost-invisible
+  // muddy text; -300/-400 pops without being neon.
   const colour = {
-    ok: 'text-emerald-600',
-    bad: 'text-gov-copper',
-    warn: 'text-gov-warning',
-    info: 'text-blue-600',
+    ok: 'text-emerald-600 dark:text-emerald-400',
+    bad: 'text-gov-copper dark:text-red-400',
+    warn: 'text-gov-warning dark:text-amber-300',
+    info: 'text-blue-600 dark:text-blue-400',
     muted: 'text-neutral-muted',
   }[tone];
   return (
@@ -475,8 +479,8 @@ function Metric({
   tone?: 'ok' | 'info' | 'default';
 }) {
   const colour = {
-    ok: 'text-emerald-600',
-    info: 'text-blue-600',
+    ok: 'text-emerald-600 dark:text-emerald-400',
+    info: 'text-blue-600 dark:text-blue-400',
     default: 'text-neutral-text',
   }[tone];
   return (
