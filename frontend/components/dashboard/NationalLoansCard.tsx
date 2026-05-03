@@ -94,7 +94,7 @@ export default function NationalLoansCard() {
       transition={{ duration: 0.6, delay: 0.2 }}
       className='glass-card overflow-hidden flex flex-col'>
       {/* Header */}
-      <div className='bg-gradient-to-r from-gov-copper/[0.06] via-gov-sand/40 to-transparent px-6 sm:px-8 pt-5 pb-4 border-b border-neutral-border/20'>
+      <div className='bg-gradient-to-r from-gov-copper/[0.06] via-gov-sand/40 to-transparent dark:from-surface-elevated/40 dark:via-surface-base/20 dark:to-transparent px-6 sm:px-8 pt-5 pb-4 border-b border-neutral-border/20'>
         <div className='flex items-start justify-between'>
           <div>
             <h3 className='font-display text-lg text-gov-dark dark:text-white mb-0.5'>{t('home.loans.header_title')}</h3>

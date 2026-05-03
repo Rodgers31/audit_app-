@@ -151,7 +151,7 @@ export default function AuditReportsSection() {
       transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       className='glass-card overflow-hidden'>
       {/* ════════ HEADER ════════ */}
-      <div className='bg-gradient-to-r from-gov-sand/60 via-gov-cream/40 to-transparent px-6 sm:px-8 pt-6 pb-5 flex items-start justify-between border-b border-neutral-border/20'>
+      <div className='bg-gradient-to-r from-gov-sand/60 via-gov-cream/40 to-transparent dark:from-surface-elevated/40 dark:via-surface-base/20 dark:to-transparent px-6 sm:px-8 pt-6 pb-5 flex items-start justify-between border-b border-neutral-border/20'>
         <div>
           <h2 className='font-display text-xl sm:text-2xl text-gov-dark dark:text-white leading-tight'>
             {t('home.audits.report_title')}

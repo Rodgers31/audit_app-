@@ -117,7 +117,7 @@ export default function BudgetSnapshotCard() {
       transition={{ duration: 0.6, delay: 0.1 }}
       className='glass-card overflow-hidden flex flex-col'>
       {/* Header */}
-      <div className='bg-gradient-to-r from-gov-sand/60 via-gov-cream/40 to-transparent px-6 sm:px-8 pt-5 pb-4 border-b border-neutral-border/20'>
+      <div className='bg-gradient-to-r from-gov-sand/60 via-gov-cream/40 to-transparent dark:from-surface-elevated/40 dark:via-surface-base/20 dark:to-transparent px-6 sm:px-8 pt-5 pb-4 border-b border-neutral-border/20'>
         <h3 className='font-display text-lg text-gov-dark dark:text-white mb-0.5'>{t('home.budget.where_taxes_go')}</h3>
         <p className='text-xs text-neutral-muted'>
           {t('home.budget.allocation_by_sector')}

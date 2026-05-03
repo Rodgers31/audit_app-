@@ -75,7 +75,7 @@ export default function DebtSourceReconciliation({ reconciliation, lastUpdated }
       transition={{ duration: 0.5 }}
       className='rounded-2xl border border-neutral-border/40 bg-white/70 dark:bg-surface-elevated backdrop-blur-sm overflow-hidden'>
       {/* Header */}
-      <div className='border-b border-neutral-border/40 bg-gradient-to-r from-gov-sand/40 via-white to-transparent px-5 sm:px-7 py-4'>
+      <div className='border-b border-neutral-border/40 bg-gradient-to-r from-gov-sand/40 via-white to-transparent dark:from-surface-elevated/40 dark:via-surface-base/20 dark:to-transparent px-5 sm:px-7 py-4'>
         <div className='flex items-start gap-3'>
           <div className='rounded-lg bg-gov-forest/10 text-gov-forest dark:text-emerald-100 p-2 mt-0.5'>
             <GitCompareArrows size={18} />

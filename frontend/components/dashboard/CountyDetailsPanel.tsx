@@ -175,7 +175,7 @@ export default function CountyDetailsPanel({ county, className = '' }: CountyDet
             transition={{ duration: 0.55, ease: [0.25, 0.1, 0.25, 1] }}
             className='flex flex-col flex-1 min-h-0'>
             {/* ── Header ── */}
-            <div className='px-4 py-3 border-b border-gray-100 dark:border-neutral-border bg-gradient-to-r from-gov-forest/5 to-transparent'>
+            <div className='px-4 py-3 border-b border-gray-100 dark:border-neutral-border bg-gradient-to-r from-gov-forest/5 to-transparent dark:from-surface-elevated/40 dark:to-transparent'>
               <div className='flex items-center justify-between'>
                 <div className='flex items-center gap-2'>
                   <div className='w-7 h-7 rounded-lg bg-gov-forest/10 flex items-center justify-center'>
