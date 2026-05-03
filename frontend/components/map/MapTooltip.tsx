@@ -207,7 +207,7 @@ export default function MapTooltip({
         // min-w-0 so labels reflow instead of overflowing the card.
         // `overflow-hidden` clips the status-stripe to the rounded-xl
         // corners so the accent doesn't square off the top edge.
-        className='relative w-[min(18rem,calc(100vw-2rem))] rounded-xl bg-gradient-to-br from-white via-white to-gov-sand/30 backdrop-blur-xl border border-white/60 shadow-[0_10px_40px_rgba(15,23,42,0.14)] overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-[0_14px_48px_rgba(15,23,42,0.20)] hover:-translate-y-0.5'>
+        className='relative w-[min(18rem,calc(100vw-2rem))] rounded-xl bg-gradient-to-br from-white via-white to-gov-sand/30 dark:from-surface-elevated dark:via-surface-base dark:to-surface-elevated backdrop-blur-xl border border-white/60 dark:border-neutral-border shadow-[0_10px_40px_rgba(15,23,42,0.14)] overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-[0_14px_48px_rgba(15,23,42,0.20)] hover:-translate-y-0.5'>
         {/* ── Status-colour stripe — visual cue for audit state before
             the reader parses the chip. Pending = gray (neutral). */}
         <div className={`h-1 w-full ${cfg.stripe}`} />

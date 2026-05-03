@@ -100,7 +100,7 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
 
       {/* Sector spending — editorial donut + ranked list */}
       {sectors.length > 0 && (
-        <div className='relative overflow-hidden rounded-2xl border border-gray-100 dark:border-neutral-border bg-gradient-to-br from-white via-white to-gov-sage/5'>
+        <div className='relative overflow-hidden rounded-2xl border border-gray-100 dark:border-neutral-border bg-gradient-to-br from-white via-white to-gov-sage/5 dark:from-surface-elevated dark:via-surface-base dark:to-surface-elevated'>
           {/* Ambient color wash from top sector */}
           <div
             aria-hidden

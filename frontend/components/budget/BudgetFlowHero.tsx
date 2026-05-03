@@ -215,7 +215,7 @@ export default function BudgetFlowHero({ data }: Props) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.55 }}
-      className='rounded-2xl bg-gradient-to-br from-white via-gov-sand/30 to-white border border-neutral-border/40 shadow-surface overflow-hidden'>
+      className='rounded-2xl bg-gradient-to-br from-white via-gov-sand/30 to-white dark:from-surface-elevated dark:via-surface-base dark:to-surface-elevated border border-neutral-border/40 shadow-surface overflow-hidden'>
       {/* Header */}
       <div className='px-5 sm:px-8 pt-6 sm:pt-8 pb-4'>
         <div className='flex items-start justify-between gap-4 flex-wrap'>

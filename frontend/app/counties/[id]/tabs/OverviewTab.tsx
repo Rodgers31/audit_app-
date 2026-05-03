@@ -195,7 +195,7 @@ export default function OverviewTab({ data }: { data: CountyComprehensive }) {
       {/* Hero row: Budget execution as a magazine-style feature */}
       <div className='grid grid-cols-1 lg:grid-cols-5 gap-5'>
         {/* Budget execution — large, editorial */}
-        <div className='lg:col-span-3 rounded-2xl bg-gradient-to-br from-white via-white to-gov-sage/5 border border-gray-100 dark:border-neutral-border p-6 shadow-sm'>
+        <div className='lg:col-span-3 rounded-2xl bg-gradient-to-br from-white via-white to-gov-sage/5 dark:from-surface-elevated dark:via-surface-base dark:to-surface-elevated border border-gray-100 dark:border-neutral-border p-6 shadow-sm'>
           <div className='flex items-start gap-6'>
             <CircleProgress value={budget.utilization_rate} />
             <div className='min-w-0 flex-1'>

@@ -62,7 +62,7 @@ export default function PopularQuestions({ onOpenArticle }: Props) {
         </span>
       </div>
 
-      <ul className='overflow-hidden rounded-2xl border border-white/70 bg-gradient-to-br from-white/85 via-white/70 to-gov-cream/50 shadow-surface backdrop-blur'>
+      <ul className='overflow-hidden rounded-2xl border border-white/70 dark:border-neutral-border bg-gradient-to-br from-white/85 via-white/70 to-gov-cream/50 dark:from-surface-elevated dark:via-surface-base dark:to-surface-elevated shadow-surface backdrop-blur'>
         {POPULAR_QUESTIONS.map((q, i) => {
           const Icon = CATEGORY_ICON[q.category];
           const isOpen = openId === q.id;

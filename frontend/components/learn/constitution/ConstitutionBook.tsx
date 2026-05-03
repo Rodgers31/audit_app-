@@ -268,7 +268,7 @@ export default function ConstitutionBook({
   return (
     <section
       id='constitution-book'
-      className='relative overflow-hidden rounded-3xl border border-white/60 bg-gradient-to-br from-white/85 via-gov-cream/80 to-gov-sand shadow-elevated'
+      className='relative overflow-hidden rounded-3xl border border-white/60 dark:border-neutral-border bg-gradient-to-br from-white/85 via-gov-cream/80 to-gov-sand dark:from-surface-elevated dark:via-surface-base dark:to-surface-elevated shadow-elevated'
       aria-label='Constitution of Kenya reader'>
       {/* ── Header ── */}
       <div className='flex items-start gap-3 border-b border-neutral-border/60 bg-gradient-to-r from-gov-forest via-gov-dark to-gov-forest px-5 py-4 sm:px-7'>

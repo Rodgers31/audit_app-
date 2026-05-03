@@ -244,7 +244,7 @@ export default function SpendDonut({ data }: Props) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.55 }}
-      className='rounded-2xl bg-gradient-to-br from-white via-gov-sand/30 to-white border border-neutral-border/40 shadow-surface p-5 sm:p-7'>
+      className='rounded-2xl bg-gradient-to-br from-white via-gov-sand/30 to-white dark:from-surface-elevated dark:via-surface-base dark:to-surface-elevated border border-neutral-border/40 shadow-surface p-5 sm:p-7'>
       <div className='flex items-start justify-between gap-4 flex-wrap mb-4'>
         <div>
           <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/80 dark:text-emerald-100/80'>

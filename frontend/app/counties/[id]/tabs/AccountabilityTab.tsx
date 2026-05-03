@@ -152,7 +152,7 @@ export default function AccountabilityTab({ data: countyData }: { data: CountyCo
   return (
     <div className='space-y-6'>
       {/* A. GRADE — editorial hero with score ring */}
-      <div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-white to-gov-sage/5 border border-gray-100 dark:border-neutral-border p-6'>
+      <div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-white to-gov-sage/5 dark:from-surface-elevated dark:to-surface-base border border-gray-100 dark:border-neutral-border p-6'>
         <div
           aria-hidden
           className={`absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl opacity-30 ${gradeStyle.glow}`}
