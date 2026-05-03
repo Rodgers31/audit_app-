@@ -107,9 +107,17 @@ export default function ScenicBackgroundLayout({
             Content scrolls past them naturally.
             ═══════════════════════════════════════════════ */}
 
-        {/* Top image — anchored to top of layout container */}
+        {/* Top image — anchored to top of layout container.
+            ``lg:!h-[65vh]`` overrides the inline 50vh on laptop-sized
+            viewports so the wider container still shows enough
+            vertical image to keep both the starfield (top of image)
+            and the moon/sun (~70% down) in frame at once. Without
+            this, ``object-cover`` scales by width on wide screens
+            and crops to ~55% of the image height — moon ends up
+            below the visible region. ``!`` is required to beat the
+            inline ``style`` declaration's specificity. */}
         <div
-          className='scenic-bg-top'
+          className='scenic-bg-top lg:!h-[65vh]'
           aria-hidden='true'
           style={{
             position: 'absolute',
