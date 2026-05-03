@@ -229,7 +229,7 @@ export function KenyanGovCard() {
       </div>
 
       {/* ── Fiscal stats ── */}
-      <div className='flex-1 flex flex-col bg-gradient-to-b from-white/60 to-white/40 backdrop-blur-md'>
+      <div className='flex-1 flex flex-col bg-gradient-to-b from-white/60 to-white/40 dark:from-surface-base/95 dark:to-surface-base/85 backdrop-blur-md'>
         {isLoading ? (
           <div className='flex-1 p-3 space-y-3'>
             <div className='grid grid-cols-2 gap-2'>
@@ -447,10 +447,10 @@ function StatMiniCard({
   alert?: boolean;
 }) {
   const colors = {
-    forest: 'border-l-gov-forest/60 bg-gov-forest/5',
-    copper: 'border-l-gov-copper/60 bg-gov-copper/5',
-    gold: 'border-l-gov-gold/60 bg-gov-gold/5',
-    teal: 'border-l-[#0D7377]/60 bg-[#0D7377]/5',
+    forest: 'border-l-gov-forest/60 bg-gov-forest/5 dark:bg-surface-elevated',
+    copper: 'border-l-gov-copper/60 bg-gov-copper/5 dark:bg-surface-elevated',
+    gold: 'border-l-gov-gold/60 bg-gov-gold/5 dark:bg-surface-elevated',
+    teal: 'border-l-[#0D7377]/60 bg-[#0D7377]/5 dark:bg-surface-elevated',
   };
   const valueColors = {
     forest: 'text-gov-dark dark:text-white',
