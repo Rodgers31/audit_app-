@@ -119,14 +119,19 @@ export default function ScenicBackgroundLayout({
             height: topHeight,
             zIndex: 0,
           }}>
+          {/* ``object-position: center 20%`` anchors the image so the
+              upper portion (where the dark variant's starfield lives)
+              stays visible. Default ``object-center`` was cropping the
+              top out at the 50vh hero height. */}
           <img
             src={topImage}
             alt=''
-            className={`absolute inset-0 w-full h-full object-cover object-center ${
+            className={`absolute inset-0 w-full h-full object-cover ${
               topImageDark
                 ? 'opacity-100 dark:opacity-0 transition-opacity duration-500'
                 : ''
             }`}
+            style={{ objectPosition: 'center 20%' }}
             loading='eager'
             decoding='async'
           />
@@ -134,7 +139,8 @@ export default function ScenicBackgroundLayout({
             <img
               src={topImageDark}
               alt=''
-              className='absolute inset-0 w-full h-full object-cover object-center opacity-0 dark:opacity-100 transition-opacity duration-500'
+              className='absolute inset-0 w-full h-full object-cover opacity-0 dark:opacity-100 transition-opacity duration-500'
+              style={{ objectPosition: 'center 20%' }}
               loading='eager'
               decoding='async'
             />
