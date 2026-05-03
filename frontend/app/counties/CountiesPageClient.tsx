@@ -1630,11 +1630,11 @@ export default function CountyExplorerPage() {
       <div className='relative min-h-screen' style={{ backgroundColor: 'rgb(245,240,232)' }}>
         <CountiesScenicBottom />
         <div className='relative z-[1]'>
-          <div className='bg-gov-dark'>
+          <div>
             <div className='h-[72px]' />
             <div className='max-w-[1340px] mx-auto px-5 lg:px-8 pt-8 pb-10'>
-              <div className='h-10 w-64 bg-white/10 rounded animate-pulse' />
-              <div className='h-4 w-96 bg-white/5 rounded mt-3 animate-pulse' />
+              <div className='h-10 w-64 bg-gov-dark/10 dark:bg-white/10 rounded animate-pulse' />
+              <div className='h-4 w-96 bg-gov-dark/5 dark:bg-white/5 rounded mt-3 animate-pulse' />
             </div>
           </div>
           {/* Reserve roughly the height of the loaded rankings + sidebar
@@ -1659,10 +1659,10 @@ export default function CountyExplorerPage() {
       <div className='relative min-h-screen' style={{ backgroundColor: 'rgb(245,240,232)' }}>
         <CountiesScenicBottom />
         <div className='relative z-[1]'>
-          <div className='bg-gov-dark'>
+          <div>
             <div className='h-[72px]' />
             <div className='max-w-[1340px] mx-auto px-5 lg:px-8 pt-8 pb-10'>
-              <h1 className='font-display text-3xl sm:text-4xl lg:text-[2.75rem] text-white leading-[1.12] drop-shadow-lg'>
+              <h1 className='font-display text-3xl sm:text-4xl lg:text-[2.75rem] text-gov-dark dark:text-white leading-[1.12]'>
                 {t('counties.title')}
               </h1>
             </div>
@@ -1689,8 +1689,8 @@ export default function CountyExplorerPage() {
 
       {/* ═══ Content layer ═══ */}
       <div className='relative z-[1]'>
-        {/* ══ Dark-green header band ══ */}
-        <div className='bg-gov-dark'>
+        {/* ══ Title zone — sits on the page bg (cream / warm-near-black) ══ */}
+        <div>
           <div className='h-[72px]' />
           <div className='max-w-[1340px] mx-auto px-5 lg:px-8 pt-8 pb-10'>
             <div className='flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4'>
@@ -1699,10 +1699,10 @@ export default function CountyExplorerPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, ease: 'easeOut' }}
                 className='max-w-3xl'>
-                <h1 className='font-display text-3xl sm:text-4xl lg:text-[2.75rem] text-white leading-[1.12] mb-2 drop-shadow-lg'>
+                <h1 className='font-display text-3xl sm:text-4xl lg:text-[2.75rem] text-gov-dark dark:text-white leading-[1.12] mb-2'>
                   {t('counties.title')}
                 </h1>
-                <p className='text-base sm:text-lg text-white/70 font-light tracking-wide drop-shadow-md'>
+                <p className='text-base sm:text-lg text-gov-dark/70 dark:text-white/70 font-light tracking-wide'>
                   {(() => {
                     const tpl = t('counties.header.subtitle_rich');
                     const strong = t('counties.header.subtitle_strong');
@@ -1710,7 +1710,7 @@ export default function CountyExplorerPage() {
                     return (
                       <>
                         {before}
-                        <strong className='text-white/90'>{strong}</strong>
+                        <strong className='text-gov-dark/90 dark:text-white/90'>{strong}</strong>
                         {after}
                       </>
                     );
@@ -1721,7 +1721,7 @@ export default function CountyExplorerPage() {
                 <div className='relative'>
                   <button
                     onClick={() => setYearOpen((v) => !v)}
-                    className='inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 text-white text-sm font-medium px-4 py-2 rounded-lg border border-white/20 transition-colors'>
+                    className='inline-flex items-center gap-2 bg-gov-dark/8 dark:bg-white/10 hover:bg-gov-dark/12 dark:hover:bg-white/15 text-gov-dark dark:text-white text-sm font-medium px-4 py-2 rounded-lg border border-gov-dark/15 dark:border-white/20 transition-colors'>
                     {t('counties.header.year')}: {selectedYear}
                     <ChevronDown
                       size={14}
@@ -1750,7 +1750,7 @@ export default function CountyExplorerPage() {
                 </div>
                 <button
                   onClick={handleExport}
-                  className='inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 text-white text-sm font-medium px-4 py-2 rounded-lg border border-white/20 transition-colors'>
+                  className='inline-flex items-center gap-2 bg-gov-dark/8 dark:bg-white/10 hover:bg-gov-dark/12 dark:hover:bg-white/15 text-gov-dark dark:text-white text-sm font-medium px-4 py-2 rounded-lg border border-gov-dark/15 dark:border-white/20 transition-colors'>
                   <Download size={14} />
                   {t('counties.header.export')}
                 </button>
