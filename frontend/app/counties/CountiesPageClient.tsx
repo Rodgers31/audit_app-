@@ -2,6 +2,7 @@
 
 import DataFreshnessBadge from '@/components/DataFreshnessBadge';
 import InfoTip from '@/components/InfoTip';
+import ScenicHeaderBand from '@/components/layout/ScenicHeaderBand';
 import { useLang } from '@/lib/i18n/LangProvider';
 import type { TranslationKey } from '@/lib/i18n/messages';
 import { useCounties } from '@/lib/react-query';
@@ -1630,9 +1631,10 @@ export default function CountyExplorerPage() {
       <div className='relative min-h-screen' style={{ backgroundColor: 'rgb(245,240,232)' }}>
         <CountiesScenicBottom />
         <div className='relative z-[1]'>
-          <div className='bg-gov-dark'>
+          <div className='relative overflow-hidden bg-gov-dark'>
+            <ScenicHeaderBand />
             <div className='h-[72px]' />
-            <div className='max-w-[1340px] mx-auto px-5 lg:px-8 pt-8 pb-10'>
+            <div className='relative max-w-[1340px] mx-auto px-5 lg:px-8 pt-8 pb-10'>
               <div className='h-10 w-64 bg-white/10 rounded animate-pulse' />
               <div className='h-4 w-96 bg-white/5 rounded mt-3 animate-pulse' />
             </div>
@@ -1659,9 +1661,10 @@ export default function CountyExplorerPage() {
       <div className='relative min-h-screen' style={{ backgroundColor: 'rgb(245,240,232)' }}>
         <CountiesScenicBottom />
         <div className='relative z-[1]'>
-          <div className='bg-gov-dark'>
+          <div className='relative overflow-hidden bg-gov-dark'>
+            <ScenicHeaderBand />
             <div className='h-[72px]' />
-            <div className='max-w-[1340px] mx-auto px-5 lg:px-8 pt-8 pb-10'>
+            <div className='relative max-w-[1340px] mx-auto px-5 lg:px-8 pt-8 pb-10'>
               <h1 className='font-display text-3xl sm:text-4xl lg:text-[2.75rem] text-white leading-[1.12] drop-shadow-lg'>
                 {t('counties.title')}
               </h1>
@@ -1689,10 +1692,11 @@ export default function CountyExplorerPage() {
 
       {/* ═══ Content layer ═══ */}
       <div className='relative z-[1]'>
-        {/* ══ Dark-green header band ══ */}
-        <div className='bg-gov-dark'>
+        {/* ══ Scenic header band ══ */}
+        <div className='relative overflow-hidden bg-gov-dark'>
+          <ScenicHeaderBand />
           <div className='h-[72px]' />
-          <div className='max-w-[1340px] mx-auto px-5 lg:px-8 pt-8 pb-10'>
+          <div className='relative max-w-[1340px] mx-auto px-5 lg:px-8 pt-8 pb-10'>
             <div className='flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4'>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
