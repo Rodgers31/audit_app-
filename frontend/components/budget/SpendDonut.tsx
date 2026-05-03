@@ -357,14 +357,14 @@ export default function SpendDonut({ data }: Props) {
                 className='text-center'
                 style={{ maxWidth: '130px' }}>
                 <div
-                  className='text-[9px] uppercase tracking-[0.18em] font-semibold truncate'
+                  className='text-[9px] uppercase tracking-[0.18em] font-semibold truncate dark:brightness-150 dark:contrast-125'
                   style={{ color: centerInfo.accent, opacity: 0.85 }}>
                   {centerInfo.eyebrow}
                 </div>
                 <div className='text-[17px] sm:text-[19px] font-extrabold text-gov-dark dark:text-white tabular-nums tracking-tight mt-0.5 leading-none'>
                   {centerInfo.value}
                 </div>
-                <div className='text-[9.5px] text-neutral-muted mt-1.5 leading-tight'>
+                <div className='text-[9.5px] text-gov-dark/70 dark:text-white/70 mt-1.5 leading-tight'>
                   {centerInfo.caption}
                 </div>
               </motion.div>
