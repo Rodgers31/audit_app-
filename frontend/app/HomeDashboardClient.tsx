@@ -43,6 +43,8 @@ export default function HomeDashboardClient() {
     <ScenicBackgroundLayout
       topImage='/kenya_bg_top.jpg'
       bottomImage='/kenya_bg_bottom.jpg'
+      topImageDark='/kenya_bg_top_dk.jpg'
+      bottomImageDark='/kenya_bg_bottom_dk.jpg'
       topHeight='50vh'
       bottomHeight='50vh'
       readabilityMode='light'

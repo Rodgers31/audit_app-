@@ -39,18 +39,29 @@ export default function PageShell({
   back,
 }: PageShellProps) {
   return (
-    <div className='relative min-h-screen' style={{ backgroundColor: `rgb(${NEUTRAL_RGB})` }}>
+    <div className='relative min-h-screen bg-gov-sand dark:bg-[#0a1410]'>
       {/* ═══ Bottom scenic image (Kenyan flag) — pinned to bottom ═══ */}
       <div
         className='absolute bottom-0 left-0 right-0'
         aria-hidden='true'
         style={{ height: '45vh', zIndex: 0 }}>
+        {/* Light + dark variants stacked. Opacity is the only thing
+            that flips on ``prefers-color-scheme: dark`` so the swap
+            crossfades smoothly instead of snapping. */}
         <Image
           src='/kenya_bg_bottom.jpg'
           alt=''
           fill
           sizes='100vw'
-          className='object-cover'
+          className='object-cover opacity-100 dark:opacity-0 transition-opacity duration-500'
+          style={{ objectPosition: 'center 75%' }}
+        />
+        <Image
+          src='/kenya_bg_bottom_dk.jpg'
+          alt=''
+          fill
+          sizes='100vw'
+          className='object-cover opacity-0 dark:opacity-100 transition-opacity duration-500'
           style={{ objectPosition: 'center 75%' }}
         />
         {/* Cinematic tint */}
@@ -64,20 +75,23 @@ export default function PageShell({
             )`,
           }}
         />
-        {/* Top-edge fade into cream */}
+        {/* Top-edge fade into the page background. Uses
+            ``--page-bg-rgb`` (defined in globals.css) so the fade
+            blends into cream in light mode and the deep dark in
+            dark mode. */}
         <div className='absolute top-0 left-0 right-0' style={{ height: '50%' }}>
           <div
             className='absolute inset-0'
             style={{
               background: `linear-gradient(to top,
                 transparent 0%,
-                rgba(${NEUTRAL_RGB},0.07) 15%,
-                rgba(${NEUTRAL_RGB},0.21) 30%,
-                rgba(${NEUTRAL_RGB},0.39) 45%,
-                rgba(${NEUTRAL_RGB},0.61) 60%,
-                rgba(${NEUTRAL_RGB},0.77) 75%,
-                rgba(${NEUTRAL_RGB},0.88) 88%,
-                rgba(${NEUTRAL_RGB},0.94) 100%
+                rgba(var(--page-bg-rgb),0.07) 15%,
+                rgba(var(--page-bg-rgb),0.21) 30%,
+                rgba(var(--page-bg-rgb),0.39) 45%,
+                rgba(var(--page-bg-rgb),0.61) 60%,
+                rgba(var(--page-bg-rgb),0.77) 75%,
+                rgba(var(--page-bg-rgb),0.88) 88%,
+                rgba(var(--page-bg-rgb),0.94) 100%
               )`,
             }}
           />
@@ -136,7 +150,7 @@ export default function PageShell({
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
-            className={`rounded-2xl bg-white/40 backdrop-blur-xl border border-white/50 shadow-[0_8px_40px_rgba(0,0,0,0.08)] p-4 sm:p-6 space-y-6 ${className}`}>
+            className={`rounded-2xl bg-white/40 dark:bg-gov-dark/30 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-[0_8px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.4)] p-4 sm:p-6 space-y-6 ${className}`}>
             {children}
           </motion.div>
         </div>

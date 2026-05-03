@@ -241,7 +241,7 @@ export default function AdminOverviewPage() {
             initial='hidden'
             animate='show'
             custom={4}
-            className='bg-white rounded-2xl p-5 sm:p-6 border border-neutral-border shadow-surface'>
+            className='bg-white dark:bg-gov-dark/60 rounded-2xl p-5 sm:p-6 border border-neutral-border shadow-surface'>
             <SectionHeader
               icon={TrendingUp}
               title='Ingestion volume'
@@ -295,7 +295,7 @@ export default function AdminOverviewPage() {
               initial='hidden'
               animate='show'
               custom={5}
-              className='bg-white rounded-2xl p-5 sm:p-6 border border-neutral-border shadow-surface'>
+              className='bg-white dark:bg-gov-dark/60 rounded-2xl p-5 sm:p-6 border border-neutral-border shadow-surface'>
               <div className='flex items-center justify-between mb-4'>
                 <SectionHeader icon={History} title='Recent admin actions' inline />
                 <Link
@@ -309,8 +309,8 @@ export default function AdminOverviewPage() {
                 {recentActions.data.entries.map((entry) => (
                   <li
                     key={entry.id}
-                    className='flex items-center gap-3 px-3 py-2 rounded-lg bg-gov-cream text-sm'>
-                    <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-white text-gov-forest border border-gov-sage/20'>
+                    className='flex items-center gap-3 px-3 py-2 rounded-lg bg-gov-cream dark:bg-white/5 text-sm'>
+                    <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-white dark:bg-gov-dark/60 text-gov-forest border border-gov-sage/20'>
                       {entry.action}
                     </span>
                     {entry.target_type && (
@@ -337,7 +337,7 @@ export default function AdminOverviewPage() {
               initial='hidden'
               animate='show'
               custom={6}
-              className='bg-white rounded-2xl p-5 sm:p-6 border border-neutral-border shadow-surface'>
+              className='bg-white dark:bg-gov-dark/60 rounded-2xl p-5 sm:p-6 border border-neutral-border shadow-surface'>
               <SectionHeader
                 icon={Clock}
                 title='Sources scheduled today'
@@ -347,7 +347,7 @@ export default function AdminOverviewPage() {
                 {schedule.data.sources_to_run.map(({ source, reason }) => (
                   <li
                     key={source}
-                    className='flex items-start justify-between gap-3 px-3 py-2 rounded-lg bg-gov-cream'>
+                    className='flex items-start justify-between gap-3 px-3 py-2 rounded-lg bg-gov-cream dark:bg-white/5'>
                     <div>
                       <span className='text-sm font-mono font-semibold text-neutral-text'>
                         {source}
@@ -397,7 +397,7 @@ function StatCard<T>({
       custom={order}>
       <Link
         href={href}
-        className='group block bg-white rounded-2xl p-5 border border-neutral-border shadow-surface hover:shadow-elevated hover:border-gov-sage/40 transition-all h-full'>
+        className='group block bg-white dark:bg-gov-dark/60 rounded-2xl p-5 border border-neutral-border shadow-surface hover:shadow-elevated hover:border-gov-sage/40 transition-all h-full'>
         <div className='flex items-center justify-between mb-3'>
           <div className='flex items-center gap-2.5'>
             <div className='w-8 h-8 rounded-lg bg-gov-sage/15 flex items-center justify-center border border-gov-sage/20'>

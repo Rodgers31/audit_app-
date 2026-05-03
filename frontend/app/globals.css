@@ -4,15 +4,67 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Serif+Display&display=swap');
 
+/* ── CSS variables for light/dark theme ──
+   These power both inline ``rgba(...)`` gradients (PageShell etc.)
+   AND Tailwind's ``neutral`` palette, which is wired to ``rgb(var(--c-neutral-*) / <alpha-value>)``
+   in tailwind.config.js. That means every existing
+   ``text-neutral-text``, ``border-neutral-border``,
+   ``text-neutral-muted/60`` etc. crossfades automatically when
+   the OS scheme flips — no per-component ``dark:`` variant
+   needed for those tokens. */
+:root {
+  /* Comma-separated (legacy ``rgba(var, alpha)`` consumers like
+     PageShell's gradients). */
+  --page-bg-rgb: 245, 240, 232; /* gov-sand */
+  /* Space-separated triplets for the Tailwind colour palette,
+     which generates ``rgb(var(--c-neutral-text) / <alpha-value>)``.
+     Modern ``rgb(R G B / A)`` syntax requires spaces, not commas. */
+  --c-neutral-text: 28 28 28;
+  --c-neutral-muted: 107 114 128;
+  --c-neutral-border: 226 221 213;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page-bg-rgb: 10, 20, 16;
+    --c-neutral-text: 245 245 245;
+    --c-neutral-muted: 156 163 175;
+    --c-neutral-border: 55 70 60;
+  }
+}
+
 /* ── Base ── */
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
     scroll-behavior: smooth;
+    /* Tells the browser which native form widget / scrollbar palette
+       to use. Pairs with Tailwind ``darkMode: 'media'`` so the user
+       gets dark scrollbars + form controls without a manual toggle. */
+    color-scheme: light dark;
   }
 
   body {
     @apply bg-gov-sand text-neutral-text;
+    @apply dark:bg-[#0a1410] dark:text-neutral-100;
+    /* Body-level fallback so text doesn't snap. Per-element
+       transitions are applied below to cards, borders, etc. */
+    transition:
+      background-color 300ms ease,
+      color 300ms ease,
+      border-color 300ms ease;
+  }
+
+  /* Crossfade colour and stroke values everywhere when the OS theme
+     flips. Without this, dark-mode flicks instantly which feels
+     jarring. ``transition-property`` is scoped — opacity, transform
+     etc. are intentionally untouched so existing animations behave
+     identically. */
+  *,
+  *::before,
+  *::after {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-duration: 300ms;
+    transition-timing-function: ease;
   }
 }
 

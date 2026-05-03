@@ -74,10 +74,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </>
         )}
         {/* Above-the-fold LCP image — preload so it begins downloading
-            in parallel with the CSS / JS chunks. */}
-        <link rel='preload' as='image' href='/kenya_bg_top.jpg' />
+            in parallel with the CSS / JS chunks. The ``media`` attribute
+            ensures only the variant matching the user's current colour
+            scheme is downloaded — no double-fetch on dark-mode systems. */}
+        <link
+          rel='preload'
+          as='image'
+          href='/kenya_bg_top.jpg'
+          media='(prefers-color-scheme: light)'
+        />
+        <link
+          rel='preload'
+          as='image'
+          href='/kenya_bg_top_dk.jpg'
+          media='(prefers-color-scheme: dark)'
+        />
       </head>
-      <body className='bg-gov-sand antialiased' suppressHydrationWarning>
+      <body
+        className='bg-gov-sand dark:bg-[#0a1410] antialiased'
+        suppressHydrationWarning>
         {/* Skip-to-main link. Sighted users never see this (sr-only
             until focused); keyboard users can jump past the fixed
             header in one Tab press. Lands on #main-content which

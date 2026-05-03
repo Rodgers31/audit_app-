@@ -6,6 +6,10 @@ module.exports = {
     './app/**/*.{js,ts,jsx,tsx,mdx}',
     './src/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  // Follow the OS / browser ``prefers-color-scheme`` media query —
+  // no manual toggle. ``dark:`` variants in markup activate when the
+  // viewer's system is set to dark, matching the user request.
+  darkMode: 'media',
   theme: {
     extend: {
       colors: {
@@ -21,9 +25,17 @@ module.exports = {
           warning: '#D97706',
         },
         neutral: {
-          text: '#1C1C1C',
-          muted: '#6B7280',
-          border: '#E2DDD5',
+          // Theme-aware via CSS variables defined in globals.css.
+          // Tailwind v3.3+ syntax: ``rgb(... / <alpha-value>)`` lets
+          // us keep using ``text-neutral-text/60`` etc. and have the
+          // resolved value crossfade with prefers-color-scheme.
+          text: 'rgb(var(--c-neutral-text) / <alpha-value>)',
+          muted: 'rgb(var(--c-neutral-muted) / <alpha-value>)',
+          border: 'rgb(var(--c-neutral-border) / <alpha-value>)',
+          // Hex literals retained for any rare consumer that
+          // imports the colour as a JS value rather than via a
+          // Tailwind class.
+          100: '#F4F2EE',
         },
         primary: {
           50: '#f0f9ff',

@@ -46,7 +46,15 @@ function CountiesScenicBottom() {
         alt=''
         fill
         sizes='100vw'
-        className='object-cover'
+        className='object-cover opacity-100 dark:opacity-0 transition-opacity duration-500'
+        style={{ objectPosition: 'center 75%' }}
+      />
+      <Image
+        src='/kenya_bg_bottom_dk.jpg'
+        alt=''
+        fill
+        sizes='100vw'
+        className='object-cover opacity-0 dark:opacity-100 transition-opacity duration-500'
         style={{ objectPosition: 'center 75%' }}
       />
       <div
