@@ -100,13 +100,22 @@ export default function PageShell({
 
       {/* ═══ Content layer (above the bottom image) ═══ */}
       <div className='relative z-[1]'>
-        {/* ── Title zone ──
-             Sits directly on the page background so inner pages share
-             the same cream-in-light / warm-near-black-in-dark feel as
-             the home page rather than a flat dark-green slab.
-             Title + subtitle colours are theme-aware so they read on
-             either background. */}
-        <div className='relative'>
+        {/* ── Dark-green header band ── */}
+        <div className='relative overflow-hidden bg-gov-dark'>
+          {/* Subtle decorative layers — kept faint so existing pages still feel the same */}
+          <div
+            aria-hidden
+            className='pointer-events-none absolute inset-0'
+            style={{
+              background:
+                'radial-gradient(65% 140% at 92% 12%, rgba(74,122,89,0.32) 0%, transparent 60%), radial-gradient(40% 90% at 10% 100%, rgba(212,165,76,0.09) 0%, transparent 60%)',
+            }}
+          />
+          {/* Gold hairline at the bottom edge */}
+          <div
+            aria-hidden
+            className='pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gov-gold/40 to-transparent'
+          />
           {/* Spacer for the fixed navigation bar */}
           <div className='h-[72px]' />
           <div className='relative max-w-[1340px] mx-auto px-5 lg:px-8 pt-6 pb-10'>
@@ -118,16 +127,16 @@ export default function PageShell({
               {back && (
                 <SmartBackLink
                   href={back.href}
-                  className='mb-3 inline-flex items-center gap-1.5 rounded-full bg-gov-dark/8 dark:bg-white/8 px-3 py-1 text-[12.5px] font-semibold text-gov-dark/80 dark:text-white/80 ring-1 ring-inset ring-gov-dark/15 dark:ring-white/10 backdrop-blur-sm transition-colors hover:bg-gov-dark/12 dark:hover:bg-white/12 hover:text-gov-dark dark:hover:text-white'>
+                  className='mb-3 inline-flex items-center gap-1.5 rounded-full bg-white/8 px-3 py-1 text-[12.5px] font-semibold text-white/80 ring-1 ring-inset ring-white/10 backdrop-blur-sm transition-colors hover:bg-white/12 hover:text-white'>
                   <ArrowLeft size={13} />
                   {back.label}
                 </SmartBackLink>
               )}
-              <h1 className='font-display text-3xl sm:text-4xl lg:text-[2.75rem] text-gov-dark dark:text-white leading-[1.12] mb-2'>
+              <h1 className='font-display text-3xl sm:text-4xl lg:text-[2.75rem] text-white leading-[1.12] mb-2 drop-shadow-lg'>
                 {title}
               </h1>
               {subtitle && (
-                <p className='text-base sm:text-lg text-gov-dark/70 dark:text-white/70 font-light tracking-wide'>
+                <p className='text-base sm:text-lg text-white/70 font-light tracking-wide drop-shadow-md'>
                   {subtitle}
                 </p>
               )}
