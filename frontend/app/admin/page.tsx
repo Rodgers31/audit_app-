@@ -86,6 +86,25 @@ interface AuditList {
   has_more: boolean;
 }
 
+interface FailedJob {
+  id: number;
+  domain: string;
+  status: string;
+  started_at: string | null;
+  finished_at: string | null;
+  duration_seconds: number | null;
+  errors: Array<{ message?: string; type?: string } | string>;
+  created_at: string;
+}
+
+interface FailedJobList {
+  jobs: FailedJob[];
+  total: number;
+  page: number;
+  page_size: number;
+  has_more: boolean;
+}
+
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
   show: (i: number = 0) => ({
@@ -128,11 +147,108 @@ export default function AdminOverviewPage() {
     staleTime: 30_000,
   });
 
+  const failedJobs = useQuery<FailedJobList>({
+    queryKey: ['admin', 'ingestion-jobs', 'failed'],
+    queryFn: async () =>
+      (
+        await api.get('/admin/ingestion-jobs', {
+          params: { status: 'failed', days: 7, page_size: 5 },
+        })
+      ).data,
+    staleTime: 30_000,
+    // Refetch every 60s so the alerts banner reflects new failures without
+    // a full page reload.
+    refetchInterval: 60_000,
+  });
+
+  // Anything we surface to the admin as an unresolved problem. Keep this
+  // tightly scoped — the banner should only appear when there's something
+  // genuinely actionable, otherwise it becomes noise.
+  const alerts: { kind: 'failed-jobs' | 'unhealthy-etl'; count?: number }[] = [];
+  if (failedJobs.data && failedJobs.data.total > 0) {
+    alerts.push({ kind: 'failed-jobs', count: failedJobs.data.total });
+  }
+  if (
+    health.data &&
+    health.data.scheduler_status &&
+    health.data.scheduler_status !== 'healthy'
+  ) {
+    alerts.push({ kind: 'unhealthy-etl' });
+  }
+
   return (
     <PageShell
       title='Admin Overview'
       subtitle='Monitor users, ingestion, ETL schedule and system health at a glance.'>
       <div className='space-y-8'>
+        {/* ── Alerts banner ──
+             Only renders when there's something actionable. Red so it
+             reads instantly and the admin doesn't mistake "no alerts
+             card" for "everything is healthy". */}
+        {alerts.length > 0 && (
+          <motion.section
+            variants={fadeUp}
+            initial='hidden'
+            animate='show'
+            custom={0}
+            role='alert'
+            className='rounded-2xl border-2 border-gov-copper/40 dark:border-red-500/40 bg-gov-copper/8 dark:bg-red-900/30 px-5 py-4 sm:px-6 sm:py-5 shadow-surface'>
+            <div className='flex items-start gap-3'>
+              <span className='inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gov-copper/15 dark:bg-red-500/20'>
+                <AlertTriangle className='w-5 h-5 text-gov-copper dark:text-red-300' />
+              </span>
+              <div className='min-w-0 flex-1'>
+                <div className='flex items-center gap-2 mb-1'>
+                  <h2 className='text-base font-bold text-gov-copper dark:text-red-200'>
+                    System needs attention
+                  </h2>
+                  <span className='inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gov-copper/20 dark:bg-red-500/30 text-gov-copper dark:text-red-100'>
+                    {alerts.length} {alerts.length === 1 ? 'alert' : 'alerts'}
+                  </span>
+                </div>
+                <ul className='space-y-1.5 text-sm'>
+                  {alerts.map((a) => (
+                    <li key={a.kind} className='flex items-center gap-2 flex-wrap'>
+                      {a.kind === 'failed-jobs' && (
+                        <>
+                          <span className='text-gov-copper/90 dark:text-red-100/90'>
+                            <strong className='font-semibold'>{a.count}</strong>{' '}
+                            ingestion {a.count === 1 ? 'job has' : 'jobs have'} failed in
+                            the last 7 days.
+                          </span>
+                          <Link
+                            href='/admin/ingestion?status=failed'
+                            className='inline-flex items-center gap-1 text-xs font-semibold text-gov-copper dark:text-red-200 underline underline-offset-2 hover:text-gov-copper/80 dark:hover:text-red-100'>
+                            View failures
+                            <ArrowRight className='w-3 h-3' />
+                          </Link>
+                        </>
+                      )}
+                      {a.kind === 'unhealthy-etl' && (
+                        <>
+                          <span className='text-gov-copper/90 dark:text-red-100/90'>
+                            ETL scheduler reports{' '}
+                            <strong className='font-mono font-semibold'>
+                              {health.data?.scheduler_status}
+                            </strong>
+                            .
+                          </span>
+                          <Link
+                            href='/status'
+                            className='inline-flex items-center gap-1 text-xs font-semibold text-gov-copper dark:text-red-200 underline underline-offset-2 hover:text-gov-copper/80 dark:hover:text-red-100'>
+                            Check pipeline status
+                            <ArrowRight className='w-3 h-3' />
+                          </Link>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </motion.section>
+        )}
+
         {/* ── Top stat grid ── */}
         <section>
           <SectionHeader icon={TrendingUp} title='At a glance' />
@@ -233,6 +349,81 @@ export default function AdminOverviewPage() {
             />
           </div>
         </section>
+
+        {/* ── Recent failures ──
+             Always rendered when there are failures so the admin can
+             click straight through to the offending job. Hidden when
+             everything's clean to keep the page calm. */}
+        {failedJobs.data && failedJobs.data.jobs.length > 0 && (
+          <motion.section
+            variants={fadeUp}
+            initial='hidden'
+            animate='show'
+            custom={3}
+            className='bg-white dark:bg-surface-base rounded-2xl p-5 sm:p-6 border-2 border-gov-copper/30 dark:border-red-500/30 shadow-surface'>
+            <div className='flex items-center justify-between mb-4'>
+              <div className='flex items-center gap-2'>
+                <span className='inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gov-copper/15 dark:bg-red-500/20'>
+                  <XCircle className='w-4 h-4 text-gov-copper dark:text-red-300' />
+                </span>
+                <div>
+                  <h2 className='text-base font-bold text-neutral-text leading-tight'>
+                    Recent failures
+                  </h2>
+                  <p className='text-xs text-neutral-muted'>
+                    Last {failedJobs.data.jobs.length} of {failedJobs.data.total} failed
+                    {failedJobs.data.total === 1 ? ' job' : ' jobs'} in the last 7 days.
+                  </p>
+                </div>
+              </div>
+              <Link
+                href='/admin/ingestion?status=failed'
+                className='text-xs text-gov-copper dark:text-red-300 hover:text-gov-copper/80 dark:hover:text-red-200 inline-flex items-center gap-1 font-medium'>
+                View all
+                <ArrowRight className='w-3 h-3' />
+              </Link>
+            </div>
+            <ul className='space-y-2'>
+              {failedJobs.data.jobs.map((job) => {
+                const firstError = job.errors?.[0];
+                const errorMessage =
+                  typeof firstError === 'string'
+                    ? firstError
+                    : firstError?.message || 'Unknown error';
+                return (
+                  <li key={job.id}>
+                    <Link
+                      href={`/admin/ingestion/${job.id}`}
+                      className='group flex items-start gap-3 px-3 py-2.5 rounded-lg bg-gov-copper/5 dark:bg-red-900/20 hover:bg-gov-copper/10 dark:hover:bg-red-900/30 ring-1 ring-inset ring-gov-copper/15 dark:ring-red-500/25 transition-colors'>
+                      <span className='shrink-0 mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-md bg-gov-copper/15 dark:bg-red-500/25'>
+                        <XCircle className='w-3 h-3 text-gov-copper dark:text-red-300' />
+                      </span>
+                      <div className='min-w-0 flex-1'>
+                        <div className='flex items-center gap-2 flex-wrap'>
+                          <span className='text-xs font-mono font-semibold text-gov-copper dark:text-red-200'>
+                            {job.domain}
+                          </span>
+                          <span className='text-[10px] text-neutral-muted'>
+                            #{job.id} · {timeAgo(job.started_at || job.created_at)}
+                          </span>
+                          {job.duration_seconds != null && (
+                            <span className='text-[10px] text-neutral-muted'>
+                              · ran {job.duration_seconds.toFixed(1)}s
+                            </span>
+                          )}
+                        </div>
+                        <p className='text-xs text-neutral-text mt-0.5 line-clamp-1'>
+                          {errorMessage}
+                        </p>
+                      </div>
+                      <ArrowRight className='shrink-0 w-3.5 h-3.5 text-neutral-muted group-hover:text-gov-copper dark:group-hover:text-red-300 mt-1 transition-colors' />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </motion.section>
+        )}
 
         {/* ── Ingestion volume + by-domain ── */}
         {ingestion.data && (
