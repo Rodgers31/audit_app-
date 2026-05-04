@@ -33,11 +33,31 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse, Response
 
-# Initialize logger early (before Redis cache import)
+# Initialize logger early (before Redis cache import).
+#
+# Stream handler (stdout) is always on — that's what Render / Docker
+# capture and what shows up in the platform's log viewer.
+#
+# File handler is best-effort: write to ``logs/main_backend.log`` if
+# the directory exists and is writable, otherwise skip silently. The
+# previous default (``FileHandler("main_backend.log")``) wrote to the
+# CWD, which on Render is ``/app`` — a root-owned directory the
+# non-root ``appuser`` can't create files in, so the worker crashed
+# at import time with PermissionError. Writing under ``logs/`` (which
+# the Dockerfile chowns to ``appuser``) keeps the file log working
+# locally without breaking container starts.
+_log_handlers: list[logging.Handler] = [logging.StreamHandler()]
+try:
+    _log_handlers.append(logging.FileHandler("logs/main_backend.log"))
+except (OSError, PermissionError):
+    # No writable log dir (read-only FS, missing dir, etc.). Stream
+    # handler alone is fine — the platform captures stdout anyway.
+    pass
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(), logging.FileHandler("main_backend.log")],
+    handlers=_log_handlers,
 )
 logger = logging.getLogger(__name__)
 
