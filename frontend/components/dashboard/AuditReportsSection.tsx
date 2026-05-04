@@ -82,7 +82,7 @@ function SeverityDonut({ sev }: { sev: Record<string, number> }) {
         ))}
       </svg>
       <div className='absolute inset-0 flex flex-col items-center justify-center'>
-        <span className='text-2xl font-bold text-gov-dark tabular-nums leading-none'>{total}</span>
+        <span className='text-2xl font-bold text-gov-dark dark:text-white tabular-nums leading-none'>{total}</span>
         <span className='text-[10px] text-neutral-muted mt-0.5'>{t('home.audits.findings_label')}</span>
       </div>
     </div>
@@ -151,9 +151,9 @@ export default function AuditReportsSection() {
       transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       className='glass-card overflow-hidden'>
       {/* ════════ HEADER ════════ */}
-      <div className='bg-gradient-to-r from-gov-sand/60 via-gov-cream/40 to-transparent px-6 sm:px-8 pt-6 pb-5 flex items-start justify-between border-b border-neutral-border/20'>
+      <div className='bg-gradient-to-r from-gov-sand/60 via-gov-cream/40 to-transparent dark:from-surface-elevated/40 dark:via-surface-base/20 dark:to-transparent px-6 sm:px-8 pt-6 pb-5 flex items-start justify-between border-b border-neutral-border/20'>
         <div>
-          <h2 className='font-display text-xl sm:text-2xl text-gov-dark leading-tight'>
+          <h2 className='font-display text-xl sm:text-2xl text-gov-dark dark:text-white leading-tight'>
             {t('home.audits.report_title')}
           </h2>
           <p className='text-sm text-neutral-muted mt-0.5'>
@@ -164,7 +164,7 @@ export default function AuditReportsSection() {
           href='https://www.oagkenya.go.ke'
           target='_blank'
           rel='noopener noreferrer'
-          className='flex items-center gap-1 text-[11px] text-neutral-muted hover:text-gov-forest transition-colors mt-1'>
+          className='flex items-center gap-1 text-[11px] text-neutral-muted hover:text-gov-forest dark:text-emerald-100 transition-colors mt-1'>
           OAG Kenya <ExternalLink className='w-3 h-3' />
         </a>
       </div>
@@ -177,7 +177,7 @@ export default function AuditReportsSection() {
             {t('home.audits.opinion_label')} {data.opinion_type}
           </span>
         </div>
-        <p className='text-sm text-gov-dark/80 leading-relaxed'>
+        <p className='text-sm text-gov-dark/80 dark:text-white/80 leading-relaxed'>
           {data.basis_for_qualification?.[0] || t('home.audits.default_basis')}
         </p>
         <p className='text-[11px] text-neutral-muted mt-2 italic'>
@@ -192,7 +192,7 @@ export default function AuditReportsSection() {
             icon: Building2,
             labelKey: 'home.audits.stat_ministries' as TranslationKey,
             value: stats?.total_ministries_audited ?? data.total_findings,
-            accent: 'text-gov-forest',
+            accent: 'text-gov-forest dark:text-emerald-100',
           },
           {
             icon: SearchX,
@@ -215,7 +215,7 @@ export default function AuditReportsSection() {
         ] as const).map((s) => (
           <div
             key={s.labelKey}
-            className={`rounded-xl border border-neutral-border/40 px-4 py-3 ${
+            className={`rounded-xl border border-neutral-border/40 px-4 py-3 dark:bg-surface-elevated/40 ${
               s.accent === 'text-gov-copper'
                 ? 'bg-gov-copper/[0.04]'
                 : s.accent === 'text-gov-gold'
@@ -238,8 +238,8 @@ export default function AuditReportsSection() {
       {/* ════════ TWO-COL: Findings + Ministries ════════ */}
       <div className='px-6 sm:px-8 pb-5 grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5'>
         {/* ── Left: Findings + Donut ── */}
-        <div className='rounded-xl bg-gov-sand/30 border border-neutral-border/20 p-4'>
-          <h3 className='font-display text-base text-gov-dark mb-4'>{t('home.audits.findings_overview')}</h3>
+        <div className='rounded-xl bg-gov-sand/30 dark:bg-surface-elevated/40 border border-neutral-border/20 p-4'>
+          <h3 className='font-display text-base text-gov-dark dark:text-white mb-4'>{t('home.audits.findings_overview')}</h3>
 
           <div className='flex gap-5 items-start'>
             {/* Findings list */}
@@ -254,7 +254,7 @@ export default function AuditReportsSection() {
                     key={f.id}
                     onClick={() => setExpandedFinding(isOpen ? null : f.id)}
                     className='w-full text-left group'>
-                    <div className='flex items-start gap-2.5 px-3 py-2.5 rounded-lg hover:bg-gov-sand/50 transition-colors'>
+                    <div className='flex items-start gap-2.5 px-3 py-2.5 rounded-lg hover:bg-gov-sand/50 dark:hover:bg-surface-elevated transition-colors'>
                       <span
                         className='mt-1 w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0'
                         style={{ backgroundColor: `${cfg.ring}18` }}>
@@ -267,7 +267,7 @@ export default function AuditReportsSection() {
                         )}
                       </span>
                       <div className='min-w-0 flex-1'>
-                        <p className='text-sm font-semibold text-gov-dark leading-snug'>
+                        <p className='text-sm font-semibold text-gov-dark dark:text-white leading-snug'>
                           {shortMinistry(f.entity_name)}
                         </p>
                         <p className='text-xs text-neutral-muted leading-relaxed mt-0.5 line-clamp-2'>
@@ -279,12 +279,12 @@ export default function AuditReportsSection() {
                             animate={{ height: 'auto', opacity: 1 }}
                             className='mt-2 pt-2 border-t border-neutral-border/30'>
                             <p className='text-xs text-neutral-muted leading-relaxed'>
-                              <span className='font-semibold text-gov-dark'>{t('home.audits.amount_prefix')}</span>{' '}
+                              <span className='font-semibold text-gov-dark dark:text-white'>{t('home.audits.amount_prefix')}</span>{' '}
                               {f.amount_involved}
                             </p>
                             {f.recommended_action && (
                               <p className='text-xs text-neutral-muted leading-relaxed mt-1'>
-                                <span className='font-semibold text-gov-dark'>{t('home.audits.action_prefix')}</span>{' '}
+                                <span className='font-semibold text-gov-dark dark:text-white'>{t('home.audits.action_prefix')}</span>{' '}
                                 {f.recommended_action}
                               </p>
                             )}
@@ -317,7 +317,7 @@ export default function AuditReportsSection() {
                       <span className='text-[11px] text-neutral-muted'>
                         {t(SEV_CFG[level].labelKey)} ({sev[level] || 0})
                       </span>
-                      <span className='text-[11px] font-semibold text-gov-dark tabular-nums ml-auto'>
+                      <span className='text-[11px] font-semibold text-gov-dark dark:text-white tabular-nums ml-auto'>
                         {pct}%
                       </span>
                     </div>
@@ -329,13 +329,13 @@ export default function AuditReportsSection() {
 
           {/* ── Emphasis of Matter ── */}
           {data.emphasis_of_matter?.[0] && (
-            <div className='mt-4 rounded-xl bg-gov-gold/[0.07] border border-gov-gold/15 px-4 py-3 flex items-start gap-2.5'>
+            <div className='mt-4 rounded-xl bg-gov-gold/[0.07] dark:bg-gov-gold/[0.12] border border-gov-gold/15 dark:border-gov-gold/30 px-4 py-3 flex items-start gap-2.5'>
               <AlertTriangle className='w-4 h-4 text-gov-gold flex-shrink-0 mt-0.5' />
               <div className='min-w-0'>
                 <p className='text-[11px] font-bold uppercase tracking-wider text-gov-gold mb-1'>
                   {t('home.audits.emphasis')}
                 </p>
-                <p className='text-xs text-gov-dark/70 leading-relaxed line-clamp-2'>
+                <p className='text-xs text-gov-dark/70 dark:text-white/70 leading-relaxed line-clamp-2'>
                   {data.emphasis_of_matter[0]}
                 </p>
               </div>
@@ -345,15 +345,15 @@ export default function AuditReportsSection() {
         </div>
 
         {/* ── Right: Top Ministries Flagged ── */}
-        <div className='rounded-xl border border-neutral-border/40 bg-gov-forest/[0.03] p-4'>
-          <h4 className='font-display text-sm text-gov-dark mb-4'>{t('home.audits.top_ministries')}</h4>
+        <div className='rounded-xl border border-neutral-border/40 bg-gov-forest/[0.03] dark:bg-surface-elevated/40 p-4'>
+          <h4 className='font-display text-sm text-gov-dark dark:text-white mb-4'>{t('home.audits.top_ministries')}</h4>
           <div className='space-y-3'>
             {ministryBars.map((m) => (
               <div key={m.ministry}>
                 <div className='flex items-center justify-between mb-1'>
                   <div className='flex items-center gap-2 min-w-0'>
                     <Building2 className='w-3.5 h-3.5 text-neutral-muted/50 flex-shrink-0' />
-                    <span className='text-xs text-gov-dark truncate'>{m.short}</span>
+                    <span className='text-xs text-gov-dark dark:text-white truncate'>{m.short}</span>
                   </div>
                   <span
                     className='ml-2 flex-shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold text-white tabular-nums'

@@ -1155,6 +1155,22 @@ try:
 except Exception as e:
     logger.warning(f"Could not register admin router: {e}")
 
+try:
+    from routers.admin_users import router as admin_users_router
+
+    app.include_router(admin_users_router)
+    logger.info("Admin users router registered at /api/v1/admin/users")
+except Exception as e:
+    logger.warning(f"Could not register admin users router: {e}")
+
+try:
+    from routers.admin_audit_log import router as admin_audit_log_router
+
+    app.include_router(admin_audit_log_router)
+    logger.info("Admin audit-log router registered at /api/v1/admin/audit-log")
+except Exception as e:
+    logger.warning(f"Could not register admin audit-log router: {e}")
+
 # Newsletter endpoints (welcome email, token-verified unsubscribe) are active.
 # Auth & watchlist are still handled by Supabase (frontend → Supabase direct).
 try:
@@ -5701,9 +5717,20 @@ async def run_etl_job(
     }
 
 
+# ``require_admin`` is shared with the routers in ``backend/routers/`` —
+# importing here lets us put the etl-jobs endpoint defined directly on
+# ``app`` behind the same auth gate as the rest of /admin.
+from supabase_auth import require_admin as _require_admin
+
+
 @app.get("/api/v1/admin/etl/status")
-async def get_etl_jobs_status():
-    """Get status of all ETL jobs."""
+async def get_etl_jobs_status(_actor=Depends(_require_admin)):
+    """Get status of all ETL jobs.
+
+    Gated on ``require_admin`` so the in-memory job map (queue size,
+    source identifiers, error messages) isn't readable by
+    unauthenticated callers — matches the rest of ``/admin/*``.
+    """
     return {"jobs": _etl_jobs}
 
 

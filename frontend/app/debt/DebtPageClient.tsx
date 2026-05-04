@@ -178,13 +178,13 @@ function RingGauge({
           )}
         </svg>
         <div className='absolute inset-0 flex flex-col items-center justify-center'>
-          <span className='text-2xl font-bold text-gov-dark tabular-nums'>{value.toFixed(1)}%</span>
+          <span className='text-2xl font-bold text-gov-dark dark:text-white tabular-nums'>{value.toFixed(1)}%</span>
           {threshold != null && (
             <span className='text-[10px] text-neutral-muted'>{thresholdLabel} {threshold}%</span>
           )}
         </div>
       </div>
-      <div className='text-xs font-semibold text-gov-dark text-center mt-2'>{label}</div>
+      <div className='text-xs font-semibold text-gov-dark dark:text-white text-center mt-2'>{label}</div>
       {subLabel && <div className='text-[11px] text-neutral-muted mt-0.5 text-center max-w-[160px]'>{subLabel}</div>}
     </div>
   );
@@ -534,7 +534,7 @@ export default function NationalDebtPage() {
       <PageShell title="Kenya's National Debt" subtitle='Data temporarily unavailable.'>
         <div className='flex flex-col items-center justify-center py-20 text-center'>
           <AlertTriangle size={48} className='text-gov-copper mb-4' />
-          <h3 className='text-lg font-semibold text-gov-dark mb-1'>Failed to load debt data</h3>
+          <h3 className='text-lg font-semibold text-gov-dark dark:text-white mb-1'>Failed to load debt data</h3>
           <p className='text-sm text-neutral-muted mb-5 max-w-md'>
             Upstream sources (CBK, Treasury) may be slow. You can retry without leaving the page.
           </p>
@@ -730,7 +730,7 @@ export default function NationalDebtPage() {
       {d.reconciliation &&
         d.reconciliation.primary_value_kes != null &&
         d.reconciliation.secondary_value_kes != null && (
-          <details className='group rounded-xl border border-neutral-border/40 bg-white/60 overflow-hidden'>
+          <details className='group rounded-xl border border-neutral-border/40 bg-white/60 dark:bg-surface-elevated overflow-hidden'>
             <summary className='flex items-center justify-between gap-3 px-5 py-3.5 cursor-pointer list-none hover:bg-neutral-50/50 transition-colors'>
               <div className='flex items-center gap-2.5 min-w-0'>
                 <span className='text-[10px] uppercase tracking-widest font-semibold text-neutral-muted shrink-0'>
@@ -749,7 +749,7 @@ export default function NationalDebtPage() {
                     captures (in the loan record's ``notes`` field)
                     through the /debt/national API so this can be
                     rendered dynamically. */}
-                <span className='text-sm text-gov-dark/85 truncate'>
+                <span className='text-sm text-gov-dark/85 dark:text-white/85 truncate'>
                   Our {fmtT(d.reconciliation.primary_value_kes)} figure is the
                   loan-level sum from CBK&apos;s Statistical Bulletin (June 2025
                   issue, the most recent published). The CBK/Treasury annual
@@ -780,8 +780,8 @@ export default function NationalDebtPage() {
         transition={{ duration: 0.5 }}
         className='space-y-4'>
         <div>
-          <h2 className='font-display text-2xl sm:text-3xl text-gov-dark flex items-center gap-2'>
-            <Building2 className='text-gov-forest' size={24} />
+          <h2 className='font-display text-2xl sm:text-3xl text-gov-dark dark:text-white flex items-center gap-2'>
+            <Building2 className='text-gov-forest dark:text-emerald-100' size={24} />
             Who Kenya owes
           </h2>
           <p className='text-sm text-neutral-muted mt-1'>
@@ -826,8 +826,8 @@ export default function NationalDebtPage() {
           transition={{ duration: 0.5 }}
           className='space-y-4'>
           <div>
-            <h2 className='font-display text-2xl sm:text-3xl text-gov-dark flex items-center gap-2'>
-              <Gauge className='text-gov-forest' size={24} />
+            <h2 className='font-display text-2xl sm:text-3xl text-gov-dark dark:text-white flex items-center gap-2'>
+              <Gauge className='text-gov-forest dark:text-emerald-100' size={24} />
               Can Kenya keep paying?
             </h2>
             <p className='text-sm text-neutral-muted mt-1'>
@@ -835,7 +835,7 @@ export default function NationalDebtPage() {
               Crossing them signals fiscal stress.
             </p>
           </div>
-          <div className='rounded-xl bg-white/70 border border-white/70 shadow-surface p-5 sm:p-6'>
+          <div className='rounded-xl bg-white/70 dark:bg-surface-elevated border border-white/70 shadow-surface p-5 sm:p-6'>
             <div className='grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6'>
               <RingGauge
                 value={debtSustainability.debt_to_gdp}
@@ -863,8 +863,8 @@ export default function NationalDebtPage() {
             {debtSustainability.projections?.length > 0 && (
               <div>
                 <div className='flex items-center gap-2 mb-2'>
-                  <TrendingUp size={16} className='text-gov-forest' />
-                  <h3 className='text-sm font-semibold text-gov-dark'>5-year projection</h3>
+                  <TrendingUp size={16} className='text-gov-forest dark:text-emerald-100' />
+                  <h3 className='text-sm font-semibold text-gov-dark dark:text-white'>5-year projection</h3>
                 </div>
                 <ResponsiveContainer width='100%' height={220}>
                   <LineChart data={debtSustainability.projections} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
@@ -916,8 +916,8 @@ export default function NationalDebtPage() {
           transition={{ duration: 0.5 }}
           className='space-y-4'>
           <div>
-            <h2 className='font-display text-2xl sm:text-3xl text-gov-dark flex items-center gap-2'>
-              <CircleDollarSign className='text-gov-forest' size={24} />
+            <h2 className='font-display text-2xl sm:text-3xl text-gov-dark dark:text-white flex items-center gap-2'>
+              <CircleDollarSign className='text-gov-forest dark:text-emerald-100' size={24} />
               Where every KES 100 of revenue goes
             </h2>
             <p className='text-sm text-neutral-muted mt-1'>
@@ -928,7 +928,7 @@ export default function NationalDebtPage() {
             </p>
           </div>
 
-          <div className='rounded-2xl bg-white border border-neutral-border/40 shadow-surface overflow-hidden'>
+          <div className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 shadow-surface overflow-hidden'>
             {/* Headline row */}
             <div className='grid grid-cols-1 lg:grid-cols-[1.1fr_1.4fr]'>
               {/* Left: dramatic headline */}
@@ -942,7 +942,7 @@ export default function NationalDebtPage() {
                   </span>
                   <span className='text-2xl sm:text-3xl font-bold text-gov-copper/70'>KES</span>
                 </div>
-                <div className='text-sm text-gov-dark font-medium mt-2'>
+                <div className='text-sm text-gov-dark dark:text-white font-medium mt-2'>
                   out of every <span className='font-bold'>KES 100</span> collected in tax &amp; non-tax revenue
                 </div>
                 <div className='mt-4 flex items-center gap-2 text-xs text-neutral-muted'>
@@ -978,7 +978,7 @@ export default function NationalDebtPage() {
                         whileInView={{ scale: 1, opacity: 1 }}
                         viewport={{ once: true }}
                         transition={{ delay: i * 0.04, duration: 0.3 }}
-                        className='relative w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-gov-copper/30 bg-gov-cream overflow-hidden flex items-center justify-center shadow-sm'>
+                        className='relative w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-gov-copper/30 bg-gov-cream dark:bg-surface-sunken overflow-hidden flex items-center justify-center shadow-sm'>
                         {/* Filled portion for debt service */}
                         <div
                           className='absolute inset-0 bg-gradient-to-br from-gov-copper to-[#8C2E2E]'
@@ -1009,7 +1009,7 @@ export default function NationalDebtPage() {
             {/* Breakdown bar */}
             <div className='px-6 sm:px-8 pb-6 sm:pb-8 pt-4 border-t border-neutral-border/30'>
               <div className='flex items-center justify-between mb-2'>
-                <span className='text-xs font-semibold text-gov-dark'>
+                <span className='text-xs font-semibold text-gov-dark dark:text-white'>
                   Full allocation per KES 100 of revenue
                 </span>
                 <span className='text-[11px] text-neutral-muted'>
@@ -1062,7 +1062,7 @@ export default function NationalDebtPage() {
                 })}
                 {taxAllocation.borrowingPerRev > 0 && (
                   <div
-                    className='bg-neutral-muted/30 flex items-center justify-center text-gov-dark text-[11px] font-bold border-l-2 border-dashed border-gov-copper/40'
+                    className='bg-neutral-muted/30 flex items-center justify-center text-gov-dark dark:text-white text-[11px] font-bold border-l-2 border-dashed border-gov-copper/40'
                     style={{
                       width: `${
                         (taxAllocation.borrowingPerRev /
@@ -1100,7 +1100,7 @@ export default function NationalDebtPage() {
                   <div key={row.label} className='flex items-center gap-1.5'>
                     <span className={`w-2.5 h-2.5 rounded-sm ${row.color}`} />
                     <span className='text-neutral-muted truncate'>{row.label}</span>
-                    <span className='ml-auto font-bold text-gov-dark tabular-nums'>
+                    <span className='ml-auto font-bold text-gov-dark dark:text-white tabular-nums'>
                       {row.val.toFixed(0)}
                     </span>
                   </div>
@@ -1128,8 +1128,8 @@ export default function NationalDebtPage() {
             className='space-y-4'>
             <div className='flex flex-wrap items-start justify-between gap-3'>
               <div>
-                <h2 className='font-display text-2xl sm:text-3xl text-gov-dark flex items-center gap-2'>
-                  <FileWarning className='text-gov-forest' size={24} />
+                <h2 className='font-display text-2xl sm:text-3xl text-gov-dark dark:text-white flex items-center gap-2'>
+                  <FileWarning className='text-gov-forest dark:text-emerald-100' size={24} />
                   Stalled payments
                   <InfoTip term='pending-bills' size={14} />
                 </h2>
@@ -1138,18 +1138,18 @@ export default function NationalDebtPage() {
                   bills are a signal of cashflow distress.
                 </p>
               </div>
-              <div className='inline-flex rounded-lg bg-white border border-neutral-border/40 p-1 shadow-sm'>
+              <div className='inline-flex rounded-lg bg-white dark:bg-surface-base border border-neutral-border/40 p-1 shadow-sm'>
                 <button
                   onClick={() => setPbView('national')}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                    pbView === 'national' ? 'bg-gov-dark text-white' : 'text-gov-dark hover:bg-neutral-border/30'
+                    pbView === 'national' ? 'bg-gov-dark text-white' : 'text-gov-dark dark:text-white hover:bg-neutral-border/30'
                   }`}>
                   National
                 </button>
                 <button
                   onClick={() => setPbView('counties')}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                    pbView === 'counties' ? 'bg-gov-dark text-white' : 'text-gov-dark hover:bg-neutral-border/30'
+                    pbView === 'counties' ? 'bg-gov-dark text-white' : 'text-gov-dark dark:text-white hover:bg-neutral-border/30'
                   }`}>
                   Counties
                 </button>
@@ -1157,21 +1157,21 @@ export default function NationalDebtPage() {
             </div>
 
             {/* Unified hero card with total + split + entities */}
-            <div className='rounded-2xl bg-white border border-neutral-border/40 shadow-surface overflow-hidden'>
+            <div className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 shadow-surface overflow-hidden'>
               <div className='grid grid-cols-1 lg:grid-cols-[1.1fr_1.5fr]'>
                 {/* Big total */}
                 <div className='relative p-6 sm:p-8 bg-gradient-to-br from-gov-copper/10 via-gov-copper/4 to-white border-b lg:border-b-0 lg:border-r border-neutral-border/40'>
                   <div className='text-[11px] uppercase tracking-[0.2em] font-semibold text-gov-copper mb-2'>
                     Total money owed, unpaid
                   </div>
-                  <div className='text-4xl sm:text-5xl font-extrabold text-gov-dark tabular-nums tracking-tight leading-none'>
+                  <div className='text-4xl sm:text-5xl font-extrabold text-gov-dark dark:text-white tabular-nums tracking-tight leading-none'>
                     {fmtKES(pb.total)}
                   </div>
                   <div className='mt-3 flex items-center gap-2 text-xs text-neutral-muted'>
                     <Users size={14} />
                     <span>
                       Across{' '}
-                      <span className='font-bold text-gov-dark tabular-nums'>
+                      <span className='font-bold text-gov-dark dark:text-white tabular-nums'>
                         {pb.count.toLocaleString()}
                       </span>{' '}
                       ministries, agencies &amp; counties
@@ -1205,7 +1205,7 @@ export default function NationalDebtPage() {
                         <div className='text-[10px] uppercase tracking-wider text-neutral-muted font-semibold'>
                           National
                         </div>
-                        <div className='text-xl font-bold text-gov-dark tabular-nums'>
+                        <div className='text-xl font-bold text-gov-dark dark:text-white tabular-nums'>
                           {fmtKES(pb.national)}
                         </div>
                       </div>
@@ -1216,7 +1216,7 @@ export default function NationalDebtPage() {
                         <div className='text-[10px] uppercase tracking-wider text-neutral-muted font-semibold'>
                           Counties
                         </div>
-                        <div className='text-xl font-bold text-gov-dark tabular-nums'>
+                        <div className='text-xl font-bold text-gov-dark dark:text-white tabular-nums'>
                           {fmtKES(pb.county)}
                         </div>
                       </div>
@@ -1227,10 +1227,10 @@ export default function NationalDebtPage() {
             </div>
 
             {bucketsWithData.length > 0 && (
-              <div className='rounded-2xl bg-white border border-neutral-border/40 shadow-surface p-5 sm:p-6'>
+              <div className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 shadow-surface p-5 sm:p-6'>
                 <div className='flex items-start justify-between gap-3 mb-4'>
                   <div>
-                    <h3 className='text-sm font-semibold text-gov-dark'>
+                    <h3 className='text-sm font-semibold text-gov-dark dark:text-white'>
                       Aging — how long bills have gone unpaid
                     </h3>
                     <p className='text-[11px] text-neutral-muted mt-0.5'>
@@ -1290,7 +1290,7 @@ export default function NationalDebtPage() {
                   <div className='mt-3 flex items-start gap-2 text-[11px] text-neutral-muted bg-gov-gold/8 border border-gov-gold/25 rounded-lg px-3 py-2'>
                     <AlertTriangle size={14} className='text-gov-gold flex-shrink-0 mt-0.5' />
                     <span>
-                      <span className='font-semibold text-gov-dark'>Data quality note:</span> The
+                      <span className='font-semibold text-gov-dark dark:text-white'>Data quality note:</span> The
                       backend currently derives aging from the loans table, where all entries are
                       flagged as 180d+. A richer breakdown will appear once the pending_bills seed
                       lands.
@@ -1301,8 +1301,8 @@ export default function NationalDebtPage() {
             )}
 
             {pbView === 'counties' && pendingBillsSummary?.top_counties_by_amount?.length > 0 && (
-              <div className='rounded-2xl bg-white border border-neutral-border/40 shadow-surface p-5 sm:p-6'>
-                <h3 className='text-sm font-semibold text-gov-dark mb-4'>
+              <div className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 shadow-surface p-5 sm:p-6'>
+                <h3 className='text-sm font-semibold text-gov-dark dark:text-white mb-4'>
                   Top counties by stalled payments
                 </h3>
                 <div className='space-y-2.5'>
@@ -1320,7 +1320,7 @@ export default function NationalDebtPage() {
                           <span className='text-[11px] text-neutral-muted font-bold w-5 text-right tabular-nums'>
                             {i + 1}
                           </span>
-                          <span className='text-xs font-medium text-gov-dark w-32 truncate flex-shrink-0'>
+                          <span className='text-xs font-medium text-gov-dark dark:text-white w-32 truncate flex-shrink-0'>
                             {c.county_name}
                           </span>
                           <div className='flex-1 h-5 bg-neutral-border/20 rounded-md overflow-hidden'>
@@ -1332,7 +1332,7 @@ export default function NationalDebtPage() {
                               className='h-full rounded-md bg-gradient-to-r from-gov-copper/80 to-gov-copper'
                             />
                           </div>
-                          <span className='text-xs font-bold text-gov-dark tabular-nums w-20 text-right'>
+                          <span className='text-xs font-bold text-gov-dark dark:text-white tabular-nums w-20 text-right'>
                             {fmtT(c.amount)}
                           </span>
                         </div>
@@ -1354,8 +1354,8 @@ export default function NationalDebtPage() {
           transition={{ duration: 0.5 }}
           className='space-y-4'>
           <div>
-            <h2 className='font-display text-2xl sm:text-3xl text-gov-dark flex items-center gap-2'>
-              <TrendingUp className='text-gov-forest' size={24} />
+            <h2 className='font-display text-2xl sm:text-3xl text-gov-dark dark:text-white flex items-center gap-2'>
+              <TrendingUp className='text-gov-forest dark:text-emerald-100' size={24} />
               The cost of debt over time
             </h2>
             <p className='text-sm text-neutral-muted mt-1'>
@@ -1363,7 +1363,7 @@ export default function NationalDebtPage() {
               consumes.
             </p>
           </div>
-          <div className='rounded-xl bg-white/70 border border-white/70 shadow-surface p-5'>
+          <div className='rounded-xl bg-white/70 dark:bg-surface-elevated border border-white/70 shadow-surface p-5'>
             <ResponsiveContainer width='100%' height={260}>
               <ComposedChart
                 data={fiscal.years.map((y: any) => ({
@@ -1444,21 +1444,21 @@ export default function NationalDebtPage() {
           className='space-y-4'>
           <div className='flex flex-wrap items-start justify-between gap-3'>
             <div>
-              <h2 className='font-display text-2xl sm:text-3xl text-gov-dark flex items-center gap-2'>
-                <BadgeDollarSign className='text-gov-forest' size={24} />
+              <h2 className='font-display text-2xl sm:text-3xl text-gov-dark dark:text-white flex items-center gap-2'>
+                <BadgeDollarSign className='text-gov-forest dark:text-emerald-100' size={24} />
                 The full loan register
               </h2>
               <p className='text-sm text-neutral-muted mt-1'>
                 Every active loan facility, sortable by what matters most to you.
               </p>
             </div>
-            <div className='inline-flex rounded-lg bg-white/70 border border-white/70 p-1 text-xs'>
+            <div className='inline-flex rounded-lg bg-white/70 dark:bg-surface-elevated border border-white/70 p-1 text-xs'>
               {(['outstanding', 'rate', 'service'] as const).map((key) => (
                 <button
                   key={key}
                   onClick={() => setLoanSort(key)}
                   className={`px-3 py-1.5 font-semibold rounded-md transition-colors ${
-                    loanSort === key ? 'bg-gov-dark text-white' : 'text-gov-dark hover:bg-white'
+                    loanSort === key ? 'bg-gov-dark text-white' : 'text-gov-dark dark:text-white hover:bg-white dark:bg-surface-base'
                   }`}>
                   {key === 'outstanding'
                     ? 'Balance'
@@ -1470,7 +1470,7 @@ export default function NationalDebtPage() {
             </div>
           </div>
 
-          <div className='rounded-xl bg-white/70 border border-white/70 shadow-surface overflow-hidden'>
+          <div className='rounded-xl bg-white/70 dark:bg-surface-elevated border border-white/70 shadow-surface overflow-hidden'>
             {/* Desktop table */}
             <table className='w-full hidden md:table'>
               <thead className='bg-gov-dark/5 border-b border-neutral-border/40'>
@@ -1487,12 +1487,12 @@ export default function NationalDebtPage() {
                 {(showAllLoans ? loans : loans.slice(0, 10)).map((l, i) => (
                   <tr
                     key={`${l.lender}-${i}`}
-                    className='border-b border-neutral-border/20 hover:bg-white/40 transition-colors'>
-                    <td className='px-4 py-3 text-sm font-medium text-gov-dark'>{l.lender}</td>
+                    className='border-b border-neutral-border/20 hover:bg-white/40 dark:bg-surface-elevated transition-colors'>
+                    <td className='px-4 py-3 text-sm font-medium text-gov-dark dark:text-white'>{l.lender}</td>
                     <td className='px-4 py-3 text-xs text-neutral-muted'>
                       {l.lender_type?.replace(/_/g, ' ')}
                     </td>
-                    <td className='px-4 py-3 text-sm font-semibold text-gov-dark text-right tabular-nums'>
+                    <td className='px-4 py-3 text-sm font-semibold text-gov-dark dark:text-white text-right tabular-nums'>
                       {fmtKES(l.outstanding_numeric)}
                     </td>
                     <td className='px-4 py-3 text-xs text-gov-copper text-right tabular-nums'>
@@ -1513,14 +1513,14 @@ export default function NationalDebtPage() {
             <div className='md:hidden divide-y divide-neutral-border/20'>
               {(showAllLoans ? loans : loans.slice(0, 10)).map((l, i) => (
                 <div key={`${l.lender}-${i}`} className='p-4'>
-                  <div className='text-sm font-semibold text-gov-dark mb-0.5'>{l.lender}</div>
+                  <div className='text-sm font-semibold text-gov-dark dark:text-white mb-0.5'>{l.lender}</div>
                   <div className='text-[11px] text-neutral-muted mb-2'>
                     {l.lender_type?.replace(/_/g, ' ')}
                   </div>
                   <div className='grid grid-cols-2 gap-2 text-xs'>
                     <div>
                       <span className='text-neutral-muted block text-[10px] uppercase'>Outstanding</span>
-                      <span className='font-semibold text-gov-dark tabular-nums'>
+                      <span className='font-semibold text-gov-dark dark:text-white tabular-nums'>
                         {fmtKES(l.outstanding_numeric)}
                       </span>
                     </div>
@@ -1532,13 +1532,13 @@ export default function NationalDebtPage() {
                     </div>
                     <div>
                       <span className='text-neutral-muted block text-[10px] uppercase'>Annual cost</span>
-                      <span className='font-semibold text-gov-dark tabular-nums'>
+                      <span className='font-semibold text-gov-dark dark:text-white tabular-nums'>
                         {fmtKES(l.annual_service_cost)}
                       </span>
                     </div>
                     <div>
                       <span className='text-neutral-muted block text-[10px] uppercase'>Maturity</span>
-                      <span className='text-gov-dark'>{l.maturity_date || 'Revolving'}</span>
+                      <span className='text-gov-dark dark:text-white'>{l.maturity_date || 'Revolving'}</span>
                     </div>
                   </div>
                 </div>
@@ -1548,7 +1548,7 @@ export default function NationalDebtPage() {
             {loans.length > 10 && (
               <button
                 onClick={() => setShowAllLoans((v) => !v)}
-                className='w-full py-3 text-xs font-semibold text-gov-forest hover:bg-white/40 transition-colors border-t border-neutral-border/20'>
+                className='w-full py-3 text-xs font-semibold text-gov-forest dark:text-emerald-100 hover:bg-white/40 dark:bg-surface-elevated transition-colors border-t border-neutral-border/20'>
                 {showAllLoans
                   ? `Show top 10 only`
                   : `Show all ${loans.length} loans`}{' '}
@@ -1565,7 +1565,7 @@ export default function NationalDebtPage() {
 
       {/* ═══════════ FOOTER / SOURCES ═══════════ */}
       <div className='rounded-xl bg-gov-dark/5 border border-gov-dark/10 p-5 text-xs text-neutral-muted'>
-        <p className='font-semibold text-gov-dark mb-1'>Sources</p>
+        <p className='font-semibold text-gov-dark dark:text-white mb-1'>Sources</p>
         <ul className='space-y-0.5'>
           <li>• Central Bank of Kenya — Monthly Statistical Bulletin &amp; Public Debt Register</li>
           <li>• National Treasury — Budget Policy Statement, Budget Review &amp; Outlook</li>

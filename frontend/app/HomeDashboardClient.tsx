@@ -43,6 +43,8 @@ export default function HomeDashboardClient() {
     <ScenicBackgroundLayout
       topImage='/kenya_bg_top.jpg'
       bottomImage='/kenya_bg_bottom.jpg'
+      topImageDark='/kenya_bg_top_dk.jpg'
+      bottomImageDark='/kenya_bg_bottom_dk.jpg'
       topHeight='50vh'
       bottomHeight='50vh'
       readabilityMode='light'
@@ -60,7 +62,7 @@ export default function HomeDashboardClient() {
           initial={{ opacity: 0, y: 36 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.4 }}
-          className='rounded-2xl bg-white/20 backdrop-blur-xl border border-white/25 shadow-[0_8px_40px_rgba(0,0,0,0.12)] p-4 sm:p-6 space-y-6'>
+          className='rounded-2xl bg-white/20 dark:bg-surface-base/60 backdrop-blur-xl border border-white/25 dark:border-white/10 shadow-[0_8px_40px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.4)] p-4 sm:p-6 space-y-6'>
           {/* ── Summary strip ── */}
           <SummaryStrip />
 

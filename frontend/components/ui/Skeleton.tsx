@@ -8,7 +8,7 @@ export function Skeleton({
   className?: string;
   style?: React.CSSProperties;
 }) {
-  return <div className={cn('animate-pulse bg-gray-200 rounded', className)} style={style} />;
+  return <div className={cn('animate-pulse bg-gray-200 dark:bg-surface-sunken rounded', className)} style={style} />;
 }
 
 /** Card-shaped skeleton with title + 3 content lines */
@@ -81,7 +81,7 @@ export function SkeletonTable({
       {/* Table rows */}
       <div className='p-4 space-y-3'>
         {/* Header row */}
-        <div className='flex gap-4 pb-2 border-b border-gray-100'>
+        <div className='flex gap-4 pb-2 border-b border-gray-100 dark:border-neutral-border'>
           {Array.from({ length: cols }).map((_, i) => (
             <Skeleton key={i} className='h-3 flex-1' />
           ))}

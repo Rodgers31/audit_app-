@@ -95,7 +95,7 @@ export function SummaryStrip() {
           🇰🇪
         </span>
         <div>
-          <span className='text-4xl sm:text-5xl font-extrabold text-gov-dark tracking-tight leading-none'>
+          <span className='text-4xl sm:text-5xl font-extrabold text-gov-dark dark:text-white tracking-tight leading-none'>
             {totalT}
             <span className='text-3xl sm:text-4xl ml-0.5'>T</span>
           </span>
@@ -105,13 +105,13 @@ export function SummaryStrip() {
       {/* Risk Level */}
       <div className='flex items-end gap-3'>
         <div>
-          <span className='text-3xl sm:text-4xl font-bold text-gov-dark tracking-tight leading-none'>
+          <span className='text-3xl sm:text-4xl font-bold text-gov-dark dark:text-white tracking-tight leading-none'>
             {typeof gdpPct === 'number' ? Math.round(gdpPct) : gdpPct}
             <span className='text-xl'>%</span>
           </span>
         </div>
         <span
-          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/60 border ${isHigh ? 'border-gov-copper/20 text-gov-copper' : 'border-gov-gold/20 text-gov-gold'} mb-0.5`}>
+          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/60 dark:bg-surface-elevated border ${isHigh ? 'border-gov-copper/20 text-gov-copper' : 'border-gov-gold/20 text-gov-gold'} mb-0.5`}>
           <span
             className={`w-1.5 h-1.5 rounded-full ${isHigh ? 'bg-gov-copper' : 'bg-gov-gold'} inline-block`}
           />
@@ -121,11 +121,11 @@ export function SummaryStrip() {
 
       {/* Labels row */}
       <div className='w-full flex gap-8 mt-0.5'>
-        <span className='text-xs text-gov-dark/60 font-medium inline-flex items-center gap-1'>
+        <span className='text-xs text-gov-dark/60 dark:text-white/60 font-medium inline-flex items-center gap-1'>
           {t('home.hero.total_debt_as_of')} {year}
           <DebtExplainerModal context='hero' />
         </span>
-        <span className='text-xs text-gov-dark/60 font-medium'>
+        <span className='text-xs text-gov-dark/60 dark:text-white/60 font-medium'>
           {t('home.hero.risk_level')}{' '}
           <span className='inline-flex gap-0.5 ml-1'>
             <span>👍</span>
@@ -181,7 +181,7 @@ export function KenyanGovCard() {
       text: 'text-emerald-600',
       label: t('home.govcard.stable'),
     },
-    loading: { dot: 'bg-gray-400', ring: 'ring-gray-400/20', text: 'text-gray-400', label: '...' },
+    loading: { dot: 'bg-gray-400', ring: 'ring-gray-400/20', text: 'text-gray-400 dark:text-neutral-muted/80', label: '...' },
   };
   const tier = tierColors[healthTier];
 
@@ -229,19 +229,19 @@ export function KenyanGovCard() {
       </div>
 
       {/* ── Fiscal stats ── */}
-      <div className='flex-1 flex flex-col bg-gradient-to-b from-white/60 to-white/40 backdrop-blur-md'>
+      <div className='flex-1 flex flex-col bg-gradient-to-b from-white/60 to-white/40 dark:from-surface-base/95 dark:to-surface-base/85 backdrop-blur-md'>
         {isLoading ? (
           <div className='flex-1 p-3 space-y-3'>
             <div className='grid grid-cols-2 gap-2'>
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className='rounded-lg border border-gray-100 px-2.5 py-2 space-y-1.5'>
+                <div key={i} className='rounded-lg border border-gray-100 dark:border-neutral-border px-2.5 py-2 space-y-1.5'>
                   <Skeleton className='h-2 w-12' />
                   <Skeleton className='h-4 w-16' />
                   <Skeleton className='h-2 w-10' />
                 </div>
               ))}
             </div>
-            <div className='rounded-lg border border-gray-100 px-2 py-3 space-y-2'>
+            <div className='rounded-lg border border-gray-100 dark:border-neutral-border px-2 py-3 space-y-2'>
               <Skeleton className='h-2 w-20' />
               <Skeleton className='h-2.5 w-full rounded-full' />
             </div>
@@ -286,18 +286,18 @@ export function KenyanGovCard() {
             </div>
 
             {/* Debt ceiling gauge — dramatic arc */}
-            <div className='mt-1 px-2 py-3 rounded-lg bg-white/50 border border-gray-100'>
+            <div className='mt-1 px-2 py-3 rounded-lg bg-white/50 dark:bg-surface-elevated border border-gray-100 dark:border-neutral-border'>
               <div className='flex items-center justify-between mb-2'>
-                <span className='text-[10px] uppercase tracking-wider text-gray-500 font-semibold'>
+                <span className='text-[10px] uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-semibold'>
                   {t('home.govcard.debt_ceiling')}
                 </span>
                 <span
-                  className={`text-xs font-black tabular-nums ${ceilingOver ? 'text-gov-copper' : 'text-gov-dark'}`}>
+                  className={`text-xs font-black tabular-nums ${ceilingOver ? 'text-gov-copper' : 'text-gov-dark dark:text-white'}`}>
                   {ceilingRaw.toFixed(0)}%
                 </span>
               </div>
               {/* Multi-segment bar */}
-              <div className='relative h-2.5 rounded-full bg-gray-100 overflow-hidden'>
+              <div className='relative h-2.5 rounded-full bg-gray-100 dark:bg-surface-elevated overflow-hidden'>
                 {/* Safe zone fill */}
                 <div
                   className='absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out'
@@ -325,9 +325,9 @@ export function KenyanGovCard() {
               </div>
               {/* Scale markers */}
               <div className='flex justify-between mt-1'>
-                <span className='text-[8px] text-gray-400'>0%</span>
-                <span className='text-[8px] text-gray-400'>50%</span>
-                <span className='text-[8px] text-gray-400 font-semibold'>100%</span>
+                <span className='text-[8px] text-gray-400 dark:text-neutral-muted/80'>0%</span>
+                <span className='text-[8px] text-gray-400 dark:text-neutral-muted/80'>50%</span>
+                <span className='text-[8px] text-gray-400 dark:text-neutral-muted/80 font-semibold'>100%</span>
               </div>
               {ceilingOver && (
                 <p
@@ -379,8 +379,8 @@ export function KenyanGovCard() {
               ];
 
               return (
-                <div className='px-2 py-2.5 rounded-lg bg-white/50 border border-gray-100'>
-                  <span className='text-[10px] uppercase tracking-wider text-gray-500 font-semibold block mb-2'>
+                <div className='px-2 py-2.5 rounded-lg bg-white/50 dark:bg-surface-elevated border border-gray-100 dark:border-neutral-border'>
+                  <span className='text-[10px] uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-semibold block mb-2'>
                     {t('home.govcard.where_money_goes')}
                   </span>
                   {/* Stacked horizontal bar */}
@@ -399,8 +399,8 @@ export function KenyanGovCard() {
                     {segments.map((seg) => (
                       <div key={seg.label} className='flex items-center gap-1.5 min-w-0'>
                         <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${seg.dot}`} />
-                        <span className='text-[9px] text-gray-500 truncate'>{seg.label}</span>
-                        <span className='text-[9px] font-semibold text-gov-dark tabular-nums ml-auto'>
+                        <span className='text-[9px] text-gray-500 dark:text-neutral-muted/80 truncate'>{seg.label}</span>
+                        <span className='text-[9px] font-semibold text-gov-dark dark:text-white tabular-nums ml-auto'>
                           {((seg.value / total) * 100).toFixed(0)}%
                         </span>
                       </div>
@@ -447,16 +447,16 @@ function StatMiniCard({
   alert?: boolean;
 }) {
   const colors = {
-    forest: 'border-l-gov-forest/60 bg-gov-forest/5',
-    copper: 'border-l-gov-copper/60 bg-gov-copper/5',
-    gold: 'border-l-gov-gold/60 bg-gov-gold/5',
-    teal: 'border-l-[#0D7377]/60 bg-[#0D7377]/5',
+    forest: 'border-l-gov-forest/60 bg-gov-forest/5 dark:bg-surface-elevated',
+    copper: 'border-l-gov-copper/60 bg-gov-copper/5 dark:bg-surface-elevated',
+    gold: 'border-l-gov-gold/60 bg-gov-gold/5 dark:bg-surface-elevated',
+    teal: 'border-l-[#0D7377]/60 bg-[#0D7377]/5 dark:bg-surface-elevated',
   };
   const valueColors = {
-    forest: 'text-gov-dark',
+    forest: 'text-gov-dark dark:text-white',
     copper: 'text-gov-copper',
-    gold: 'text-gov-dark',
-    teal: 'text-gov-dark',
+    gold: 'text-gov-dark dark:text-white',
+    teal: 'text-gov-dark dark:text-white',
   };
 
   return (
@@ -468,7 +468,7 @@ function StatMiniCard({
         suppressHydrationWarning>
         {icon}
       </span>
-      <span className='text-[9px] uppercase tracking-wider text-gray-500 font-medium leading-none'>
+      <span className='text-[9px] uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-medium leading-none'>
         {label}
       </span>
       <div className='flex items-baseline gap-1 mt-0.5'>
@@ -482,7 +482,7 @@ function StatMiniCard({
           {value}
         </span>
       </div>
-      <span className='text-[9px] text-gray-400 leading-none mt-0.5 block'>{sub}</span>
+      <span className='text-[9px] text-gray-400 dark:text-neutral-muted/80 leading-none mt-0.5 block'>{sub}</span>
     </div>
   );
 }

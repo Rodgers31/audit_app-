@@ -53,10 +53,10 @@ function CustomTooltip({ active, payload, label }: any) {
   if (!d) return null;
   return (
     <div className='rounded-xl bg-white/95 backdrop-blur-lg border border-neutral-border/40 shadow-elevated px-4 py-3 text-xs'>
-      <p className='font-display text-sm text-gov-dark mb-1'>{label}</p>
+      <p className='font-display text-sm text-gov-dark dark:text-white mb-1'>{label}</p>
       <div className='flex justify-between gap-6 mb-1'>
         <span className='text-neutral-muted'>Due this year</span>
-        <span className='font-bold text-gov-dark tabular-nums'>KES {fmtT(d.total)}</span>
+        <span className='font-bold text-gov-dark dark:text-white tabular-nums'>KES {fmtT(d.total)}</span>
       </div>
       {d.loans?.length > 0 && (
         <div className='pt-2 border-t border-neutral-border/30 space-y-1'>
@@ -66,7 +66,7 @@ function CustomTooltip({ active, payload, label }: any) {
                 <span className='w-2 h-2 rounded-full' style={{ background: l.color }} />
                 {l.lender}
               </span>
-              <span className='font-semibold text-gov-dark tabular-nums'>
+              <span className='font-semibold text-gov-dark dark:text-white tabular-nums'>
                 {fmtT(l.outstanding)}
               </span>
             </div>
@@ -136,8 +136,8 @@ export default function MaturityLadder({ loans }: MaturityLadderProps) {
     <div className='space-y-4'>
       <div className='flex flex-wrap items-start justify-between gap-3'>
         <div>
-          <h3 className='font-display text-xl sm:text-2xl text-gov-dark flex items-center gap-2'>
-            <Calendar className='text-gov-forest' size={22} />
+          <h3 className='font-display text-xl sm:text-2xl text-gov-dark dark:text-white flex items-center gap-2'>
+            <Calendar className='text-gov-forest dark:text-emerald-100' size={22} />
             When the bills come due
           </h3>
           <p className='text-sm text-neutral-muted mt-1'>
@@ -154,7 +154,7 @@ export default function MaturityLadder({ loans }: MaturityLadderProps) {
             <div className='text-[10px] uppercase tracking-wider text-gov-copper font-semibold'>
               Biggest wall
             </div>
-            <div className='text-lg font-bold text-gov-dark tabular-nums'>
+            <div className='text-lg font-bold text-gov-dark dark:text-white tabular-nums'>
               {largest.year} — KES {fmtT(largest.total)}
             </div>
           </motion.div>
@@ -162,7 +162,7 @@ export default function MaturityLadder({ loans }: MaturityLadderProps) {
       </div>
 
       {hasData ? (
-        <div className='rounded-xl bg-white/70 border border-white/70 shadow-surface p-4 sm:p-5'>
+        <div className='rounded-xl bg-white/70 dark:bg-surface-elevated border border-white/70 shadow-surface p-4 sm:p-5'>
           <ResponsiveContainer width='100%' height={320}>
             <BarChart data={buckets} margin={{ top: 16, right: 12, left: 0, bottom: 8 }}>
               <defs>
@@ -223,7 +223,7 @@ export default function MaturityLadder({ loans }: MaturityLadderProps) {
           </p>
         </div>
       ) : (
-        <div className='rounded-xl bg-white/60 border border-white/60 p-8 text-center text-sm text-neutral-muted'>
+        <div className='rounded-xl bg-white/60 dark:bg-surface-elevated border border-white/60 p-8 text-center text-sm text-neutral-muted'>
           No dated maturity profile available yet.
         </div>
       )}
@@ -231,9 +231,9 @@ export default function MaturityLadder({ loans }: MaturityLadderProps) {
       {revolving.length > 0 && (
         <div className='rounded-xl bg-gradient-to-br from-gov-sand/50 to-gov-cream/30 border border-gov-sage/25 p-4 sm:p-5'>
           <div className='flex items-start gap-2.5 mb-3'>
-            <Info className='text-gov-forest flex-shrink-0 mt-0.5' size={18} />
+            <Info className='text-gov-forest dark:text-emerald-100 flex-shrink-0 mt-0.5' size={18} />
             <div>
-              <h4 className='text-sm font-semibold text-gov-dark'>
+              <h4 className='text-sm font-semibold text-gov-dark dark:text-white'>
                 Revolving &amp; pooled instruments
               </h4>
               <p className='text-[11px] text-neutral-muted mt-0.5'>
@@ -248,13 +248,13 @@ export default function MaturityLadder({ loans }: MaturityLadderProps) {
               return (
                 <div
                   key={loan.lender}
-                  className='flex items-center gap-2 rounded-lg bg-white/70 border border-white/60 px-3 py-2'>
+                  className='flex items-center gap-2 rounded-lg bg-white/70 dark:bg-surface-elevated border border-white/60 px-3 py-2'>
                   <span
                     className='w-2.5 h-2.5 rounded-full flex-shrink-0'
                     style={{ backgroundColor: tone.bar }}
                   />
                   <div className='flex-1 min-w-0 flex items-baseline justify-between gap-2'>
-                    <span className='text-xs font-medium text-gov-dark truncate'>
+                    <span className='text-xs font-medium text-gov-dark dark:text-white truncate'>
                       {loan.lender}
                     </span>
                     <span className='text-xs text-neutral-muted tabular-nums flex-shrink-0'>

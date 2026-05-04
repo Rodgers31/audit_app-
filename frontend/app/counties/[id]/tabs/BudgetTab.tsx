@@ -61,8 +61,8 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
   return (
     <div className='space-y-5'>
       {/* Top-level budget stats */}
-      <div className='bg-white rounded-xl border border-gray-100 p-5'>
-        <h3 className='text-sm font-semibold text-gray-800 mb-4'>{t('county.budget.summary')}</h3>
+      <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-5'>
+        <h3 className='text-sm font-semibold text-gray-800 dark:text-neutral-text mb-4'>{t('county.budget.summary')}</h3>
         <div className='grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-6'>
           <KPI
             label={t('county.budget.total_allocated')}
@@ -100,7 +100,7 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
 
       {/* Sector spending — editorial donut + ranked list */}
       {sectors.length > 0 && (
-        <div className='relative overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-white via-white to-gov-sage/5'>
+        <div className='relative overflow-hidden rounded-2xl border border-gray-100 dark:border-neutral-border bg-gradient-to-br from-white via-white to-gov-sage/5 dark:from-surface-elevated dark:via-surface-base dark:to-surface-elevated'>
           {/* Ambient color wash from top sector */}
           <div
             aria-hidden
@@ -113,17 +113,17 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
             <div>
               <div className='flex items-center gap-2 mb-1'>
                 <div className='h-5 w-1 rounded-full bg-gov-forest' />
-                <h3 className='text-base font-semibold text-gray-900'>
+                <h3 className='text-base font-semibold text-gray-900 dark:text-neutral-text'>
                   {t('county.budget.sector_spending')}
                 </h3>
               </div>
-              <p className='text-xs text-gray-500 ml-3'>
+              <p className='text-xs text-gray-500 dark:text-neutral-muted/80 ml-3'>
                 {t('county.budget.sector_explore_hint').replace('{n}', String(sectors.length))}
               </p>
             </div>
-            <div className='hidden sm:flex items-center gap-3 text-[11px] text-gray-500'>
+            <div className='hidden sm:flex items-center gap-3 text-[11px] text-gray-500 dark:text-neutral-muted/80'>
               <div className='flex items-center gap-1.5'>
-                <div className='w-2.5 h-2.5 rounded-sm bg-gray-200' />
+                <div className='w-2.5 h-2.5 rounded-sm bg-gray-200 dark:bg-surface-sunken' />
                 <span>{t('county.budget.legend_allocated')}</span>
               </div>
               <div className='flex items-center gap-1.5'>
@@ -173,13 +173,13 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
                         className='w-2 h-2 rounded-full mb-2'
                         style={{ backgroundColor: active.fill }}
                       />
-                      <div className='text-[10px] uppercase tracking-widest font-semibold text-gray-400 px-4 leading-tight'>
+                      <div className='text-[10px] uppercase tracking-widest font-semibold text-gray-400 dark:text-neutral-muted/80 px-4 leading-tight'>
                         {active.fullName}
                       </div>
-                      <div className='text-lg font-bold tabular-nums text-gray-900 mt-1'>
+                      <div className='text-lg font-bold tabular-nums text-gray-900 dark:text-neutral-text mt-1'>
                         {fmtKES(active.allocated)}
                       </div>
-                      <div className='text-[11px] text-gray-500 tabular-nums mt-0.5'>
+                      <div className='text-[11px] text-gray-500 dark:text-neutral-muted/80 tabular-nums mt-0.5'>
                         {displayedPct.toFixed(1)}% {t('county.budget.of_top_10')}
                       </div>
                       <div className='mt-2 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100'>
@@ -190,20 +190,20 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
                     </>
                   ) : (
                     <>
-                      <div className='text-[10px] uppercase tracking-widest font-semibold text-gray-400'>
+                      <div className='text-[10px] uppercase tracking-widest font-semibold text-gray-400 dark:text-neutral-muted/80'>
                         {t('county.budget.top_10_sectors')}
                       </div>
-                      <div className='text-2xl font-bold tabular-nums text-gray-900 mt-1'>
+                      <div className='text-2xl font-bold tabular-nums text-gray-900 dark:text-neutral-text mt-1'>
                         {fmtKES(totalSectorAlloc)}
                       </div>
-                      <div className='text-[11px] text-gray-500 mt-0.5'>
+                      <div className='text-[11px] text-gray-500 dark:text-neutral-muted/80 mt-0.5'>
                         {t('county.budget.allocated_lower')}
                       </div>
                       <div className='mt-2 flex items-baseline gap-1'>
                         <span className='text-sm font-bold text-emerald-700 tabular-nums'>
                           {fmtKES(totalSectorSpent)}
                         </span>
-                        <span className='text-[10px] text-gray-400'>
+                        <span className='text-[10px] text-gray-400 dark:text-neutral-muted/80'>
                           {t('county.budget.spent_lower')}
                         </span>
                       </div>
@@ -236,12 +236,12 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
                     onMouseLeave={() => setActiveSector(null)}
                     className={`w-full text-left rounded-xl px-3 py-2.5 transition-all border ${
                       isActive
-                        ? 'border-gray-200 bg-white shadow-sm'
-                        : 'border-transparent hover:bg-white/60'
+                        ? 'border-gray-200 dark:border-neutral-border bg-white dark:bg-surface-base shadow-sm'
+                        : 'border-transparent hover:bg-white/60 dark:bg-surface-elevated'
                     }`}>
                     <div className='flex items-center gap-3'>
                       {/* Rank */}
-                      <div className='text-[10px] font-bold text-gray-400 tabular-nums w-4 flex-shrink-0'>
+                      <div className='text-[10px] font-bold text-gray-400 dark:text-neutral-muted/80 tabular-nums w-4 flex-shrink-0'>
                         {(idx + 1).toString().padStart(2, '0')}
                       </div>
                       {/* Color dot */}
@@ -251,16 +251,16 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
                       />
                       {/* Name */}
                       <div className='flex-1 min-w-0'>
-                        <div className='text-sm font-semibold text-gray-800 truncate'>
+                        <div className='text-sm font-semibold text-gray-800 dark:text-neutral-text truncate'>
                           {s.fullName}
                         </div>
                       </div>
                       {/* Allocation */}
                       <div className='text-right flex-shrink-0'>
-                        <div className='text-sm font-bold text-gray-900 tabular-nums'>
+                        <div className='text-sm font-bold text-gray-900 dark:text-neutral-text tabular-nums'>
                           {fmtKES(s.allocated)}
                         </div>
-                        <div className='text-[10px] text-gray-400 tabular-nums'>
+                        <div className='text-[10px] text-gray-400 dark:text-neutral-muted/80 tabular-nums'>
                           {pctOfTotal.toFixed(1)}%
                         </div>
                       </div>
@@ -268,7 +268,7 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
 
                     {/* Layered progress bar: allocated track + spent fill */}
                     <div className='mt-2 ml-11'>
-                      <div className='relative h-1.5 bg-gray-100 rounded-full overflow-hidden'>
+                      <div className='relative h-1.5 bg-gray-100 dark:bg-surface-elevated rounded-full overflow-hidden'>
                         <div
                           className='absolute inset-y-0 left-0 rounded-full'
                           style={{
@@ -279,13 +279,13 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
                         />
                       </div>
                       <div className='flex items-center justify-between mt-1'>
-                        <span className='text-[10px] text-gray-500 tabular-nums'>
+                        <span className='text-[10px] text-gray-500 dark:text-neutral-muted/80 tabular-nums'>
                           <span className={`font-semibold ${utilColor}`}>
                             {utilization.toFixed(0)}%
                           </span>{' '}
                           {t('county.budget.executed_suffix')}
                         </span>
-                        <span className='text-[10px] text-gray-400 tabular-nums'>
+                        <span className='text-[10px] text-gray-400 dark:text-neutral-muted/80 tabular-nums'>
                           {fmtKES(s.spent)} {t('county.budget.spent_lower')}
                         </span>
                       </div>
@@ -300,8 +300,8 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
 
       {/* Debt breakdown */}
       {debt.breakdown.length > 0 && (
-        <div className='bg-white rounded-xl border border-gray-100 p-5'>
-          <h3 className='text-sm font-semibold text-gray-800 mb-4'>
+        <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-5'>
+          <h3 className='text-sm font-semibold text-gray-800 dark:text-neutral-text mb-4'>
             {t('county.budget.debt_breakdown')}
           </h3>
           <div className='space-y-3'>
@@ -310,26 +310,26 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
               return (
                 <div key={i}>
                   <div className='flex items-center justify-between mb-1'>
-                    <span className='text-sm text-gray-700'>{d.lender}</span>
-                    <span className='text-sm font-semibold text-gray-900 tabular-nums'>
+                    <span className='text-sm text-gray-700 dark:text-neutral-muted'>{d.lender}</span>
+                    <span className='text-sm font-semibold text-gray-900 dark:text-neutral-text tabular-nums'>
                       {fmtKES(d.outstanding)}
                     </span>
                   </div>
-                  <div className='h-2 bg-gray-100 rounded-full overflow-hidden'>
+                  <div className='h-2 bg-gray-100 dark:bg-surface-elevated rounded-full overflow-hidden'>
                     <div
                       className='h-full rounded-full bg-red-400'
                       style={{ width: `${Math.min(pctOfTotal, 100)}%` }}
                     />
                   </div>
-                  <div className='text-[10px] text-gray-400 mt-0.5'>
+                  <div className='text-[10px] text-gray-400 dark:text-neutral-muted/80 mt-0.5'>
                     {pct(pctOfTotal)} {t('county.budget.of_total_debt')}
                   </div>
                 </div>
               );
             })}
           </div>
-          <div className='mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-sm'>
-            <span className='text-gray-500'>{t('county.budget.total_debt_label')}</span>
+          <div className='mt-4 pt-3 border-t border-gray-100 dark:border-neutral-border flex items-center justify-between text-sm'>
+            <span className='text-gray-500 dark:text-neutral-muted/80'>{t('county.budget.total_debt_label')}</span>
             <span className='font-bold text-red-700'>{fmtKES(debt.total_debt)}</span>
           </div>
         </div>
@@ -337,10 +337,10 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
 
       {/* County Pending Bills Breakdown */}
       {(countyPendingBills || debt.pending_bills > 0) && (
-        <div className='bg-white rounded-xl border border-red-200 p-5'>
+        <div className='bg-white dark:bg-surface-base rounded-xl border border-red-200 p-5'>
           <div className='flex items-center gap-2 mb-4'>
             <FileWarning size={16} className='text-red-600' />
-            <h3 className='text-sm font-semibold text-gray-800'>
+            <h3 className='text-sm font-semibold text-gray-800 dark:text-neutral-text'>
               {t('county.budget.pending_bills_title')}
             </h3>
             <span className='text-sm font-bold text-red-700 ml-auto'>
@@ -352,7 +352,7 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
           {countyPendingBills?.breakdown_by_type &&
             countyPendingBills.breakdown_by_type.length > 0 && (
               <div className='space-y-2 mb-4'>
-                <h4 className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>
+                <h4 className='text-xs font-semibold text-gray-500 dark:text-neutral-muted/80 uppercase tracking-wider'>
                   {t('county.budget.pending_by_type')}
                 </h4>
                 {countyPendingBills.breakdown_by_type.map((row) => {
@@ -369,14 +369,14 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
                   return (
                     <div key={row.type}>
                       <div className='flex items-center justify-between mb-0.5'>
-                        <span className='text-xs text-gray-700'>
+                        <span className='text-xs text-gray-700 dark:text-neutral-muted'>
                           {row.type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
                         </span>
-                        <span className='text-xs font-semibold text-gray-800'>
+                        <span className='text-xs font-semibold text-gray-800 dark:text-neutral-text'>
                           {fmtKES(row.amount)}
                         </span>
                       </div>
-                      <div className='h-2 bg-gray-100 rounded-full overflow-hidden'>
+                      <div className='h-2 bg-gray-100 dark:bg-surface-elevated rounded-full overflow-hidden'>
                         <div
                           className={`h-full rounded-full ${bgColor}`}
                           style={{ width: `${Math.min(row.percentage, 100)}%` }}
@@ -391,7 +391,7 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
           {/* Aging buckets */}
           {countyPendingBills?.aging_buckets && countyPendingBills.aging_buckets.length > 0 && (
             <div>
-              <h4 className='text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2'>
+              <h4 className='text-xs font-semibold text-gray-500 dark:text-neutral-muted/80 uppercase tracking-wider mb-2'>
                 {t('county.budget.pending_aging')}
               </h4>
               <div className='flex h-4 rounded-full overflow-hidden'>
@@ -415,7 +415,7 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
                   );
                 })}
               </div>
-              <div className='flex items-center gap-3 mt-2 text-[10px] text-gray-400 flex-wrap'>
+              <div className='flex items-center gap-3 mt-2 text-[10px] text-gray-400 dark:text-neutral-muted/80 flex-wrap'>
                 {countyPendingBills.aging_buckets.map((bucket) => {
                   const colors: Record<string, string> = {
                     '0-30d': '#22c55e',
@@ -440,7 +440,7 @@ export default function BudgetTab({ data }: { data: CountyComprehensive }) {
           )}
 
           {!countyPendingBills && debt.pending_bills > 0 && (
-            <p className='text-xs text-gray-500'>
+            <p className='text-xs text-gray-500 dark:text-neutral-muted/80'>
               {t('county.budget.pending_fallback').replace('{amount}', fmtKES(debt.pending_bills))}
             </p>
           )}

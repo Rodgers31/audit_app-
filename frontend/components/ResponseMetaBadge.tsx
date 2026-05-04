@@ -70,8 +70,8 @@ const QUALITY_LABEL: Record<string, string> = {
 const QUALITY_TONE: Record<string, { dot: string; text: string; bg: string }> = {
   official: {
     dot: 'bg-emerald-400',
-    text: 'text-gray-700',
-    bg: 'bg-gray-50 border-gray-200',
+    text: 'text-gray-700 dark:text-neutral-muted',
+    bg: 'bg-gray-50 dark:bg-surface-elevated border-gray-200 dark:border-neutral-border',
   },
   estimated: {
     dot: 'bg-amber-400',
@@ -85,8 +85,8 @@ const QUALITY_TONE: Record<string, { dot: string; text: string; bg: string }> = 
   },
   historical: {
     dot: 'bg-slate-400',
-    text: 'text-gray-700',
-    bg: 'bg-gray-50 border-gray-200',
+    text: 'text-gray-700 dark:text-neutral-muted',
+    bg: 'bg-gray-50 dark:bg-surface-elevated border-gray-200 dark:border-neutral-border',
   },
   mixed: {
     dot: 'bg-amber-400',
@@ -95,8 +95,8 @@ const QUALITY_TONE: Record<string, { dot: string; text: string; bg: string }> = 
   },
   unknown: {
     dot: 'bg-gray-300',
-    text: 'text-gray-600',
-    bg: 'bg-gray-50 border-gray-200',
+    text: 'text-gray-600 dark:text-neutral-muted',
+    bg: 'bg-gray-50 dark:bg-surface-elevated border-gray-200 dark:border-neutral-border',
   },
 };
 

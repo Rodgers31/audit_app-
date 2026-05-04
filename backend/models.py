@@ -1023,3 +1023,44 @@ class ParliamentSourceDocument(Base):
 
     # Relationships
     source_document = relationship("SourceDocument")
+
+
+class AdminAuditLog(Base):
+    """
+    Append-only log of admin write actions.
+
+    Every destructive or privileged operation in the admin API
+    (modifying user roles, deleting users, manually triggering ETL,
+    etc.) records a row here so we have a "who did what, when"
+    trail. Read-only operations are NOT logged — only mutations.
+
+    Schema design:
+    - ``actor_id`` is the Supabase user UUID of the admin performing
+      the action (from the JWT ``sub`` claim).
+    - ``action`` is a short stable identifier like
+      ``"users.update_roles"`` or ``"etl.trigger"`` — these strings
+      become the filterable axis on the admin audit-log UI.
+    - ``target_type`` + ``target_id`` describe what the action was
+      performed on (``"user"`` + a UUID, ``"etl_source"`` + ``"cob"``,
+      etc.). Both nullable for actions that have no specific target.
+    - ``payload`` is the JSON body of the action — the
+      ``{old: [...], new: [...]}`` for a role change, the request
+      body for a trigger, etc. Useful for forensics; sensitive bits
+      (passwords, tokens) MUST be redacted before this is written.
+    """
+
+    __tablename__ = "admin_audit_log"
+
+    id = Column(Integer, primary_key=True, index=True)
+    actor_id = Column(String(64), nullable=False, index=True)
+    actor_email = Column(String(255), nullable=True)
+    action = Column(String(80), nullable=False, index=True)
+    target_type = Column(String(40), nullable=True, index=True)
+    target_id = Column(String(64), nullable=True, index=True)
+    payload = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        index=True,
+    )

@@ -123,17 +123,17 @@ function DataSourcesModal({ open, onClose }: { open: boolean; onClose: () => voi
         initial={{ opacity: 0, scale: 0.95, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ type: 'spring', duration: 0.4 }}
-        className='relative z-10 w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-2xl bg-white shadow-2xl border border-gray-100'>
-        <div className='sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white/95 backdrop-blur-sm rounded-t-2xl'>
+        className='relative z-10 w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-2xl bg-white dark:bg-surface-base shadow-2xl border border-gray-100 dark:border-neutral-border'>
+        <div className='sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-neutral-border bg-white/95 backdrop-blur-sm rounded-t-2xl'>
           <div>
-            <h3 className='text-lg font-bold text-gray-900'>Data Sources</h3>
-            <p className='text-xs text-gray-500 mt-0.5'>
+            <h3 className='text-lg font-bold text-gray-900 dark:text-neutral-text'>Data Sources</h3>
+            <p className='text-xs text-gray-500 dark:text-neutral-muted/80 mt-0.5'>
               Official resources used on this page
             </p>
           </div>
           <button
             onClick={onClose}
-            className='p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600'
+            className='p-1.5 rounded-lg hover:bg-gray-100 dark:bg-surface-elevated transition-colors text-gray-400 dark:text-neutral-muted/80 hover:text-gray-600 dark:text-neutral-muted'
             aria-label='Close'>
             <X size={18} />
           </button>
@@ -141,29 +141,29 @@ function DataSourcesModal({ open, onClose }: { open: boolean; onClose: () => voi
         <div className='px-6 py-4 space-y-5'>
           {DATA_SOURCES.map((src) => (
             <div key={src.section} className='group'>
-              <h4 className='text-sm font-semibold text-gray-800 mb-1'>{src.section}</h4>
-              <p className='text-xs text-gray-500 leading-relaxed mb-1.5'>
+              <h4 className='text-sm font-semibold text-gray-800 dark:text-neutral-text mb-1'>{src.section}</h4>
+              <p className='text-xs text-gray-500 dark:text-neutral-muted/80 leading-relaxed mb-1.5'>
                 {src.description}
               </p>
               {src.methodology && (
-                <p className='text-[11px] text-gray-400 italic mb-1.5'>
+                <p className='text-[11px] text-gray-400 dark:text-neutral-muted/80 italic mb-1.5'>
                   Methodology: {src.methodology}
                 </p>
               )}
               <div className='flex items-center gap-2 text-xs'>
-                <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gov-forest/10 text-gov-forest font-medium'>
+                <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gov-forest/10 text-gov-forest dark:text-emerald-100 font-medium'>
                   {src.authority}
                 </span>
                 <a
                   href={src.url}
                   target='_blank'
                   rel='noopener noreferrer'
-                  className='inline-flex items-center gap-1 text-gov-forest hover:underline'>
+                  className='inline-flex items-center gap-1 text-gov-forest dark:text-emerald-100 hover:underline'>
                   {src.urlLabel}
                   <ExternalLink size={11} />
                 </a>
               </div>
-              <div className='mt-3 border-b border-gray-100 group-last:border-0' />
+              <div className='mt-3 border-b border-gray-100 dark:border-neutral-border group-last:border-0' />
             </div>
           ))}
         </div>
@@ -287,8 +287,8 @@ export default function BudgetSpendingPage() {
           className='flex items-center justify-center py-32'
           role='status'
           aria-live='polite'>
-          <Loader2 className='animate-spin text-gov-forest mr-3' size={28} />
-          <span className='text-gray-500 text-lg'>Loading budget data…</span>
+          <Loader2 className='animate-spin text-gov-forest dark:text-emerald-100 mr-3' size={28} />
+          <span className='text-gray-500 dark:text-neutral-muted/80 text-lg'>Loading budget data…</span>
         </div>
       </PageShell>
     );
@@ -333,7 +333,7 @@ export default function BudgetSpendingPage() {
         <PDFExportButton compact documentTitle='Kenya Budget & Spending Report' />
         <button
           onClick={() => setSourcesOpen(true)}
-          className='inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-gov-forest hover:bg-gov-forest/5 rounded-lg transition-colors'
+          className='inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-400 dark:text-neutral-muted/80 hover:text-gov-forest dark:text-emerald-100 hover:bg-gov-forest/5 rounded-lg transition-colors'
           title='View data sources'>
           <Info size={14} />
           <span>Sources</span>
@@ -386,14 +386,14 @@ export default function BudgetSpendingPage() {
       {/* Notice if viewing a historical year without sector-level detail */}
       {!viewingCurrentFY && (
         <div className='rounded-xl border border-neutral-border/40 bg-gov-sand/30 px-5 py-4 flex items-start gap-3 text-[12px] text-neutral-muted'>
-          <Info size={15} className='mt-0.5 text-gov-forest/70 flex-shrink-0' />
+          <Info size={15} className='mt-0.5 text-gov-forest/70 dark:text-emerald-100/70 flex-shrink-0' />
           <span>
             Sector-level execution and county utilisation are only published for
             the current fiscal period by the Controller of Budget. Switch back
             to{' '}
             <button
               onClick={() => currentFiscal?.fiscal_year && setSelectedFY(currentFiscal.fiscal_year)}
-              className='font-semibold text-gov-forest hover:underline'>
+              className='font-semibold text-gov-forest dark:text-emerald-100 hover:underline'>
               {currentFiscal?.fiscal_year ?? 'the current FY'}
             </button>{' '}
             to see those panels.
@@ -416,7 +416,7 @@ export default function BudgetSpendingPage() {
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
-        className='text-center text-xs text-gray-400 pt-2'>
+        className='text-center text-xs text-gray-400 dark:text-neutral-muted/80 pt-2'>
         Data: National Treasury Budget Policy Statement · Controller of Budget · CRA ·
         Kenya Revenue Authority
         {overview?.last_updated && (

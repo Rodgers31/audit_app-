@@ -88,7 +88,7 @@ function fmtPerCap(budget: number, pop: number | null | undefined): string {
 }
 
 function scoreColor(score: number | null | undefined): string {
-  if (score == null) return 'bg-gray-200 text-gray-700';
+  if (score == null) return 'bg-gray-200 dark:bg-surface-sunken text-gray-700 dark:text-neutral-muted';
   if (score >= 70) return 'bg-emerald-100 text-emerald-800 border-emerald-200';
   if (score >= 55) return 'bg-amber-100 text-amber-800 border-amber-200';
   return 'bg-rose-100 text-rose-800 border-rose-200';
@@ -106,7 +106,7 @@ function rankStyle(
   const worst = higherIsBetter ? Math.min(...valid) : Math.max(...valid);
   if (value === best && best !== worst) return 'text-emerald-700 font-bold';
   if (value === worst && best !== worst) return 'text-rose-700 font-semibold';
-  return 'text-gray-900';
+  return 'text-gray-900 dark:text-neutral-text';
 }
 
 function ComparePicker({
@@ -124,17 +124,17 @@ function ComparePicker({
 }) {
   const { t } = useLang();
   return (
-    <div className='bg-white rounded-xl border border-gray-100 p-4 flex flex-wrap items-end gap-3'>
+    <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-4 flex flex-wrap items-end gap-3'>
       {selected.map((sel, i) => (
         <div key={`${sel}-${i}`} className='flex-1 min-w-[200px] relative'>
-          <label className='text-[10px] uppercase tracking-wider text-gray-500 font-semibold block mb-1'>
+          <label className='text-[10px] uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-semibold block mb-1'>
             {t('compare.county_label')} {i + 1}
           </label>
           <div className='flex items-center gap-2'>
             <select
               value={sel}
               onChange={(e) => onChange(i, e.target.value)}
-              className='flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gov-forest/30 bg-white'>
+              className='flex-1 text-sm border border-gray-200 dark:border-neutral-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gov-forest/30 bg-white dark:bg-surface-base'>
               <option value=''>{t('compare.pick_prompt')}</option>
               {all.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -146,7 +146,7 @@ function ComparePicker({
               <button
                 type='button'
                 onClick={() => onRemove(i)}
-                className='text-gray-400 hover:text-rose-600 p-1'
+                className='text-gray-400 dark:text-neutral-muted/80 hover:text-rose-600 p-1'
                 aria-label={t('compare.remove_county').replace('{n}', String(i + 1))}>
                 <X size={16} />
               </button>
@@ -158,7 +158,7 @@ function ComparePicker({
         <button
           type='button'
           onClick={onAdd}
-          className='text-sm font-semibold text-gov-forest hover:text-gov-forest/80 inline-flex items-center gap-1 px-3 py-2'>
+          className='text-sm font-semibold text-gov-forest dark:text-emerald-100 hover:text-gov-forest/80 dark:text-emerald-100/80 inline-flex items-center gap-1 px-3 py-2'>
           <Plus size={14} />
           {t('compare.add_county')}
         </button>
@@ -176,16 +176,16 @@ interface RowProps {
 
 function CompareRow({ label, values, highlight, sublabel }: RowProps) {
   return (
-    <tr className='border-b border-gray-100 last:border-b-0'>
+    <tr className='border-b border-gray-100 dark:border-neutral-border last:border-b-0'>
       <td className='py-3 pr-4 align-top'>
-        <div className='text-sm font-semibold text-gray-700'>{label}</div>
-        {sublabel && <div className='text-xs text-gray-500 mt-0.5'>{sublabel}</div>}
+        <div className='text-sm font-semibold text-gray-700 dark:text-neutral-muted'>{label}</div>
+        {sublabel && <div className='text-xs text-gray-500 dark:text-neutral-muted/80 mt-0.5'>{sublabel}</div>}
       </td>
       {values.map((v, i) => (
         <td
           key={i}
           className={`py-3 px-4 text-right tabular-nums text-sm ${
-            highlight?.[i] || 'text-gray-900'
+            highlight?.[i] || 'text-gray-900 dark:text-neutral-text'
           }`}>
           {v}
         </td>
@@ -255,7 +255,7 @@ function CompareContent() {
   return (
     <div className='space-y-6'>
       {isLoading && (
-        <div className='bg-white rounded-xl border border-gray-100 p-8 flex items-center justify-center gap-3 text-gray-500'>
+        <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-8 flex items-center justify-center gap-3 text-gray-500 dark:text-neutral-muted/80'>
           <Loader2 className='animate-spin' size={18} />
           <span>{t('compare.loading')}</span>
         </div>
@@ -272,21 +272,21 @@ function CompareContent() {
           />
 
           {picked.length < 2 ? (
-            <div className='bg-white rounded-xl border border-gray-100 p-12 text-center'>
-              <div className='text-base font-semibold text-gray-700 mb-1'>
+            <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-12 text-center'>
+              <div className='text-base font-semibold text-gray-700 dark:text-neutral-muted mb-1'>
                 {t('compare.empty.title')}
               </div>
-              <p className='text-sm text-gray-500 max-w-md mx-auto'>
+              <p className='text-sm text-gray-500 dark:text-neutral-muted/80 max-w-md mx-auto'>
                 {t('compare.empty.body')}
               </p>
             </div>
           ) : (
-            <div className='bg-white rounded-xl border border-gray-100 overflow-hidden'>
+            <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border overflow-hidden'>
               <div className='overflow-x-auto'>
                 <table className='w-full'>
                   <thead>
-                    <tr className='bg-gray-50 border-b border-gray-200'>
-                      <th className='text-left py-3 pr-4 pl-5 text-[10px] uppercase tracking-wider text-gray-500 font-semibold'>
+                    <tr className='bg-gray-50 dark:bg-surface-elevated border-b border-gray-200 dark:border-neutral-border'>
+                      <th className='text-left py-3 pr-4 pl-5 text-[10px] uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-semibold'>
                         {t('common.metric')}
                       </th>
                       {picked.map((c) => (
@@ -295,10 +295,10 @@ function CompareContent() {
                           className='text-right py-3 px-4 min-w-[140px]'>
                           <Link
                             href={`/counties/${c.id}`}
-                            className='text-sm font-bold text-gray-900 hover:text-gov-forest hover:underline'>
+                            className='text-sm font-bold text-gray-900 dark:text-neutral-text hover:text-gov-forest dark:text-emerald-100 hover:underline'>
                             {c.name}
                           </Link>
-                          <div className='text-[10px] text-gray-400 font-mono mt-0.5'>
+                          <div className='text-[10px] text-gray-400 dark:text-neutral-muted/80 font-mono mt-0.5'>
                             #{c.code}
                           </div>
                         </th>
@@ -310,12 +310,12 @@ function CompareContent() {
                     <tr>
                       <td
                         colSpan={picked.length + 1}
-                        className='bg-gray-50/50 px-5 py-2 text-[10px] uppercase tracking-wider text-gray-500 font-bold border-b border-gray-100'>
+                        className='bg-gray-50/50 dark:bg-surface-elevated/70 px-5 py-2 text-[10px] uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-bold border-b border-gray-100 dark:border-neutral-border'>
                         {t('compare.section.pop_budget')}
                       </td>
                     </tr>
-                    <tr className='border-b border-gray-100'>
-                      <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700'>
+                    <tr className='border-b border-gray-100 dark:border-neutral-border'>
+                      <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700 dark:text-neutral-muted'>
                         {t('compare.row.population')}
                       </td>
                       {picked.map((c) => (
@@ -330,10 +330,10 @@ function CompareContent() {
                         </td>
                       ))}
                     </tr>
-                    <tr className='border-b border-gray-100'>
-                      <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700'>
+                    <tr className='border-b border-gray-100 dark:border-neutral-border'>
+                      <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700 dark:text-neutral-muted'>
                         {t('compare.row.total_budget')}
-                        <div className='text-xs text-gray-500 mt-0.5'>{t('compare.row.total_budget_sub')}</div>
+                        <div className='text-xs text-gray-500 dark:text-neutral-muted/80 mt-0.5'>{t('compare.row.total_budget_sub')}</div>
                       </td>
                       {picked.map((c) => (
                         <td
@@ -347,10 +347,10 @@ function CompareContent() {
                         </td>
                       ))}
                     </tr>
-                    <tr className='border-b border-gray-100'>
-                      <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700'>
+                    <tr className='border-b border-gray-100 dark:border-neutral-border'>
+                      <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700 dark:text-neutral-muted'>
                         {t('compare.row.per_capita')}
-                        <div className='text-xs text-gray-500 mt-0.5'>
+                        <div className='text-xs text-gray-500 dark:text-neutral-muted/80 mt-0.5'>
                           {t('compare.row.per_capita_sub')}
                         </div>
                       </td>
@@ -381,26 +381,26 @@ function CompareContent() {
                     <tr>
                       <td
                         colSpan={picked.length + 1}
-                        className='bg-gray-50/50 px-5 py-2 text-[10px] uppercase tracking-wider text-gray-500 font-bold border-t border-b border-gray-100'>
+                        className='bg-gray-50/50 dark:bg-surface-elevated/70 px-5 py-2 text-[10px] uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-bold border-t border-b border-gray-100 dark:border-neutral-border'>
                         {t('compare.section.execution')}
                       </td>
                     </tr>
-                    <tr className='border-b border-gray-100'>
-                      <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700'>
+                    <tr className='border-b border-gray-100 dark:border-neutral-border'>
+                      <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700 dark:text-neutral-muted'>
                         {t('compare.row.spent')}
                       </td>
                       {picked.map((c) => (
                         <td
                           key={c.id}
-                          className='py-3 px-4 text-right tabular-nums text-sm text-gray-900'>
+                          className='py-3 px-4 text-right tabular-nums text-sm text-gray-900 dark:text-neutral-text'>
                           {fmtKES(c.total_spent)}
                         </td>
                       ))}
                     </tr>
-                    <tr className='border-b border-gray-100'>
-                      <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700'>
+                    <tr className='border-b border-gray-100 dark:border-neutral-border'>
+                      <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700 dark:text-neutral-muted'>
                         {t('compare.row.utilization')}
-                        <div className='text-xs text-gray-500 mt-0.5'>
+                        <div className='text-xs text-gray-500 dark:text-neutral-muted/80 mt-0.5'>
                           {t('compare.row.utilization_sub')}
                         </div>
                       </td>
@@ -416,10 +416,10 @@ function CompareContent() {
                         </td>
                       ))}
                     </tr>
-                    <tr className='border-b border-gray-100'>
-                      <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700'>
+                    <tr className='border-b border-gray-100 dark:border-neutral-border'>
+                      <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700 dark:text-neutral-muted'>
                         {t('compare.row.dev_share')}
-                        <div className='text-xs text-gray-500 mt-0.5'>
+                        <div className='text-xs text-gray-500 dark:text-neutral-muted/80 mt-0.5'>
                           {t('compare.row.dev_share_sub')}
                         </div>
                       </td>
@@ -450,14 +450,14 @@ function CompareContent() {
                     <tr>
                       <td
                         colSpan={picked.length + 1}
-                        className='bg-gray-50/50 px-5 py-2 text-[10px] uppercase tracking-wider text-gray-500 font-bold border-t border-b border-gray-100'>
+                        className='bg-gray-50/50 dark:bg-surface-elevated/70 px-5 py-2 text-[10px] uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-bold border-t border-b border-gray-100 dark:border-neutral-border'>
                         {t('compare.section.health')}
                       </td>
                     </tr>
-                    <tr className='border-b border-gray-100'>
-                      <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700'>
+                    <tr className='border-b border-gray-100 dark:border-neutral-border'>
+                      <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700 dark:text-neutral-muted'>
                         {t('compare.row.pending_bills')}
-                        <div className='text-xs text-gray-500 mt-0.5'>
+                        <div className='text-xs text-gray-500 dark:text-neutral-muted/80 mt-0.5'>
                           {t('compare.row.pending_bills_sub')}
                         </div>
                       </td>
@@ -473,8 +473,8 @@ function CompareContent() {
                         </td>
                       ))}
                     </tr>
-                    <tr className='border-b border-gray-100'>
-                      <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700'>
+                    <tr className='border-b border-gray-100 dark:border-neutral-border'>
+                      <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700 dark:text-neutral-muted'>
                         {t('compare.row.debt')}
                       </td>
                       {picked.map((c) => (
@@ -489,10 +489,10 @@ function CompareContent() {
                         </td>
                       ))}
                     </tr>
-                    <tr className='border-b border-gray-100'>
-                      <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700'>
+                    <tr className='border-b border-gray-100 dark:border-neutral-border'>
+                      <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700 dark:text-neutral-muted'>
                         {t('compare.row.health_score')}
-                        <div className='text-xs text-gray-500 mt-0.5'>
+                        <div className='text-xs text-gray-500 dark:text-neutral-muted/80 mt-0.5'>
                           {t('compare.row.health_score_sub')}
                         </div>
                       </td>
@@ -516,7 +516,7 @@ function CompareContent() {
                         <tr>
                           <td
                             colSpan={picked.length + 1}
-                            className='bg-gray-50/50 px-5 py-2 text-[10px] uppercase tracking-wider text-gray-500 font-bold border-t border-b border-gray-100'>
+                            className='bg-gray-50/50 dark:bg-surface-elevated/70 px-5 py-2 text-[10px] uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-bold border-t border-b border-gray-100 dark:border-neutral-border'>
                             {t('compare.section.sectors')}
                           </td>
                         </tr>
@@ -524,8 +524,8 @@ function CompareContent() {
                           const sk = sectorKey(sector);
                           const label = sk ? t(sk) : sector;
                           return (
-                          <tr key={sector} className='border-b border-gray-100'>
-                            <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700'>
+                          <tr key={sector} className='border-b border-gray-100 dark:border-neutral-border'>
+                            <td className='py-3 pr-4 pl-5 text-sm font-semibold text-gray-700 dark:text-neutral-muted'>
                               {label}
                             </td>
                             {picked.map((c) => {
@@ -556,8 +556,8 @@ function CompareContent() {
             </div>
           )}
 
-          <div className='bg-gov-forest/5 border border-gov-forest/20 rounded-xl p-5 text-sm text-gray-700 leading-relaxed'>
-            <p className='font-semibold text-gray-900 mb-1'>{t('compare.footer.title')}</p>
+          <div className='bg-gov-forest/5 border border-gov-forest/20 rounded-xl p-5 text-sm text-gray-700 dark:text-neutral-muted leading-relaxed'>
+            <p className='font-semibold text-gray-900 dark:text-neutral-text mb-1'>{t('compare.footer.title')}</p>
             <p>{t('compare.footer.body')}</p>
           </div>
         </>
@@ -570,7 +570,7 @@ export default function ComparePage() {
   return (
     <Suspense
       fallback={
-        <div className='bg-white rounded-xl border border-gray-100 p-8 flex items-center justify-center gap-3 text-gray-500'>
+        <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-8 flex items-center justify-center gap-3 text-gray-500 dark:text-neutral-muted/80'>
           <Loader2 className='animate-spin' size={18} />
         </div>
       }>

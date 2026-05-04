@@ -9,6 +9,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import AuthModal from './AuthModal';
 import LangSwitcher from './LangSwitcher';
+import ThemeToggle from './ThemeToggle';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -133,7 +134,7 @@ export default function Navigation() {
                   key={item.href}
                   href={item.href}
                   className={`relative px-2.5 xl:px-4 py-1.5 rounded-full text-[12px] xl:text-sm font-medium transition-all duration-300 whitespace-nowrap ${
-                    isActive ? 'text-gov-dark' : 'text-white/80 hover:text-white hover:bg-white/10'
+                    isActive ? 'text-gov-dark dark:text-white' : 'text-white/80 hover:text-white hover:bg-white/10'
                   }`}>
                   {isActive && (
                     <motion.div
@@ -153,6 +154,7 @@ export default function Navigation() {
             <div className='hidden lg:block'>
               <LangSwitcher />
             </div>
+            <ThemeToggle />
             <button className='p-2 rounded-full bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors border border-white/10 backdrop-blur-sm hidden xl:flex items-center justify-center group'>
               <Grid className='w-5 h-5 group-hover:rotate-90 transition-transform duration-300' />
             </button>

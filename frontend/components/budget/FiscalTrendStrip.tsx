@@ -107,13 +107,13 @@ export default function FiscalTrendStrip({ history }: Props) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.5 }}
-      className='rounded-2xl bg-white border border-neutral-border/40 shadow-surface p-5 sm:p-6'>
+      className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 shadow-surface p-5 sm:p-6'>
       <div className='flex items-baseline justify-between mb-4'>
         <div>
-          <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/80'>
+          <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/80 dark:text-emerald-100/80'>
             The past four budgets
           </div>
-          <h3 className='font-display text-xl sm:text-[22px] text-gov-dark leading-tight mt-0.5'>
+          <h3 className='font-display text-xl sm:text-[22px] text-gov-dark dark:text-white leading-tight mt-0.5'>
             Is the gap narrowing, or is debt growing faster than revenue?
           </h3>
         </div>
@@ -134,14 +134,14 @@ export default function FiscalTrendStrip({ history }: Props) {
           return (
             <div
               key={c.label}
-              className='relative rounded-xl bg-white border border-neutral-border/30 shadow-sm overflow-hidden'>
+              className='relative rounded-xl bg-white dark:bg-surface-base border border-neutral-border/30 shadow-sm overflow-hidden'>
               <div
                 className='absolute inset-x-0 top-0 h-0.5'
                 style={{ background: `linear-gradient(90deg, ${c.gradStart}, ${c.gradEnd})` }}
               />
               <div className='p-4'>
                 <div className='flex items-baseline justify-between gap-2 mb-1'>
-                  <span className='text-[11px] font-semibold text-gov-dark'>{c.label}</span>
+                  <span className='text-[11px] font-semibold text-gov-dark dark:text-white'>{c.label}</span>
                   {delta != null && (
                     <span
                       className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full tabular-nums ${
@@ -153,14 +153,14 @@ export default function FiscalTrendStrip({ history }: Props) {
                             ? c.key === 'total_borrowing' || c.key === 'debt_service_cost'
                               ? 'bg-green-50 text-green-700'
                               : 'bg-red-50 text-red-600'
-                            : 'bg-gray-100 text-gray-500'
+                            : 'bg-gray-100 dark:bg-surface-elevated text-gray-500 dark:text-neutral-muted/80'
                       }`}>
                       {isUp ? <ArrowUp size={10} /> : isDown ? <ArrowDown size={10} /> : <Minus size={10} />}
                       {Math.abs(delta).toFixed(0)}%
                     </span>
                   )}
                 </div>
-                <div className='font-display text-lg sm:text-xl text-gov-dark tabular-nums leading-none'>
+                <div className='font-display text-lg sm:text-xl text-gov-dark dark:text-white tabular-nums leading-none'>
                   KES {fmtB(latest.value)}
                 </div>
                 <p className='text-[10.5px] text-neutral-muted mt-1 leading-snug'>{c.tagline}</p>

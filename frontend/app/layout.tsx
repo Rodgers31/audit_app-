@@ -67,6 +67,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang='en' suppressHydrationWarning>
       <head>
+        {/* No-flash dark-mode bootstrap.
+            Runs synchronously BEFORE the body paints so the right
+            ``dark`` class is on <html> from the very first frame —
+            otherwise dark-mode users would see a flash of light
+            chrome before React hydrates ThemeToggle and applies the
+            class. Reads localStorage["theme"] for an explicit
+            choice; otherwise follows ``prefers-color-scheme``.
+            Wrapped in try/catch because localStorage can throw in
+            private-mode Safari. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem('theme');var sysDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var dark=s==='dark'||(s!=='light'&&sysDark);if(dark)document.documentElement.classList.add('dark');}catch(e){}})();`,
+          }}
+        />
         {apiOrigin && (
           <>
             <link rel='preconnect' href={apiOrigin} crossOrigin='anonymous' />
@@ -74,10 +88,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </>
         )}
         {/* Above-the-fold LCP image — preload so it begins downloading
-            in parallel with the CSS / JS chunks. */}
-        <link rel='preload' as='image' href='/kenya_bg_top.jpg' />
+            in parallel with the CSS / JS chunks. The ``media`` attribute
+            ensures only the variant matching the user's current colour
+            scheme is downloaded — no double-fetch on dark-mode systems. */}
+        <link
+          rel='preload'
+          as='image'
+          href='/kenya_bg_top.jpg'
+          media='(prefers-color-scheme: light)'
+        />
+        <link
+          rel='preload'
+          as='image'
+          href='/kenya_bg_top_dk.jpg'
+          media='(prefers-color-scheme: dark)'
+        />
       </head>
-      <body className='bg-gov-sand antialiased' suppressHydrationWarning>
+      <body
+        className='bg-gov-sand antialiased'
+        suppressHydrationWarning>
         {/* Skip-to-main link. Sighted users never see this (sr-only
             until focused); keyboard users can jump past the fixed
             header in one Tab press. Lands on #main-content which

@@ -117,8 +117,8 @@ export default function BudgetSnapshotCard() {
       transition={{ duration: 0.6, delay: 0.1 }}
       className='glass-card overflow-hidden flex flex-col'>
       {/* Header */}
-      <div className='bg-gradient-to-r from-gov-sand/60 via-gov-cream/40 to-transparent px-6 sm:px-8 pt-5 pb-4 border-b border-neutral-border/20'>
-        <h3 className='font-display text-lg text-gov-dark mb-0.5'>{t('home.budget.where_taxes_go')}</h3>
+      <div className='bg-gradient-to-r from-gov-sand/60 via-gov-cream/40 to-transparent dark:from-surface-elevated/40 dark:via-surface-base/20 dark:to-transparent px-6 sm:px-8 pt-5 pb-4 border-b border-neutral-border/20'>
+        <h3 className='font-display text-lg text-gov-dark dark:text-white mb-0.5'>{t('home.budget.where_taxes_go')}</h3>
         <p className='text-xs text-neutral-muted'>
           {t('home.budget.allocation_by_sector')}
           {budget?.fiscal_year ? ` — ${budget.fiscal_year}` : ''}
@@ -130,12 +130,12 @@ export default function BudgetSnapshotCard() {
         <div className='flex gap-4 sm:gap-6 mb-4'>
           <div className='flex-1 rounded-xl bg-gov-forest/[0.04] border border-neutral-border/30 px-4 py-3'>
             <div className='flex items-center gap-1.5 mb-1'>
-              <Banknote className='w-3.5 h-3.5 text-gov-forest opacity-70' />
+              <Banknote className='w-3.5 h-3.5 text-gov-forest dark:text-emerald-100 opacity-70' />
               <span className='text-[10px] text-neutral-muted font-medium uppercase tracking-wider'>
                 {t('home.budget.total_label')}
               </span>
             </div>
-            <span className='text-lg font-bold text-gov-forest tabular-nums leading-none'>
+            <span className='text-lg font-bold text-gov-forest dark:text-emerald-100 tabular-nums leading-none'>
               {fmtKES(total)}
             </span>
           </div>
@@ -163,7 +163,7 @@ export default function BudgetSnapshotCard() {
                 <div className='flex items-center justify-between mb-1'>
                   <div className='flex items-center gap-2 min-w-0'>
                     <span className='text-sm leading-none'>{sectorIcon(s.sector)}</span>
-                    <span className='text-xs text-gov-dark font-medium truncate'>{s.sector}</span>
+                    <span className='text-xs text-gov-dark dark:text-white font-medium truncate'>{s.sector}</span>
                     {(s.sector === 'Development' || s.sector === 'Recurrent') && (
                       <InfoTip
                         term={
@@ -174,7 +174,7 @@ export default function BudgetSnapshotCard() {
                     )}
                   </div>
                   <div className='flex items-center gap-2 flex-shrink-0'>
-                    <span className='text-xs font-bold text-gov-dark tabular-nums'>
+                    <span className='text-xs font-bold text-gov-dark dark:text-white tabular-nums'>
                       {fmtKES(s.amount)}
                     </span>
                     <span className='text-[10px] text-neutral-muted tabular-nums w-8 text-right'>
@@ -218,7 +218,7 @@ export default function BudgetSnapshotCard() {
 
         <Link
           href='/budget'
-          className='group mt-auto pt-4 flex items-center justify-center gap-1.5 w-full rounded-lg bg-white/60 border border-neutral-border/40 hover:border-gov-sage/40 hover:bg-gov-sage/[0.04] px-4 py-2.5 transition-all text-xs font-medium text-gov-dark'>
+          className='group mt-auto pt-4 flex items-center justify-center gap-1.5 w-full rounded-lg bg-white/60 dark:bg-surface-elevated border border-neutral-border/40 hover:border-gov-sage/40 hover:bg-gov-sage/[0.04] px-4 py-2.5 transition-all text-xs font-medium text-gov-dark dark:text-white'>
           {t('home.budget.view_full')}
         </Link>
       </div>

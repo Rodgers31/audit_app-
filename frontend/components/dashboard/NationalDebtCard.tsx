@@ -70,25 +70,25 @@ function CustomTooltip({ active, payload, label }: any) {
   if (!d) return null;
   return (
     <div className='rounded-xl bg-white/95 backdrop-blur-lg border border-neutral-border/40 shadow-elevated px-4 py-3 text-xs'>
-      <p className='font-display text-sm text-gov-dark mb-2'>{label}</p>
+      <p className='font-display text-sm text-gov-dark dark:text-white mb-2'>{label}</p>
       <div className='space-y-1.5'>
         <div className='flex justify-between gap-6'>
           <span className='text-neutral-muted'>{t('home.debt.tooltip_total')}</span>
-          <span className='font-bold text-gov-dark tabular-nums'>{fmtT(d.total)}</span>
+          <span className='font-bold text-gov-dark dark:text-white tabular-nums'>{fmtT(d.total)}</span>
         </div>
         <div className='flex justify-between gap-6'>
           <span className='flex items-center gap-1.5'>
             <span className='w-2.5 h-2.5 rounded-full bg-gov-copper/80' />
             {t('home.debt.external')}
           </span>
-          <span className='font-semibold text-gov-dark tabular-nums'>{fmtT(d.external)}</span>
+          <span className='font-semibold text-gov-dark dark:text-white tabular-nums'>{fmtT(d.external)}</span>
         </div>
         <div className='flex justify-between gap-6'>
           <span className='flex items-center gap-1.5'>
             <span className='w-2.5 h-2.5 rounded-full' style={{ background: '#0D7377' }} />
             {t('home.debt.domestic')}
           </span>
-          <span className='font-semibold text-gov-dark tabular-nums'>{fmtT(d.domestic)}</span>
+          <span className='font-semibold text-gov-dark dark:text-white tabular-nums'>{fmtT(d.domestic)}</span>
         </div>
         <div className='flex justify-between gap-6 pt-1 border-t border-neutral-border/30'>
           <span className='text-neutral-muted'>{t('home.debt.tooltip_gdp')}</span>
@@ -169,10 +169,10 @@ export default function NationalDebtCard() {
       transition={{ duration: 0.6, delay: 0.1 }}
       className='glass-card overflow-hidden h-full flex flex-col'>
       {/* Header */}
-      <div className='bg-gradient-to-r from-gov-copper/[0.06] via-gov-sand/30 to-transparent px-6 sm:px-8 pt-5 pb-4 border-b border-neutral-border/20'>
+      <div className='bg-gradient-to-r from-gov-copper/[0.06] via-gov-sand/30 to-transparent dark:from-surface-elevated/40 dark:via-surface-base/20 dark:to-transparent px-6 sm:px-8 pt-5 pb-4 border-b border-neutral-border/20'>
         <div className='flex items-start justify-between'>
           <div>
-            <h2 className='font-display text-xl sm:text-2xl text-gov-dark mb-1'>
+            <h2 className='font-display text-xl sm:text-2xl text-gov-dark dark:text-white mb-1'>
               {t('home.debt.title')}
             </h2>
             <p className='text-xs text-neutral-muted'>
@@ -252,12 +252,12 @@ export default function NationalDebtCard() {
         {imfKes != null && (
           <Link
             href='/debt#broader'
-            className='mt-3 block rounded-lg bg-gov-gold/[0.08] border border-gov-gold/25 px-3 py-2 text-[12px] text-gov-dark/85 hover:bg-gov-gold/[0.14] transition-colors'>
-            <span className='font-semibold text-gov-dark'>IMF broader measure:</span>{' '}
+            className='mt-3 block rounded-lg bg-gov-gold/[0.08] border border-gov-gold/25 px-3 py-2 text-[12px] text-gov-dark/85 dark:text-white/85 hover:bg-gov-gold/[0.14] transition-colors'>
+            <span className='font-semibold text-gov-dark dark:text-white'>IMF broader measure:</span>{' '}
             KES {(imfKes / 1e12).toFixed(2)}T
             {imfPct != null && ` (${imfPct.toFixed(1)}% GDP)`} — includes counties,
             SOEs, pending bills
-            <span className='text-gov-forest ml-1 font-medium'>→ why the gap</span>
+            <span className='text-gov-forest dark:text-emerald-100 ml-1 font-medium'>→ why the gap</span>
           </Link>
         )}
       </div>
@@ -433,7 +433,7 @@ function StatCard({
   const textMap: Record<string, string> = {
     copper: 'text-gov-copper',
     gold: 'text-gov-gold',
-    forest: 'text-gov-forest',
+    forest: 'text-gov-forest dark:text-emerald-100',
     sage: 'text-gov-sage',
   };
   return (
@@ -473,7 +473,7 @@ function InsightPill({
       </span>
       <div>
         <span
-          className={`text-xs font-semibold block ${highlight ? 'text-gov-copper' : 'text-gov-dark'}`}>
+          className={`text-xs font-semibold block ${highlight ? 'text-gov-copper' : 'text-gov-dark dark:text-white'}`}>
           {title}
         </span>
         <span className='text-[10px] text-neutral-muted leading-tight'>{desc}</span>

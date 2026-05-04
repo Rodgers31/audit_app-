@@ -299,11 +299,11 @@ export default function InteractiveKenyaMap({
         {/* Title */}
         <div className='flex items-center gap-2'>
           <div className='w-8 h-8 rounded-lg bg-gov-forest/10 flex items-center justify-center'>
-            <MapPin className='w-4 h-4 text-gov-forest' />
+            <MapPin className='w-4 h-4 text-gov-forest dark:text-emerald-100' />
           </div>
           <div>
-            <h3 className='text-sm font-semibold text-gov-dark leading-tight'>{t('home.map.title')}</h3>
-            <p className='text-[11px] text-gray-500 leading-tight'>
+            <h3 className='text-sm font-semibold text-gov-dark dark:text-white leading-tight'>{t('home.map.title')}</h3>
+            <p className='text-[11px] text-gray-500 dark:text-neutral-muted/80 leading-tight'>
               {matchedCount} {t('home.map.subtitle_prefix')} &middot; {t('home.map.subtitle_suffix')}
             </p>
           </div>
@@ -314,7 +314,7 @@ export default function InteractiveKenyaMap({
           {LEGEND_ITEMS.map((item) => (
             <span
               key={item.labelKey}
-              className='inline-flex items-center gap-1 text-[10px] font-medium text-gray-600 bg-white/70 rounded-full px-2 py-0.5 border border-gray-200/60'>
+              className='inline-flex items-center gap-1 text-[10px] font-medium text-gray-600 dark:text-neutral-muted bg-white/70 dark:bg-surface-elevated rounded-full px-2 py-0.5 border border-gray-200/60 dark:border-neutral-border/60'>
               <span
                 className='w-2 h-2 rounded-full ring-1 ring-black/10'
                 style={{ backgroundColor: item.color }}
@@ -325,13 +325,13 @@ export default function InteractiveKenyaMap({
         </div>
 
         {/* View mode toggle */}
-        <div className='flex items-center bg-white/60 rounded-lg border border-gray-200/60 p-0.5'>
+        <div className='flex items-center bg-white/60 dark:bg-surface-elevated rounded-lg border border-gray-200/60 dark:border-neutral-border/60 p-0.5'>
           <button
             onClick={() => setVisualMode('overview')}
             className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
               visualMode === 'overview'
                 ? 'bg-gov-forest text-white shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+                : 'text-gray-500 dark:text-neutral-muted/80 hover:text-gray-700 dark:text-neutral-muted'
             }`}>
             <Layers className='w-3 h-3' />
             {t('home.map.view_all')}
@@ -341,7 +341,7 @@ export default function InteractiveKenyaMap({
             className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
               visualMode === 'focus'
                 ? 'bg-gov-forest text-white shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+                : 'text-gray-500 dark:text-neutral-muted/80 hover:text-gray-700 dark:text-neutral-muted'
             }`}>
             <Eye className='w-3 h-3' />
             {t('home.map.view_focus')}
@@ -537,7 +537,7 @@ export default function InteractiveKenyaMap({
         </AnimatePresence>
 
         {/* Bottom-right hint */}
-        <div className='absolute bottom-3 right-3 z-20 text-[10px] text-gray-400 bg-white/60 backdrop-blur-sm rounded-md px-2 py-1 border border-gray-200/40'>
+        <div className='absolute bottom-3 right-3 z-20 text-[10px] text-gray-400 dark:text-neutral-muted/80 bg-white/60 dark:bg-surface-elevated backdrop-blur-sm rounded-md px-2 py-1 border border-gray-200/40 dark:border-neutral-border/40'>
           Hover to explore &middot; Click to select
         </div>
       </div>

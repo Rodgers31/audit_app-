@@ -39,7 +39,7 @@ export default function FeatureNavCards() {
           transition={{ duration: 0.5, delay: 0.08 * i }}>
           <Link href={feat.href}>
             <div
-              className='group relative bg-white/70 backdrop-blur-sm border border-neutral-border/40 rounded-2xl p-5 sm:p-6 text-center
+              className='group relative bg-white/70 dark:bg-surface-elevated backdrop-blur-sm border border-neutral-border/40 rounded-2xl p-5 sm:p-6 text-center
                             transition-all duration-300
                             hover:shadow-elevated hover:-translate-y-1 hover:border-gov-sage/30
                             cursor-pointer'>
@@ -52,10 +52,10 @@ export default function FeatureNavCards() {
                 </span>
               </div>
 
-              <h4 className='text-sm font-semibold text-gov-dark leading-snug mb-1'>
+              <h4 className='text-sm font-semibold text-gov-dark dark:text-white leading-snug mb-1'>
                 {t(feat.titleKey)}
               </h4>
-              <span className='inline-block text-[11px] text-neutral-muted bg-gov-sand/60 px-3 py-1 rounded-full'>
+              <span className='inline-block text-[11px] text-neutral-muted bg-gov-sand/60 dark:bg-emerald-100/10 dark:text-emerald-100/90 px-3 py-1 rounded-full'>
                 {t(feat.subKey)}
               </span>
             </div>

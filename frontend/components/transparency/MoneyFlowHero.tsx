@@ -124,15 +124,15 @@ export default function MoneyFlowHero({ data }: Props) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.55 }}
-      className='rounded-2xl bg-gradient-to-br from-white via-gov-sand/30 to-white border border-neutral-border/40 shadow-surface overflow-hidden'>
+      className='rounded-2xl bg-gradient-to-br from-white via-gov-sand/30 to-white dark:from-surface-elevated dark:via-surface-base dark:to-surface-elevated border border-neutral-border/40 shadow-surface overflow-hidden'>
       {/* Header */}
       <div className='px-5 sm:px-8 pt-6 sm:pt-8 pb-4'>
         <div className='flex items-start justify-between gap-4 flex-wrap'>
           <div className='min-w-0'>
-            <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/80'>
+            <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/80 dark:text-emerald-100/80'>
               {isProjected ? 'CRA Budget Estimate' : 'Controller of Budget + OAG'} · FY {fy.replace('FY', '').trim()}
             </div>
-            <h2 className='font-display text-[24px] sm:text-[28px] text-gov-dark leading-tight mt-1'>
+            <h2 className='font-display text-[24px] sm:text-[28px] text-gov-dark dark:text-white leading-tight mt-1'>
               {isProjected
                 ? <>KES {fmtT(allocated)} budgeted for {countyLabel.toLowerCase()}</>
                 : <>KES {fmtT(allocated)} allocated, KES {fmtT(spent)} reached programmes</>}
@@ -155,7 +155,7 @@ export default function MoneyFlowHero({ data }: Props) {
                   <div className='text-[10px] uppercase tracking-wider font-semibold text-gov-copper'>
                     OAG · flagged ratio
                   </div>
-                  <div className='font-display text-xl text-gov-dark leading-tight tabular-nums'>
+                  <div className='font-display text-xl text-gov-dark dark:text-white leading-tight tabular-nums'>
                     KES {flaggedPer100.toFixed(2)}
                   </div>
                   <div className='text-[11px] text-neutral-muted leading-tight'>
@@ -171,7 +171,7 @@ export default function MoneyFlowHero({ data }: Props) {
       {/* Waterfall */}
       <div className='px-5 sm:px-8 pb-2 pt-2'>
         <div className='flex items-baseline justify-between gap-2 mb-3'>
-          <h3 className='text-[13px] font-semibold text-gov-dark tracking-tight'>
+          <h3 className='text-[13px] font-semibold text-gov-dark dark:text-white tracking-tight'>
             Where the money went
           </h3>
           <span className='text-[11px] text-neutral-muted'>
@@ -234,7 +234,7 @@ export default function MoneyFlowHero({ data }: Props) {
       {/* Footer note */}
       <div className='px-5 sm:px-8 pb-5 pt-5'>
         <div className='flex items-start gap-2 text-[11px] text-neutral-muted/90 leading-relaxed border-t border-neutral-border/40 pt-3'>
-          <Info size={13} className='mt-0.5 flex-shrink-0 text-gov-forest/70' />
+          <Info size={13} className='mt-0.5 flex-shrink-0 text-gov-forest/70 dark:text-emerald-100/70' />
           <span>
             Allocations follow the Commission on Revenue Allocation formula; releases
             and expenditure come from the Controller of Budget&apos;s{' '}
@@ -296,7 +296,7 @@ function WaterfallStage({
             · {meta.tagline}
           </span>
         </div>
-        <span className='font-display text-[15px] text-gov-dark tabular-nums flex-shrink-0'>
+        <span className='font-display text-[15px] text-gov-dark dark:text-white tabular-nums flex-shrink-0'>
           {unavailable ? (
             <span className='text-neutral-muted text-[12px] font-normal italic'>
               not yet published
@@ -376,7 +376,7 @@ function StageGap({
         {unavailable ? (
           <em className='text-neutral-muted/70 not-italic text-[10.5px]'>{reason}</em>
         ) : amount != null && amount > 0 ? (
-          <span className={isCritical ? 'text-gov-copper font-semibold' : 'text-gov-dark/60'}>
+          <span className={isCritical ? 'text-gov-copper font-semibold' : 'text-gov-dark/60 dark:text-white/60'}>
             − KES {fmtT(amount)}
           </span>
         ) : (
@@ -389,11 +389,11 @@ function StageGap({
 
 function EmptyHero({ fy, reason }: { fy: string; reason: string }) {
   return (
-    <div className='rounded-2xl bg-white border border-neutral-border/40 shadow-surface p-8 text-center'>
-      <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/60 mb-2'>
+    <div className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 shadow-surface p-8 text-center'>
+      <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/60 dark:text-emerald-100/60 mb-2'>
         Follow the Money · FY {fy}
       </div>
-      <h2 className='font-display text-2xl text-gov-dark mb-2'>No data yet</h2>
+      <h2 className='font-display text-2xl text-gov-dark dark:text-white mb-2'>No data yet</h2>
       <p className='text-sm text-neutral-muted max-w-lg mx-auto'>{reason}</p>
     </div>
   );

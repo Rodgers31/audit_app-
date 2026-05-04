@@ -268,11 +268,11 @@ export default function ConstitutionBook({
   return (
     <section
       id='constitution-book'
-      className='relative overflow-hidden rounded-3xl border border-white/60 bg-gradient-to-br from-white/85 via-gov-cream/80 to-gov-sand shadow-elevated'
+      className='relative overflow-hidden rounded-3xl border border-white/60 dark:border-neutral-border bg-gradient-to-br from-white/85 via-gov-cream/80 to-gov-sand dark:from-surface-elevated dark:via-surface-base dark:to-surface-elevated shadow-elevated'
       aria-label='Constitution of Kenya reader'>
       {/* ── Header ── */}
       <div className='flex items-start gap-3 border-b border-neutral-border/60 bg-gradient-to-r from-gov-forest via-gov-dark to-gov-forest px-5 py-4 sm:px-7'>
-        <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gov-gold/90 text-gov-dark shadow-surface'>
+        <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gov-gold/90 text-gov-dark dark:text-white shadow-surface'>
           <BookOpen size={20} />
         </div>
         <div className='min-w-0 flex-1'>
@@ -297,7 +297,7 @@ export default function ConstitutionBook({
       {/* ── Body ── */}
       <div className='grid grid-cols-1 lg:grid-cols-[280px_1fr]'>
         {/* Sidebar — desktop */}
-        <aside className='hidden max-h-[640px] overflow-y-auto border-r border-neutral-border/60 bg-white/50 p-3 lg:block'>
+        <aside className='hidden max-h-[640px] overflow-y-auto border-r border-neutral-border/60 bg-white/50 dark:bg-surface-elevated p-3 lg:block'>
           <ChapterSidebar
             chapters={CONSTITUTION_META}
             activeChapterNumber={activeChapter}
@@ -317,7 +317,7 @@ export default function ConstitutionBook({
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.25 }}
-              className='overflow-hidden border-b border-neutral-border/60 bg-white/70 p-3 lg:hidden'>
+              className='overflow-hidden border-b border-neutral-border/60 bg-white/70 dark:bg-surface-elevated p-3 lg:hidden'>
               <ChapterSidebar
                 chapters={CONSTITUTION_META}
                 activeChapterNumber={activeChapter}
@@ -333,7 +333,7 @@ export default function ConstitutionBook({
 
         {/* Viewer */}
         <motion.div
-          className='relative min-h-[540px] bg-white/70'
+          className='relative min-h-[540px] bg-white/70 dark:bg-surface-elevated'
           drag='x'
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.18}
@@ -375,7 +375,7 @@ export default function ConstitutionBook({
       </div>
 
       {/* ── Progress bar ── */}
-      <div className='border-t border-neutral-border/60 bg-white/60 px-4 py-3 sm:px-6'>
+      <div className='border-t border-neutral-border/60 bg-white/60 dark:bg-surface-elevated px-4 py-3 sm:px-6'>
         <div className='flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-neutral-muted'>
           <span>
             Chapter {activeChapter}{activeMeta ? ` — ${activeMeta.title}` : ''}

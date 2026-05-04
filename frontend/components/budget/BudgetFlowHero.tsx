@@ -215,15 +215,15 @@ export default function BudgetFlowHero({ data }: Props) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.55 }}
-      className='rounded-2xl bg-gradient-to-br from-white via-gov-sand/30 to-white border border-neutral-border/40 shadow-surface overflow-hidden'>
+      className='rounded-2xl bg-gradient-to-br from-white via-gov-sand/30 to-white dark:from-surface-elevated dark:via-surface-base dark:to-surface-elevated border border-neutral-border/40 shadow-surface overflow-hidden'>
       {/* Header */}
       <div className='px-5 sm:px-8 pt-6 sm:pt-8 pb-4'>
         <div className='flex items-start justify-between gap-4 flex-wrap'>
           <div>
-            <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/80'>
+            <div className='text-[11px] font-semibold uppercase tracking-[0.18em] text-gov-forest/80 dark:text-emerald-100/80'>
               National Budget · {fy}
             </div>
-            <h2 className='font-display text-[26px] sm:text-3xl text-gov-dark leading-tight mt-1'>
+            <h2 className='font-display text-[26px] sm:text-3xl text-gov-dark dark:text-white leading-tight mt-1'>
               KES {fmtT(budget)} in, KES {fmtT(budget)} out
             </h2>
             <p className='text-sm text-neutral-muted mt-1 max-w-2xl'>
@@ -242,7 +242,7 @@ export default function BudgetFlowHero({ data }: Props) {
                 <div className='text-[10px] uppercase tracking-wider font-semibold text-gov-copper'>
                   Treasury APDMR · {fy}
                 </div>
-                <div className='font-display text-xl text-gov-dark leading-tight tabular-nums'>
+                <div className='font-display text-xl text-gov-dark dark:text-white leading-tight tabular-nums'>
                   KES {debtServiceCents.toFixed(1)}
                 </div>
                 <div className='text-[11px] text-neutral-muted leading-tight'>
@@ -257,7 +257,7 @@ export default function BudgetFlowHero({ data }: Props) {
       {/* Sources bar */}
       <div className='px-5 sm:px-8 pb-1 pt-2'>
         <div className='flex items-baseline justify-between gap-2 mb-2'>
-          <h3 className='text-[13px] font-semibold text-gov-dark tracking-tight'>
+          <h3 className='text-[13px] font-semibold text-gov-dark dark:text-white tracking-tight'>
             Where the money comes from
           </h3>
           <span className='text-[11px] text-neutral-muted'>
@@ -280,7 +280,7 @@ export default function BudgetFlowHero({ data }: Props) {
       {/* Uses bar */}
       <div className='px-5 sm:px-8 pb-7 pt-1'>
         <div className='flex items-baseline justify-between gap-2 mb-2'>
-          <h3 className='text-[13px] font-semibold text-gov-dark tracking-tight'>
+          <h3 className='text-[13px] font-semibold text-gov-dark dark:text-white tracking-tight'>
             Where it actually goes
           </h3>
           <span className='text-[11px] text-neutral-muted'>
@@ -294,7 +294,7 @@ export default function BudgetFlowHero({ data }: Props) {
       {/* Footer note */}
       <div className='px-5 sm:px-8 pb-5 pt-0'>
         <div className='flex items-start gap-2 text-[11px] text-neutral-muted/90 leading-relaxed border-t border-neutral-border/40 pt-3'>
-          <Info size={13} className='mt-0.5 flex-shrink-0 text-gov-forest/70' />
+          <Info size={13} className='mt-0.5 flex-shrink-0 text-gov-forest/70 dark:text-emerald-100/70' />
           <span>
             Debt-service figure follows the National Treasury <em>Annual Public Debt
             Management Report</em> definition — interest payments{' '}
@@ -355,11 +355,11 @@ function FlowBar({
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.15 }}
-                className='absolute left-1/2 -translate-x-1/2 -top-2 -translate-y-full z-10 bg-white border border-neutral-border/60 shadow-elevated rounded-lg px-3 py-2 w-56 pointer-events-none'>
+                className='absolute left-1/2 -translate-x-1/2 -top-2 -translate-y-full z-10 bg-white dark:bg-surface-base border border-neutral-border/60 shadow-elevated rounded-lg px-3 py-2 w-56 pointer-events-none'>
                 <div className='text-[10px] font-semibold uppercase tracking-wider' style={{ color: seg.accent }}>
                   {seg.label}
                 </div>
-                <div className='text-sm font-bold text-gov-dark tabular-nums leading-tight'>
+                <div className='text-sm font-bold text-gov-dark dark:text-white tabular-nums leading-tight'>
                   KES {fmtT(seg.valueB)} · {seg.share.toFixed(1)}%
                 </div>
                 <div className='text-[10.5px] text-neutral-muted leading-snug mt-1'>
@@ -397,7 +397,7 @@ function SegmentLegend({
             onMouseLeave={() => setHover(null)}
             className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-all ${
               isHover
-                ? 'bg-white border border-neutral-border/60 shadow-sm'
+                ? 'bg-white dark:bg-surface-base border border-neutral-border/60 shadow-sm'
                 : 'border border-transparent'
             }`}>
             <span
@@ -405,7 +405,7 @@ function SegmentLegend({
               style={{ background: `linear-gradient(180deg, ${seg.gradStart}, ${seg.gradEnd})` }}
             />
             <span className='flex-1 min-w-0'>
-              <span className='block text-[10.5px] font-semibold text-gov-dark truncate'>
+              <span className='block text-[10.5px] font-semibold text-gov-dark dark:text-white truncate'>
                 {seg.label}
               </span>
               <span className='block text-[10px] text-neutral-muted tabular-nums'>

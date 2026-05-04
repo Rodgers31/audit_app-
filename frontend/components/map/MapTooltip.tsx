@@ -111,8 +111,8 @@ const STATUS_CONFIG: Record<
     stripe: 'bg-violet-500',
   },
   pending: {
-    bg: 'bg-gray-50',
-    text: 'text-gray-600',
+    bg: 'bg-gray-50 dark:bg-surface-elevated',
+    text: 'text-gray-600 dark:text-neutral-muted',
     ring: 'ring-gray-200',
     dot: 'bg-gray-400',
     stripe: 'bg-gray-300',
@@ -207,7 +207,7 @@ export default function MapTooltip({
         // min-w-0 so labels reflow instead of overflowing the card.
         // `overflow-hidden` clips the status-stripe to the rounded-xl
         // corners so the accent doesn't square off the top edge.
-        className='relative w-[min(18rem,calc(100vw-2rem))] rounded-xl bg-gradient-to-br from-white via-white to-gov-sand/30 backdrop-blur-xl border border-white/60 shadow-[0_10px_40px_rgba(15,23,42,0.14)] overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-[0_14px_48px_rgba(15,23,42,0.20)] hover:-translate-y-0.5'>
+        className='relative w-[min(18rem,calc(100vw-2rem))] rounded-xl bg-gradient-to-br from-white via-white to-gov-sand/30 dark:from-surface-elevated dark:via-surface-base dark:to-surface-elevated backdrop-blur-xl border border-white/60 dark:border-neutral-border shadow-[0_10px_40px_rgba(15,23,42,0.14)] overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-[0_14px_48px_rgba(15,23,42,0.20)] hover:-translate-y-0.5'>
         {/* ── Status-colour stripe — visual cue for audit state before
             the reader parses the chip. Pending = gray (neutral). */}
         <div className={`h-1 w-full ${cfg.stripe}`} />
@@ -216,7 +216,7 @@ export default function MapTooltip({
           {/* ── Header ── */}
           <div className='flex items-start justify-between gap-2 mb-3'>
             <div className='min-w-0'>
-              <h3 className='text-[16px] font-bold text-gov-dark truncate leading-tight'>
+              <h3 className='text-[16px] font-bold text-gov-dark dark:text-white truncate leading-tight'>
                 {county.name}
               </h3>
               <p className='text-[11px] text-neutral-muted mt-0.5 truncate'>
@@ -249,7 +249,7 @@ export default function MapTooltip({
                     e.stopPropagation();
                     onClose();
                   }}
-                  className='inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-800 active:bg-gray-300 transition-colors'>
+                  className='inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 dark:bg-surface-elevated text-gray-500 dark:text-neutral-muted/80 hover:bg-gray-200 dark:bg-surface-sunken hover:text-gray-800 dark:text-neutral-text active:bg-gray-300 transition-colors'>
                   <X className='w-3.5 h-3.5' />
                 </button>
               )}
@@ -259,13 +259,13 @@ export default function MapTooltip({
           {/* ── Metrics row ── */}
           <div className='grid grid-cols-2 gap-2 mb-3'>
             {/* Budget utilisation */}
-            <div className='rounded-lg border border-neutral-border/40 bg-white/70 p-2.5'>
+            <div className='rounded-lg border border-neutral-border/40 bg-white/70 dark:bg-surface-elevated p-2.5'>
               <div className='flex items-center gap-1 mb-1.5'>
-                <Coins className='w-3 h-3 text-gov-forest/70' />
+                <Coins className='w-3 h-3 text-gov-forest/70 dark:text-emerald-100/70' />
                 <span className='text-[10px] font-medium text-neutral-muted'>Utilisation</span>
               </div>
               <div className='flex items-baseline gap-1 mb-1.5'>
-                <span className='text-[15px] font-bold text-gov-dark tabular-nums leading-none'>
+                <span className='text-[15px] font-bold text-gov-dark dark:text-white tabular-nums leading-none'>
                   {utilization.toFixed(0)}
                 </span>
                 <span className='text-[10px] font-medium text-neutral-muted'>%</span>
@@ -279,13 +279,13 @@ export default function MapTooltip({
             </div>
 
             {/* Debt ratio */}
-            <div className='rounded-lg border border-neutral-border/40 bg-white/70 p-2.5'>
+            <div className='rounded-lg border border-neutral-border/40 bg-white/70 dark:bg-surface-elevated p-2.5'>
               <div className='flex items-center gap-1 mb-1.5'>
                 <TrendingUp className='w-3 h-3 text-gov-gold/80' />
                 <span className='text-[10px] font-medium text-neutral-muted'>Debt Ratio</span>
               </div>
               <div className='flex items-baseline gap-1 mb-0.5'>
-                <span className='text-[15px] font-bold text-gov-dark tabular-nums leading-none'>
+                <span className='text-[15px] font-bold text-gov-dark dark:text-white tabular-nums leading-none'>
                   {debtRatio.toFixed(1)}
                 </span>
                 <span className='text-[10px] font-medium text-neutral-muted'>%</span>
@@ -337,7 +337,7 @@ export default function MapTooltip({
           <Link
             href={`/counties/${county.id}?from=home-map`}
             onClick={(e) => e.stopPropagation()}
-            className='mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-gov-forest/[0.06] hover:bg-gov-forest hover:text-white px-3 py-2 text-[11px] font-semibold text-gov-forest transition-colors group/cta'>
+            className='mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-gov-forest/[0.06] hover:bg-gov-forest hover:text-white px-3 py-2 text-[11px] font-semibold text-gov-forest dark:text-emerald-100 transition-colors group/cta'>
             View detailed analysis
             <ArrowRight className='w-3 h-3 transition-transform group-hover/cta:translate-x-0.5' />
           </Link>
@@ -375,7 +375,7 @@ function AlertRow({
       className={`flex items-center justify-between rounded-md px-2 py-1.5 border ${t.bg} ${t.border}`}>
       <div className='flex items-center gap-1.5'>
         {icon}
-        <span className='text-[10px] font-medium text-gray-700'>{label}</span>
+        <span className='text-[10px] font-medium text-gray-700 dark:text-neutral-muted'>{label}</span>
       </div>
       <span className={`text-[10px] font-bold tabular-nums ${t.value}`}>{value}</span>
     </div>

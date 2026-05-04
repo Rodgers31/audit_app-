@@ -151,13 +151,13 @@ export default function MoneyFlowSourceReconciliation({ fiscalYear }: Props) {
   const sources = buildSourcesFor(fiscalYear);
 
   return (
-    <section className='rounded-2xl bg-white border border-neutral-border/40 shadow-surface overflow-hidden'>
+    <section className='rounded-2xl bg-white dark:bg-surface-base border border-neutral-border/40 shadow-surface overflow-hidden'>
       <div className='px-5 sm:px-7 pt-5 pb-3 flex items-start gap-3'>
-        <div className='w-9 h-9 rounded-lg bg-gov-forest/10 text-gov-forest flex items-center justify-center flex-shrink-0'>
+        <div className='w-9 h-9 rounded-lg bg-gov-forest/10 text-gov-forest dark:text-emerald-100 flex items-center justify-center flex-shrink-0'>
           <BookOpenCheck size={18} />
         </div>
         <div className='min-w-0'>
-          <h3 className='font-display text-lg text-gov-dark leading-tight'>
+          <h3 className='font-display text-lg text-gov-dark dark:text-white leading-tight'>
             Source reconciliation
           </h3>
           <p className='text-[12px] text-neutral-muted mt-0.5'>
@@ -178,7 +178,7 @@ export default function MoneyFlowSourceReconciliation({ fiscalYear }: Props) {
               } transition-colors`}>
               <div className='flex-1 min-w-0'>
                 <div className='flex items-center gap-2 flex-wrap'>
-                  <span className='text-[11px] uppercase tracking-wider font-semibold text-gov-forest'>
+                  <span className='text-[11px] uppercase tracking-wider font-semibold text-gov-forest dark:text-emerald-100'>
                     {s.publisher}
                   </span>
                   <span
@@ -186,7 +186,7 @@ export default function MoneyFlowSourceReconciliation({ fiscalYear }: Props) {
                     {st.label}
                   </span>
                 </div>
-                <div className='text-[13px] text-gov-dark mt-0.5 leading-snug'>
+                <div className='text-[13px] text-gov-dark dark:text-white mt-0.5 leading-snug'>
                   {s.title}
                 </div>
                 <div className='text-[11px] text-neutral-muted mt-0.5'>
@@ -198,7 +198,7 @@ export default function MoneyFlowSourceReconciliation({ fiscalYear }: Props) {
                   href={s.url}
                   target='_blank'
                   rel='noopener noreferrer'
-                  className='inline-flex items-center gap-1 text-[12px] font-medium text-gov-sage hover:text-gov-forest transition-colors flex-shrink-0'>
+                  className='inline-flex items-center gap-1 text-[12px] font-medium text-gov-sage hover:text-gov-forest dark:text-emerald-100 transition-colors flex-shrink-0'>
                   View source <ExternalLink size={12} />
                 </a>
               ) : (

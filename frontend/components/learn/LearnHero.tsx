@@ -172,7 +172,7 @@ export default function LearnHero({ onSearchSubmit, onArticleSelect }: LearnHero
                 submit(value);
               }}
               className='flex items-center gap-2 rounded-2xl bg-white/95 p-1.5 shadow-elevated ring-1 ring-white/20'>
-              <Search size={18} className='ml-3 text-gov-forest/70' />
+              <Search size={18} className='ml-3 text-gov-forest/70 dark:text-emerald-100/70' />
               <input
                 ref={inputRef}
                 type='search'
@@ -183,12 +183,12 @@ export default function LearnHero({ onSearchSubmit, onArticleSelect }: LearnHero
                 }}
                 onFocus={() => setOpen(true)}
                 placeholder='Try "elections", "Article 229" or "public debt"…'
-                className='min-w-0 flex-1 bg-transparent py-2.5 text-sm text-gov-dark outline-none placeholder:text-neutral-muted sm:text-[15px]'
+                className='min-w-0 flex-1 bg-transparent py-2.5 text-sm text-gov-dark dark:text-white outline-none placeholder:text-neutral-muted sm:text-[15px]'
                 aria-label='Search civic topics or the Constitution'
                 autoComplete='off'
               />
               {isLoading && (
-                <Loader2 size={16} className='mr-2 shrink-0 animate-spin text-gov-forest/50' />
+                <Loader2 size={16} className='mr-2 shrink-0 animate-spin text-gov-forest/50 dark:text-emerald-100/50' />
               )}
               {value && !isLoading && (
                 <button
@@ -199,7 +199,7 @@ export default function LearnHero({ onSearchSubmit, onArticleSelect }: LearnHero
                     setHits([]);
                     inputRef.current?.focus();
                   }}
-                  className='mr-1 rounded-full p-1 text-neutral-muted hover:bg-neutral-border/50 hover:text-gov-dark'
+                  className='mr-1 rounded-full p-1 text-neutral-muted hover:bg-neutral-border/50 hover:text-gov-dark dark:text-white'
                   aria-label='Clear search'>
                   <X size={14} />
                 </button>
@@ -220,7 +220,7 @@ export default function LearnHero({ onSearchSubmit, onArticleSelect }: LearnHero
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.18 }}
-                  className='absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-neutral-border bg-white text-gov-dark shadow-elevated'>
+                  className='absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-neutral-border bg-white dark:bg-surface-base text-gov-dark dark:text-white shadow-elevated'>
                   {showHits && (
                     <>
                       <div className='border-b border-neutral-border/60 px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-neutral-muted'>
@@ -233,11 +233,11 @@ export default function LearnHero({ onSearchSubmit, onArticleSelect }: LearnHero
                               type='button'
                               onClick={() => pickHit(h)}
                               className='group flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gov-forest/5'>
-                              <span className='mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gov-gold/20 font-display text-sm font-bold text-gov-dark'>
+                              <span className='mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gov-gold/20 font-display text-sm font-bold text-gov-dark dark:text-white'>
                                 {h.article.number}
                               </span>
                               <div className='min-w-0 flex-1'>
-                                <div className='flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-gov-forest/70'>
+                                <div className='flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-gov-forest/70 dark:text-emerald-100/70'>
                                   <span>Ch {h.chapter.number}</span>
                                   <span>·</span>
                                   <span className='truncate text-neutral-muted normal-case tracking-normal'>
@@ -255,7 +255,7 @@ export default function LearnHero({ onSearchSubmit, onArticleSelect }: LearnHero
                               </div>
                               <ChevronRight
                                 size={14}
-                                className='mt-2 shrink-0 text-neutral-muted group-hover:text-gov-forest'
+                                className='mt-2 shrink-0 text-neutral-muted group-hover:text-gov-forest dark:text-emerald-100'
                               />
                             </button>
                           </li>
@@ -268,7 +268,7 @@ export default function LearnHero({ onSearchSubmit, onArticleSelect }: LearnHero
                     <button
                       type='button'
                       onClick={() => submit(value)}
-                      className='flex w-full items-center justify-between gap-3 border-t border-neutral-border/60 bg-gov-cream/40 px-3 py-2.5 text-left text-sm font-semibold text-gov-forest transition-colors hover:bg-gov-forest/5'>
+                      className='flex w-full items-center justify-between gap-3 border-t border-neutral-border/60 bg-gov-cream/40 dark:bg-surface-sunken px-3 py-2.5 text-left text-sm font-semibold text-gov-forest dark:text-emerald-100 transition-colors hover:bg-gov-forest/5'>
                       <span className='inline-flex items-center gap-2'>
                         <Search size={14} />
                         Search Constitution for &ldquo;{query}&rdquo;

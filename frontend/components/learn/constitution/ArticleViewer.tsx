@@ -85,7 +85,7 @@ function highlight(text: string, query: string): React.ReactNode {
     out.push(
       <mark
         key={`h-${n++}`}
-        className='rounded bg-gov-gold/30 px-0.5 text-gov-dark'>
+        className='rounded bg-gov-gold/30 px-0.5 text-gov-dark dark:text-white'>
         {text.slice(j, j + q.length)}
       </mark>
     );
@@ -157,12 +157,12 @@ export default function ArticleViewer({
               <button
                 type='button'
                 onClick={onBack}
-                className='mb-3 inline-flex items-center gap-1.5 rounded-full border border-gov-forest/20 bg-gov-forest/5 px-3 py-1 text-[11px] font-semibold text-gov-forest hover:bg-gov-forest/10 hover:border-gov-forest/40 transition-colors'>
+                className='mb-3 inline-flex items-center gap-1.5 rounded-full border border-gov-forest/20 bg-gov-forest/5 px-3 py-1 text-[11px] font-semibold text-gov-forest dark:text-emerald-100 hover:bg-gov-forest/10 hover:border-gov-forest/40 transition-colors'>
                 <CornerDownLeft size={12} />
                 Back to Article {backTarget.articleNumber}
               </button>
             )}
-            <div className='mb-2 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wider text-gov-forest/70'>
+            <div className='mb-2 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wider text-gov-forest/70 dark:text-emerald-100/70'>
               <span className='inline-flex items-center gap-1 rounded-full bg-gov-forest/10 px-2 py-0.5 font-semibold'>
                 <ScrollText size={11} />
                 Chapter {chapter.number}
@@ -171,16 +171,16 @@ export default function ArticleViewer({
               <span className='font-semibold text-neutral-muted'>{chapter.title}</span>
             </div>
             <div className='flex items-start gap-3'>
-              <span className='shrink-0 rounded-xl bg-gov-gold/20 px-3 py-1.5 font-display text-xl font-bold text-gov-dark'>
+              <span className='shrink-0 rounded-xl bg-gov-gold/20 px-3 py-1.5 font-display text-xl font-bold text-gov-dark dark:text-white'>
                 <Hash size={14} className='-mt-1 mr-0.5 inline text-gov-gold' />
                 {article.number}
               </span>
-              <h3 className='font-display text-2xl leading-tight text-gov-dark sm:text-[1.7rem]'>
+              <h3 className='font-display text-2xl leading-tight text-gov-dark dark:text-white sm:text-[1.7rem]'>
                 {highlight(article.title, query)}
               </h3>
             </div>
             {article.summary && (
-              <p className='mt-3 rounded-xl border border-gov-sage/30 bg-gov-sage/10 px-3.5 py-2.5 text-[13.5px] leading-relaxed text-gov-forest'>
+              <p className='mt-3 rounded-xl border border-gov-sage/30 bg-gov-sage/10 px-3.5 py-2.5 text-[13.5px] leading-relaxed text-gov-forest dark:text-emerald-100'>
                 <Bookmark size={13} className='-mt-0.5 mr-1 inline text-gov-sage' />
                 {renderProse(article.summary, { query, onRefClick: onReferenceClick })}
               </p>
@@ -229,12 +229,12 @@ export default function ArticleViewer({
             })}
 
             {article.explanation && (
-              <div className='mt-4 rounded-xl bg-gradient-to-br from-gov-gold/15 via-gov-sand to-gov-cream/80 p-4 ring-1 ring-gov-gold/30'>
-                <div className='mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gov-forest'>
+              <div className='mt-4 rounded-xl bg-gradient-to-br from-gov-gold/15 via-gov-sand to-gov-cream/80 dark:from-gov-gold/[0.12] dark:via-surface-base dark:to-surface-elevated p-4 ring-1 ring-gov-gold/30 dark:ring-gov-gold/40'>
+                <div className='mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gov-forest dark:text-emerald-100'>
                   <Lightbulb size={13} className='text-gov-gold' />
                   Why it matters
                 </div>
-                <p className='text-[13.5px] leading-relaxed text-gov-dark'>
+                <p className='text-[13.5px] leading-relaxed text-gov-dark dark:text-white'>
                   {renderProse(article.explanation, { query, onRefClick: onReferenceClick })}
                 </p>
               </div>
@@ -245,7 +245,7 @@ export default function ArticleViewer({
                 {article.tags.map((t) => (
                   <span
                     key={t}
-                    className='rounded-full bg-gov-forest/5 px-2 py-0.5 text-[10.5px] font-medium text-gov-forest/70'>
+                    className='rounded-full bg-gov-forest/5 px-2 py-0.5 text-[10.5px] font-medium text-gov-forest/70 dark:text-emerald-100/70'>
                     #{t}
                   </span>
                 ))}
@@ -253,17 +253,17 @@ export default function ArticleViewer({
             )}
 
             {showNextChapter && (
-              <div className='mt-6 rounded-2xl border border-gov-forest/20 bg-gradient-to-br from-gov-forest/5 via-white to-gov-sage/15 p-4 sm:p-5'>
-                <div className='flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-gov-forest'>
+              <div className='mt-6 rounded-2xl border border-gov-forest/20 dark:border-gov-forest/40 bg-gradient-to-br from-gov-forest/5 via-white to-gov-sage/15 dark:from-gov-forest/[0.15] dark:via-surface-base dark:to-surface-elevated p-4 sm:p-5'>
+                <div className='flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-gov-forest dark:text-emerald-100'>
                   <CheckCircle2 size={13} className='text-gov-sage' />
                   End of Chapter {chapter.number}
                 </div>
                 <div className='mt-2 flex flex-wrap items-center justify-between gap-3'>
                   <div className='min-w-0'>
-                    <div className='text-[11px] font-semibold uppercase tracking-wider text-gov-forest/60'>
+                    <div className='text-[11px] font-semibold uppercase tracking-wider text-gov-forest/60 dark:text-emerald-100/60'>
                       Up next · Chapter {nextChapterNumber}
                     </div>
-                    <div className='font-display text-base text-gov-dark sm:text-lg'>
+                    <div className='font-display text-base text-gov-dark dark:text-white sm:text-lg'>
                       {nextChapterTitle}
                     </div>
                   </div>
@@ -280,12 +280,12 @@ export default function ArticleViewer({
           </div>
 
           {/* ── Footer nav ── */}
-          <footer className='flex items-center justify-between gap-3 border-t border-neutral-border/70 bg-gov-cream/60 px-5 py-3 sm:px-7'>
+          <footer className='flex items-center justify-between gap-3 border-t border-neutral-border/70 bg-gov-cream/60 dark:bg-surface-sunken px-5 py-3 sm:px-7'>
             <button
               type='button'
               onClick={onPrev}
               disabled={!hasPrev}
-              className='inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-gov-forest transition-colors hover:bg-gov-forest/10 disabled:cursor-not-allowed disabled:opacity-30'>
+              className='inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-gov-forest dark:text-emerald-100 transition-colors hover:bg-gov-forest/10 disabled:cursor-not-allowed disabled:opacity-30'>
               <ArrowLeft size={16} />
               <span className='hidden sm:inline'>
                 {prevLabel ? `Art. ${prevLabel}` : 'Previous'}
@@ -299,7 +299,7 @@ export default function ArticleViewer({
               <button
                 type='button'
                 onClick={onGoNextChapter}
-                className='inline-flex items-center gap-2 rounded-lg bg-gov-forest/10 px-3 py-2 text-sm font-semibold text-gov-forest transition-colors hover:bg-gov-forest/20'>
+                className='inline-flex items-center gap-2 rounded-lg bg-gov-forest/10 px-3 py-2 text-sm font-semibold text-gov-forest dark:text-emerald-100 transition-colors hover:bg-gov-forest/20'>
                 <span className='hidden sm:inline'>Ch. {nextChapterNumber}</span>
                 <span className='sm:hidden'>Next ch.</span>
                 <ArrowRight size={16} />
@@ -309,7 +309,7 @@ export default function ArticleViewer({
                 type='button'
                 onClick={onNext}
                 disabled={!hasNext}
-                className='inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-gov-forest transition-colors hover:bg-gov-forest/10 disabled:cursor-not-allowed disabled:opacity-30'>
+                className='inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-gov-forest dark:text-emerald-100 transition-colors hover:bg-gov-forest/10 disabled:cursor-not-allowed disabled:opacity-30'>
                 <span className='hidden sm:inline'>
                   {nextLabel ? `Art. ${nextLabel}` : 'Next'}
                 </span>

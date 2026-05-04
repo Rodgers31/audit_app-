@@ -18,11 +18,11 @@ export default function GlossaryPage() {
       back={{ href: '/learn', label: 'Back to Learning Hub' }}>
       <div className='flex flex-wrap items-center justify-end gap-4 text-[12.5px] text-neutral-muted'>
         <span>
-          <strong className='text-gov-dark'>{termCount}</strong> terms
+          <strong className='text-gov-dark dark:text-white'>{termCount}</strong> terms
         </span>
         <span className='text-neutral-border'>·</span>
         <span>
-          <strong className='text-gov-dark'>{themeCount}</strong> themes
+          <strong className='text-gov-dark dark:text-white'>{themeCount}</strong> themes
         </span>
         <span className='text-neutral-border'>·</span>
         <span>Linked to the Constitution</span>

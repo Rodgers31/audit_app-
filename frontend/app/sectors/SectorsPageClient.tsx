@@ -132,40 +132,40 @@ export default function SectorsPage() {
       <div className='space-y-6'>
         {/* Top-line strip */}
         <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
-          <div className='bg-white rounded-xl border border-gray-100 p-5'>
-            <div className='text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1'>
+          <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-5'>
+            <div className='text-xs uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-semibold mb-1'>
               {t('sectors.total_allocated')}
             </div>
-            <div className='text-3xl font-bold text-gray-900 tabular-nums'>
+            <div className='text-3xl font-bold text-gray-900 dark:text-neutral-text tabular-nums'>
               {fmtKES(data?.total_allocated || 0)}
             </div>
-            <div className='text-xs text-gray-500 mt-1'>
+            <div className='text-xs text-gray-500 dark:text-neutral-muted/80 mt-1'>
               {t('sectors.total_allocated_sub').replace('{n}', String(data?.counties_reporting || 0))}
             </div>
           </div>
-          <div className='bg-white rounded-xl border border-gray-100 p-5'>
-            <div className='text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1'>
+          <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-5'>
+            <div className='text-xs uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-semibold mb-1'>
               {t('sectors.total_executed')}
             </div>
             <div className='text-3xl font-bold text-emerald-700 tabular-nums'>
               {fmtKES(data?.total_spent || 0)}
             </div>
-            <div className='text-xs text-gray-500 mt-1'>{t('sectors.total_executed_sub')}</div>
+            <div className='text-xs text-gray-500 dark:text-neutral-muted/80 mt-1'>{t('sectors.total_executed_sub')}</div>
           </div>
-          <div className='bg-white rounded-xl border border-gray-100 p-5'>
-            <div className='text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1'>
+          <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-5'>
+            <div className='text-xs uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-semibold mb-1'>
               {t('sectors.execution_rate')}
             </div>
-            <div className='text-3xl font-bold text-gray-900 tabular-nums'>
+            <div className='text-3xl font-bold text-gray-900 dark:text-neutral-text tabular-nums'>
               {overallUtil.toFixed(1)}%
             </div>
-            <div className='text-xs text-gray-500 mt-1'>{t('sectors.execution_rate_sub')}</div>
+            <div className='text-xs text-gray-500 dark:text-neutral-muted/80 mt-1'>{t('sectors.execution_rate_sub')}</div>
           </div>
         </div>
 
         {/* Loading / error */}
         {isLoading && (
-          <div className='bg-white rounded-xl border border-gray-100 p-8 flex items-center justify-center gap-3 text-gray-500'>
+          <div className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border p-8 flex items-center justify-center gap-3 text-gray-500 dark:text-neutral-muted/80'>
             <Loader2 className='animate-spin' size={18} />
             <span>{t('sectors.loading')}</span>
           </div>
@@ -187,7 +187,7 @@ export default function SectorsPage() {
               return (
                 <article
                   key={s.sector}
-                  className='bg-white rounded-xl border border-gray-100 overflow-hidden hover:border-gov-sage/40 hover:shadow-md transition-all'>
+                  className='bg-white dark:bg-surface-base rounded-xl border border-gray-100 dark:border-neutral-border overflow-hidden hover:border-gov-sage/40 hover:shadow-md transition-all'>
                   <button
                     type='button'
                     onClick={() => setExpanded(isOpen ? null : s.sector)}
@@ -199,12 +199,12 @@ export default function SectorsPage() {
                       </div>
                       <div className='flex-1 min-w-[180px]'>
                         <div className='flex items-center gap-2 flex-wrap'>
-                          <h2 className='text-base font-bold text-gray-900'>{translateSector(s.sector)}</h2>
-                          <span className='text-xs text-gray-500'>
+                          <h2 className='text-base font-bold text-gray-900 dark:text-neutral-text'>{translateSector(s.sector)}</h2>
+                          <span className='text-xs text-gray-500 dark:text-neutral-muted/80'>
                             · {s.county_count} {t('sectors.counties_count')}
                           </span>
                         </div>
-                        <div className='mt-2 h-2 bg-gray-100 rounded-full overflow-hidden'>
+                        <div className='mt-2 h-2 bg-gray-100 dark:bg-surface-elevated rounded-full overflow-hidden'>
                           <div
                             className={`h-full bg-gradient-to-r ${color}`}
                             style={{ width: `${Math.min(sharePct, 100)}%` }}
@@ -212,10 +212,10 @@ export default function SectorsPage() {
                         </div>
                       </div>
                       <div className='text-right'>
-                        <div className='text-xl font-bold text-gray-900 tabular-nums'>
+                        <div className='text-xl font-bold text-gray-900 dark:text-neutral-text tabular-nums'>
                           {fmtKES(s.spent)}
                         </div>
-                        <div className='text-xs text-gray-500'>
+                        <div className='text-xs text-gray-500 dark:text-neutral-muted/80'>
                           {t('sectors.of_label')} {fmtKES(s.allocated)}
                         </div>
                       </div>
@@ -227,8 +227,8 @@ export default function SectorsPage() {
                   </button>
 
                   {isOpen && (
-                    <div className='border-t border-gray-100 bg-gray-50/60 px-5 py-4'>
-                      <div className='text-xs uppercase tracking-wider text-gray-500 font-semibold mb-3'>
+                    <div className='border-t border-gray-100 dark:border-neutral-border bg-gray-50/60 dark:bg-surface-elevated/70 px-5 py-4'>
+                      <div className='text-xs uppercase tracking-wider text-gray-500 dark:text-neutral-muted/80 font-semibold mb-3'>
                         {t('sectors.top_counties').replace('{sector}', translateSector(s.sector))}
                       </div>
                       <div className='space-y-2'>
@@ -239,15 +239,15 @@ export default function SectorsPage() {
                             <div
                               key={c.county}
                               className='flex items-center gap-3 text-sm'>
-                              <div className='w-6 text-xs font-bold text-gray-400 tabular-nums'>
+                              <div className='w-6 text-xs font-bold text-gray-400 dark:text-neutral-muted/80 tabular-nums'>
                                 #{i + 1}
                               </div>
                               <Link
                                 href={`/counties?search=${encodeURIComponent(c.county)}`}
-                                className='w-32 font-semibold text-gray-800 hover:text-gov-forest hover:underline truncate'>
+                                className='w-32 font-semibold text-gray-800 dark:text-neutral-text hover:text-gov-forest dark:text-emerald-100 hover:underline truncate'>
                                 {c.county}
                               </Link>
-                              <div className='flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden'>
+                              <div className='flex-1 h-1.5 bg-gray-200 dark:bg-surface-sunken rounded-full overflow-hidden'>
                                 <div
                                   className={`h-full bg-gradient-to-r ${color}`}
                                   style={{
@@ -255,10 +255,10 @@ export default function SectorsPage() {
                                   }}
                                 />
                               </div>
-                              <div className='w-24 text-right font-bold text-gray-900 tabular-nums'>
+                              <div className='w-24 text-right font-bold text-gray-900 dark:text-neutral-text tabular-nums'>
                                 {fmtKES(c.spent)}
                               </div>
-                              <div className='w-14 text-right text-xs text-gray-500 tabular-nums'>
+                              <div className='w-14 text-right text-xs text-gray-500 dark:text-neutral-muted/80 tabular-nums'>
                                 {cUtil.toFixed(0)}%
                               </div>
                             </div>
@@ -275,8 +275,8 @@ export default function SectorsPage() {
 
         {/* Methodology */}
         <div className='bg-gov-forest/5 border border-gov-forest/20 rounded-xl p-5'>
-          <div className='text-sm text-gray-700 leading-relaxed'>
-            <p className='font-semibold text-gray-900 mb-1'>{t('sectors.methodology.title')}</p>
+          <div className='text-sm text-gray-700 dark:text-neutral-muted leading-relaxed'>
+            <p className='font-semibold text-gray-900 dark:text-neutral-text mb-1'>{t('sectors.methodology.title')}</p>
             <p>{t('sectors.methodology.body')}</p>
           </div>
         </div>
