@@ -717,32 +717,41 @@ export default function CountyDetailClient() {
           </div>
         </motion.div>
 
-        {/* ── Tabs ── underline style, no nested box */}
+        {/* ── Tabs ── pill-button group with a clear active state.
+             The container itself is a subtle rounded surface; each tab
+             is a chip that lights up when active (solid gov-forest in
+             both modes so the active state reads instantly), while
+             inactive chips stay ghosted with hover affordance. */}
         <div
           ref={tabBarRef}
           style={{ scrollMarginTop: '88px' }}
-          className='flex items-center gap-1 border-b border-gray-200 dark:border-neutral-border overflow-x-auto -mb-px'>
+          className='flex items-center gap-1 overflow-x-auto rounded-full bg-gov-dark/5 dark:bg-surface-elevated/60 p-1 ring-1 ring-inset ring-gov-dark/10 dark:ring-white/10'>
           {TABS.map((tabItem) => {
             const active = tab === tabItem.id;
             return (
               <button
                 key={tabItem.id}
                 onClick={() => handleTabChange(tabItem.id)}
-                className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap ${
-                  active ? 'text-gov-forest dark:text-emerald-100' : 'text-gray-500 dark:text-neutral-muted/80 hover:text-gray-800 dark:text-neutral-text'
+                aria-pressed={active}
+                className={`relative flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                  active
+                    ? 'text-white'
+                    : 'text-gov-dark/70 dark:text-white/70 hover:text-gov-dark dark:hover:text-white'
                 }`}>
-                <tabItem.icon
-                  size={14}
-                  className={active ? 'text-gov-forest dark:text-emerald-100' : 'text-gray-400 dark:text-neutral-muted/80'}
-                />
-                {t(tabItem.labelKey)}
                 {active && (
                   <motion.div
-                    layoutId='county-tab-underline'
-                    className='absolute left-3 right-3 -bottom-px h-0.5 rounded-full bg-gov-forest'
-                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    layoutId='county-tab-pill'
+                    className='absolute inset-0 rounded-full bg-gov-forest shadow-sm'
+                    transition={{ type: 'spring', stiffness: 400, damping: 32 }}
                   />
                 )}
+                <tabItem.icon
+                  size={14}
+                  className={`relative z-[1] ${
+                    active ? 'text-white' : 'text-gov-dark/55 dark:text-white/55'
+                  }`}
+                />
+                <span className='relative z-[1]'>{t(tabItem.labelKey)}</span>
               </button>
             );
           })}
