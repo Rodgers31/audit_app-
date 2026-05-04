@@ -61,9 +61,14 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Run with Gunicorn for production.
 #
-# Worker count is overridable via the ``WEB_CONCURRENCY`` env var
-# (read natively by gunicorn) — leave it unset to use the default
-# below. We default to 1 worker because:
+# Worker count is intentionally NOT specified on the command line so
+# gunicorn falls back to the ``WEB_CONCURRENCY`` env var (its native
+# default lookup), which in turn defaults to 1 if unset. That makes
+# the worker count tunable from Render's env-vars panel without a
+# rebuild — set ``WEB_CONCURRENCY=2`` (or higher) when CPU saturates,
+# revert to ``1`` to drop memory.
+#
+# Why we err on the low side:
 #
 #   * Each Uvicorn worker re-imports the full app: pandas, numpy,
 #     pdfplumber, the auto-seeder, APScheduler, the in-memory
@@ -73,10 +78,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 #   * FastAPI/Uvicorn is async — a single worker handles dozens of
 #     concurrent I/O-bound requests (DB queries, HTTP fetches) on
 #     one event loop. The bottleneck for this app is RAM, not CPU.
-#   * If you do hit CPU saturation, bump to 2 via the env var
-#     (``WEB_CONCURRENCY=2``) instead of editing this Dockerfile.
 CMD ["gunicorn", "main:app", \
-     "--workers", "1", \
      "--worker-class", "uvicorn.workers.UvicornWorker", \
      "--bind", "0.0.0.0:8000", \
      "--access-logfile", "-", \
