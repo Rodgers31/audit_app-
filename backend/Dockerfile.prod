@@ -59,9 +59,26 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run with Gunicorn for production
+# Run with Gunicorn for production.
+#
+# Worker count is intentionally NOT specified on the command line so
+# gunicorn falls back to the ``WEB_CONCURRENCY`` env var (its native
+# default lookup), which in turn defaults to 1 if unset. That makes
+# the worker count tunable from Render's env-vars panel without a
+# rebuild — set ``WEB_CONCURRENCY=2`` (or higher) when CPU saturates,
+# revert to ``1`` to drop memory.
+#
+# Why we err on the low side:
+#
+#   * Each Uvicorn worker re-imports the full app: pandas, numpy,
+#     pdfplumber, the auto-seeder, APScheduler, the in-memory
+#     cache. That's ~200MB resident per worker, so 4 workers blows
+#     past Render's 512MB Starter tier and clips the 2GB Standard
+#     tier once the cache fills.
+#   * FastAPI/Uvicorn is async — a single worker handles dozens of
+#     concurrent I/O-bound requests (DB queries, HTTP fetches) on
+#     one event loop. The bottleneck for this app is RAM, not CPU.
 CMD ["gunicorn", "main:app", \
-     "--workers", "4", \
      "--worker-class", "uvicorn.workers.UvicornWorker", \
      "--bind", "0.0.0.0:8000", \
      "--access-logfile", "-", \
