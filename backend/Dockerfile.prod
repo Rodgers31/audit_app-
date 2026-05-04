@@ -59,9 +59,24 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run with Gunicorn for production
+# Run with Gunicorn for production.
+#
+# Worker count is overridable via the ``WEB_CONCURRENCY`` env var
+# (read natively by gunicorn) — leave it unset to use the default
+# below. We default to 1 worker because:
+#
+#   * Each Uvicorn worker re-imports the full app: pandas, numpy,
+#     pdfplumber, the auto-seeder, APScheduler, the in-memory
+#     cache. That's ~200MB resident per worker, so 4 workers blows
+#     past Render's 512MB Starter tier and clips the 2GB Standard
+#     tier once the cache fills.
+#   * FastAPI/Uvicorn is async — a single worker handles dozens of
+#     concurrent I/O-bound requests (DB queries, HTTP fetches) on
+#     one event loop. The bottleneck for this app is RAM, not CPU.
+#   * If you do hit CPU saturation, bump to 2 via the env var
+#     (``WEB_CONCURRENCY=2``) instead of editing this Dockerfile.
 CMD ["gunicorn", "main:app", \
-     "--workers", "4", \
+     "--workers", "1", \
      "--worker-class", "uvicorn.workers.UvicornWorker", \
      "--bind", "0.0.0.0:8000", \
      "--access-logfile", "-", \
