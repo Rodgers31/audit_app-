@@ -36,7 +36,7 @@ export default function MapControls({
               ${
                 visualMode === 'focus'
                   ? 'bg-blue-500 text-white shadow-sm'
-                  : 'bg-gray-100 dark:bg-surface-elevated text-gray-600 dark:text-neutral-muted hover:bg-gray-200 dark:bg-surface-sunken'
+                  : 'bg-gray-100 dark:bg-surface-elevated text-gray-600 dark:text-neutral-muted hover:bg-gray-200 dark:hover:bg-surface-sunken'
               }
             `}
             title={visualMode === 'focus' ? 'Switch to Overview Mode' : 'Switch to Focus Mode'}>

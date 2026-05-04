@@ -55,7 +55,7 @@ export default function StoryCard({ story, index, isExpanded, onToggle }: StoryC
       {/* Expand/Collapse Button */}
       <motion.button
         onClick={onToggle}
-        className='w-full text-left p-3 rounded-xl bg-gray-50 dark:bg-surface-elevated hover:bg-gray-100 dark:bg-surface-elevated transition-colors duration-200'
+        className='w-full text-left p-3 rounded-xl bg-gray-50 dark:bg-surface-elevated hover:bg-gray-100 dark:hover:bg-surface-base transition-colors duration-200'
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}>
         <div className='flex items-center justify-between'>

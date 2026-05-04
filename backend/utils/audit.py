@@ -47,11 +47,31 @@ def record_admin_action(
     """
     Append a row to ``admin_audit_log``.
 
-    Always commits within its own savepoint so a partial outer
-    transaction can't lose the log row, and is best-effort: any
-    exception is swallowed and logged rather than re-raised.
+    Opens a *separate* short-lived ``SessionLocal()`` to write the row
+    so the audit write is fully decoupled from the caller's session:
+
+      * If the caller's transaction later rolls back, the audit row
+        still persists. We want a record that the admin attempted /
+        completed the action.
+      * Conversely, a failure here can't poison the caller's pending
+        work. The exception is swallowed and logged rather than
+        re-raised; the underlying admin action already happened, and
+        failing the request because we couldn't audit it would be a
+        worse outcome than a missing log row.
+
+    The ``db`` parameter is kept in the signature so callers don't
+    need to know we manage our own session — it's intentionally
+    unused at the moment but reserved for a future flag like
+    ``share_session=True``.
     """
+    # Local import to avoid a circular at module-load time
+    # (utils.audit ← models ← database, and we'd hit it from there).
+    from database import SessionLocal
+
+    del db  # explicitly unused — see docstring
+    audit_db: Optional[Session] = None
     try:
+        audit_db = SessionLocal()
         row = AdminAuditLog(
             actor_id=actor.id,
             actor_email=actor.email,
@@ -60,8 +80,8 @@ def record_admin_action(
             target_id=target_id,
             payload=dict(payload) if payload else {},
         )
-        db.add(row)
-        db.commit()
+        audit_db.add(row)
+        audit_db.commit()
     except Exception:
         logger.exception(
             "Failed to write admin_audit_log row",
@@ -73,7 +93,14 @@ def record_admin_action(
             },
         )
         # Do not re-raise; see module docstring.
-        try:
-            db.rollback()
-        except Exception:
-            pass
+        if audit_db is not None:
+            try:
+                audit_db.rollback()
+            except Exception:
+                pass
+    finally:
+        if audit_db is not None:
+            try:
+                audit_db.close()
+            except Exception:
+                pass
