@@ -37,6 +37,40 @@ export async function registerApiMocks(page: Page) {
       return route.fulfill(jsonResponse(item));
     }
 
+    // Fiscal summary — used by the debt page's "Where every KES 100" card.
+    // Values mirror backend/seeding/real_data/fiscal_summary.json (BPS
+    // framing for FY 2025/26: 1606 / 2835 × 100 ≈ 56.7).
+    if (url.endsWith('/api/v1/fiscal/summary')) {
+      const fyCurrent = {
+        fiscal_year: 'FY 2025/26',
+        appropriated_budget: 4190,
+        total_revenue: 2835,
+        tax_revenue: 2485,
+        non_tax_revenue: 350,
+        total_borrowing: 910,
+        borrowing_pct_of_budget: 21.7,
+        debt_service_cost: 1606,
+        debt_service_per_shilling: 56.7,
+        debt_ceiling: 10000,
+        actual_debt: 12500,
+        debt_ceiling_usage_pct: 125.0,
+        development_spending: 672,
+        recurrent_spending: 2850,
+        county_allocation: 415,
+      };
+      return route.fulfill(
+        jsonResponse({
+          status: 'ok',
+          data_source: 'mock',
+          last_updated: '2026-04-19',
+          source: 'BPS FY 2025/26 (mock fixture)',
+          current: fyCurrent,
+          history: [fyCurrent],
+          total_fiscal_years: 1,
+        }),
+      );
+    }
+
     // Debt endpoints
     if (url.endsWith('/api/v1/debt/national')) {
       return route.fulfill(jsonResponse(debtOverview));
