@@ -153,6 +153,19 @@ class AutoSeeder:
             await self.seed_all_domains()
         except Exception as exc:
             logger.warning(f"[AUTO-SEEDER] Initial seed failed (non-critical): {exc}")
+
+        # Mark every REFRESH_SCHEDULE domain as "seen at boot" so the
+        # hourly refresh loop doesn't fire heavy seeders for domains
+        # that aren't in seed_all_domains. Without this, budgets,
+        # audits, and counties_budget have last_refresh=None forever
+        # and re-run the registry pipeline (pdfplumber + pandas + HTTP
+        # scrapes) every single hour — which OOMs a 512 MB worker on
+        # Render. setdefault preserves the real seed timestamps for
+        # domains that did run during seed_all_domains.
+        boot_time = datetime.now(timezone.utc)
+        for domain in REFRESH_SCHEDULE:
+            self.last_refresh.setdefault(domain, boot_time)
+
         await self._refresh_loop()
 
     async def stop(self):
