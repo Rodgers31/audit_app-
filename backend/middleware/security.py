@@ -27,6 +27,10 @@ class RedisRateLimitMiddleware(BaseHTTPMiddleware):
         self.redis_client: Optional[aioredis.Redis] = None
         self.memory_fallback: Dict[str, list] = defaultdict(list)
         self.use_redis = False
+        # Tracks the last time the bulk sweep ran so it can be throttled
+        # to at most once per `period` seconds even if traffic keeps the
+        # dict above the sweep threshold continuously.
+        self._last_sweep_ts: float = 0.0
 
     async def init_redis(self):
         """Initialize Redis connection."""
@@ -117,9 +121,14 @@ class RedisRateLimitMiddleware(BaseHTTPMiddleware):
         now = time.time()
 
         # Lazy bulk sweep: when the dict gets large, drop any IP whose
-        # most recent timestamp is older than `period`. Amortized cheap
-        # because it only runs when memory pressure actually exists.
-        if len(self.memory_fallback) > self._MEMORY_FALLBACK_SWEEP_THRESHOLD:
+        # most recent timestamp is older than `period`. Throttled so
+        # the O(N) scan can't run on every request once the dict stays
+        # above threshold — at most once per `self.period` seconds.
+        if (
+            len(self.memory_fallback) > self._MEMORY_FALLBACK_SWEEP_THRESHOLD
+            and now - self._last_sweep_ts >= self.period
+        ):
+            self._last_sweep_ts = now
             cutoff = now - self.period
             stale = [
                 ip for ip, ts in self.memory_fallback.items()
@@ -127,10 +136,14 @@ class RedisRateLimitMiddleware(BaseHTTPMiddleware):
             ]
             for ip in stale:
                 del self.memory_fallback[ip]
-            logger.info(
-                f"Rate-limiter memory sweep: dropped {len(stale)} stale IPs "
-                f"({len(self.memory_fallback)} remaining)"
-            )
+            # Only log when we actually evicted something — otherwise
+            # this would spam INFO every `period` seconds whenever the
+            # dict sits at threshold with no stale entries.
+            if stale:
+                logger.info(
+                    f"Rate-limiter memory sweep: dropped {len(stale)} stale IPs "
+                    f"({len(self.memory_fallback)} remaining)"
+                )
 
         # Clean old entries for this IP
         self.memory_fallback[client_ip] = [
