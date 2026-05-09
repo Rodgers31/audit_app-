@@ -599,6 +599,11 @@ class InternalAPIClient:
     # simple in-memory TTL cache to reduce flakiness and repeated fetches during a session
     _cache: Dict[str, Dict[str, Any]] = {}
     _ttl_seconds = 6 * 60 * 60  # 6 hours
+    # Hard cap so the cache can't grow unbounded under traffic that hits
+    # many distinct keys (e.g. all 47 county detail endpoints in one
+    # session). Mirrors the bound used by RedisCache._memory_cache_max_size
+    # in cache/redis_cache.py.
+    _max_size = 1024
 
     @classmethod
     def _cache_get(cls, key: str):
@@ -612,6 +617,19 @@ class InternalAPIClient:
 
     @classmethod
     def _cache_set(cls, key: str, value: Any):
+        # Evict expired entries first; if still at cap, drop the oldest
+        # by insertion order (Py 3.7+ dicts preserve it). This matches
+        # the eviction behaviour in cache/redis_cache.py.
+        if len(cls._cache) >= cls._max_size:
+            now = time.time()
+            for k in [
+                k for k, rec in cls._cache.items()
+                if now - rec["ts"] > cls._ttl_seconds
+            ]:
+                cls._cache.pop(k, None)
+            while len(cls._cache) >= cls._max_size:
+                oldest = next(iter(cls._cache))
+                cls._cache.pop(oldest, None)
         cls._cache[key] = {"value": value, "ts": time.time()}
 
     @staticmethod
